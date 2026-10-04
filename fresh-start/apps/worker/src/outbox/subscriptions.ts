@@ -46,6 +46,7 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'sourcing.rfq_closed.v1',
   'sourcing.rfq_deadline_passed.v1',
   'sourcing.rfq_declined.v1',
+  'sourcing.requirement_revised.v1',
   'supplier.admitted.v1',
   'supplier.application_declined.v1',
   'supplier.application_received.v1',
