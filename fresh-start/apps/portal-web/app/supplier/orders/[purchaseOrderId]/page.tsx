@@ -18,6 +18,7 @@ import {
   formatMoney,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../../lib/api';
+import { ThreadPanel } from '../../../thread-panel';
 import { ProductionPanel } from './production-panel';
 
 /**
@@ -135,6 +136,7 @@ export default function SupplierPurchaseOrderPage() {
           </Card>
         ) : null}
         <ProductionPanel purchaseOrderId={purchaseOrderId} />
+        <ThreadPanel contextType="purchase_order" contextId={purchaseOrderId} description="Anything about this purchase order, between you and JobWork." />
       </Stack>
     </Page>
   );

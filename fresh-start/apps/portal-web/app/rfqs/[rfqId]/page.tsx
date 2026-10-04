@@ -27,6 +27,7 @@ import {
   type MoneyValue,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
+import { ThreadPanel } from '../../thread-panel';
 
 /**
  * The supplier's RFQ workspace and bid builder (F-06.4, F-06.5, UC-12/13).
@@ -514,6 +515,12 @@ export default function SupplierRfqPage(): React.JSX.Element {
             </CommandButton>
           </Card>
         ) : null}
+        <ThreadPanel
+          contextType="rfq"
+          contextId={rfqId}
+          title="Questions to JobWork"
+          description="Your questions stay between you and JobWork. Answers JobWork sends to every invited supplier also appear here, without names."
+        />
       </Stack>
     </Page>
   );

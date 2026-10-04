@@ -22,6 +22,7 @@ import {
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
+import { ThreadPanel } from '../../thread-panel';
 
 interface CustomerClarification {
   clarificationId: string;
@@ -274,6 +275,9 @@ export default function EnquiryDetailPage() {
               </div>
             ) : null}
           </Card>
+        ) : null}
+        {enquiry.status !== 'draft' ? (
+          <ThreadPanel contextType="enquiry" contextId={enquiryId} description="Questions and answers about this enquiry, between you and JobWork." />
         ) : null}
       </Stack>
     </Page>

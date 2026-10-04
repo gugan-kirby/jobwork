@@ -22,6 +22,7 @@ import {
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
+import { ThreadPanel } from '../../thread-panel';
 
 /**
  * Order detail and tracking (prototype tiles 11–12, corrected per doc 06 §13): the next
@@ -246,6 +247,7 @@ function OrderDetail() {
           <CopyableId label="Contract hash" value={order.contractHash} />
         </Card>
 
+        <ThreadPanel contextType="sales_order" contextId={orderId} description="Anything about this order, between you and JobWork." />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
           <ButtonLink href="/help" variant="secondary" fullWidth>Contact JobWork</ButtonLink>
           <ButtonLink href="/invoices" variant="secondary" fullWidth>All invoices</ButtonLink>
