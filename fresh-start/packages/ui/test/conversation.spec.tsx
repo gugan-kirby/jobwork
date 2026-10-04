@@ -10,6 +10,7 @@ import type {
 import { AudienceBanner } from '../src/conversation/AudienceBanner';
 import { Composer } from '../src/conversation/Composer';
 import { HighlightedText, LeakWarning } from '../src/conversation/LeakWarning';
+import { NotificationList } from '../src/conversation/NotificationList';
 import { Thread } from '../src/conversation/Thread';
 
 const body = 'Call Anand on 98765 43210 about part no 9123456780.';
@@ -189,5 +190,27 @@ describe('Thread (F-10.2)', () => {
     expect(screen.getAllByRole('button', { name: 'Answer for every supplier…' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Answer for every supplier…' }));
     expect(onShare).toHaveBeenCalledWith(expect.objectContaining({ messageId: 'q' }));
+  });
+});
+
+describe('NotificationList (F-10.3)', () => {
+  const items = [
+    { notificationId: 'n1', title: 'Your quotation QUO-2026-0001 is ready', body: 'Valid until 31 Oct 2026.', link: '/quotations/q1', createdAt: '2026-10-04T05:00:00Z', readAt: null },
+    { notificationId: 'n2', title: 'Invoice INV-2026-0001 issued', body: 'Due 15 Nov 2026.', link: '/invoices/i1', createdAt: '2026-10-03T05:00:00Z', readAt: '2026-10-03T06:00:00Z' },
+  ];
+
+  it('links each update to its record and says which are unread, in words', () => {
+    const onOpen = vi.fn();
+    render(<NotificationList notifications={items} onOpen={onOpen} />);
+    const unread = screen.getByRole('link', { name: /Unread: Your quotation QUO-2026-0001 is ready/ });
+    expect(unread).toHaveAttribute('href', '/quotations/q1');
+    expect(screen.getByRole('link', { name: /^Invoice INV-2026-0001 issued/ })).toHaveAttribute('href', '/invoices/i1');
+    fireEvent.click(unread);
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ notificationId: 'n1' }));
+  });
+
+  it('says when there is nothing yet', () => {
+    render(<NotificationList notifications={[]} />);
+    expect(screen.getByText('No updates yet')).toBeInTheDocument();
   });
 });

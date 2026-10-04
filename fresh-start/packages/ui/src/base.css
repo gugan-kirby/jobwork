@@ -1093,3 +1093,58 @@ code,
 .jw-share-source span {
   font: var(--text-body-strong);
 }
+
+/* ------------------------------------------------------------------ notifications (F-10.3) */
+
+.jw-notifications {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.jw-notification {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.jw-notification:hover {
+  border-color: var(--color-action);
+}
+
+.jw-notification-unread {
+  border-left: var(--rule-emphasis) solid var(--color-action);
+  background: var(--status-progress-bg);
+}
+
+.jw-notification-title {
+  font: var(--text-body-strong);
+}
+
+.jw-notification-unread .jw-notification-title::before {
+  content: '';
+  display: inline-block;
+  width: var(--space-2);
+  height: var(--space-2);
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--color-action);
+  vertical-align: middle;
+}
+
+.jw-notification-body {
+  font: var(--text-body);
+  color: var(--color-text-muted);
+}
+
+.jw-notification-time {
+  font: var(--text-caption);
+  color: var(--color-text-muted);
+}
