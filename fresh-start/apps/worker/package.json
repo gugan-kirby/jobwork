@@ -1,0 +1,30 @@
+{
+  "name": "@jobwork/worker",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@jobwork/contracts": "workspace:*",
+    "@jobwork/database": "workspace:*",
+    "@jobwork/object-store": "workspace:*",
+    "@jobwork/observability": "workspace:*",
+    "@jobwork/service-auth": "workspace:*",
+    "dotenv": "^16.4.0",
+    "pg": "^8.16.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@jobwork/test-kit": "workspace:*",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.15.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.0"
+  }
+}
