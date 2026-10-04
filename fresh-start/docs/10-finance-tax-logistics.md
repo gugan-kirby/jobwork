@@ -26,6 +26,8 @@ The software must not switch silently between reseller and marketplace behavior.
 - expected quality/rework/inspection/packaging cost;
 - currency conversion where applicable.
 
+A bid's own charges (supplier-to-JobWork freight, tooling/NRE) are priced once for the bid. They are carried in full into the award, the cost sheet's landed cost and the purchase order, attributed to the first award line that cites the bid. On a split, every supplier's own setup and charges are carried.
+
 ### Internal cost sheet
 
 - selected bid-version lineage;

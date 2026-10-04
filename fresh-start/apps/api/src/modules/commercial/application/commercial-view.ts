@@ -121,6 +121,8 @@ export class CommercialView {
         unit: line.unit,
         unitPriceMinor: line.unitPriceMinor,
         setupAmountMinor: line.setupAmountMinor,
+        freightAmountMinor: line.freightAmountMinor,
+        nreAmountMinor: line.nreAmountMinor,
         lineTotalMinor: line.lineTotalMinor,
       })),
       costSheetId: record.costSheetId,

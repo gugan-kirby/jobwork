@@ -132,6 +132,8 @@ export const purchaseOrderLineSchema = z.object({
   unit: z.string(),
   unitPriceMinor: z.number().int().nonnegative(),
   setupAmountMinor: z.number().int().nonnegative(),
+  freightAmountMinor: z.number().int().nonnegative(),
+  nreAmountMinor: z.number().int().nonnegative(),
   amountMinor: z.number().int().nonnegative(),
 });
 
