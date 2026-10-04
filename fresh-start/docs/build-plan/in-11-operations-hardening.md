@@ -172,8 +172,33 @@ Covers: doc 21 §8, `DS-14`, `BR-AUTH-05`, ADR-0005. F-DS assigned this work to 
 
 Tests: the service worker never stores an `/api/` response or an authenticated navigation; logout and 401 empty every cache; a command attempted offline is refused with the connectivity message and no request is made.
 
+**Deviations (2026-10-04, F-11.6):**
+
+- The worker is hand-written (`public/sw.js`, ~90 lines) rather than Serwist, which Next's PWA guide suggests: its whole job is to cache *less* than a framework would, and every line is under test. It caches the offline page (fetched with `credentials: 'omit'`, so it is nobody's page) and `/_next/static/` assets (capped at 300); it never intercepts `/api/`, other origins or any non-GET, and registers no background sync.
+- `worker-src 'self'` and `manifest-src 'self'` joined the nonce CSP: with `'strict-dynamic'` in `script-src`, `'self'` is disregarded and no nonce can vouch for a registration, so the worker could not have installed.
+- The manifest's colours come from `@jobwork/ui/brand.json`, which `tokens.spec.ts` holds equal to `tokens.css` — `DS-01` forbids hex in any TypeScript, even in the UI package. Icons (192, 512, maskable 512, Apple 180) are generated from the existing mark; iOS gets `appleWebApp` metadata.
+- The service worker registers in production builds only (under `next dev` it would cache the hot-reloading bundles). Caches are purged on sign-out, on "sign out everywhere", and whenever the API answers 401 (`UNAUTHENTICATED_EVENT` from `api()`).
+- The worker test (`service-worker.spec.ts`) runs the shipped `sw.js` unmodified in a VM sandbox, plays a customer's and a supplier's sessions through it (API responses and pages carrying a supplier's name and a price), and reads back every cache; mutation-checked by making the worker cache API responses.
+
+**Browser verification (2026-10-04, F-11.6, Next 16.3.8).** The manifest, icons and worker were served with the right headers (`sw.js` no-cache); signing in registered and activated the worker under the nonce CSP with no policy violation; after browsing quotations and orders the browser held only `/offline` and 12 build assets; with the portal server stopped, navigating to `/orders` showed the offline page, styled from cached assets; signing out left only the anonymous offline page. The offline-command refusal (device offline) is covered by `web-kit` tests: the headless browser here cannot emulate `navigator.onLine` through its scripting bridge.
+
 ## Increment exit
 
-- [ ] Doc 12 §1 signals measured with dashboards live locally; gaps listed with owners.
-- [ ] Every paging alert has a runbook file; alert payloads contain no sensitive data (doc 12 §8).
-- [ ] Nightly pipeline green end to end at least once.
+- [x] Doc 12 §1 signals measured with dashboards live locally; gaps listed with owners. Prometheus and Grafana run from `pnpm stack:observability`; the platform, operations and security dashboards show live data:
+
+  | Doc 12 §1 signal | Measured by | Locally (2026-10-04) | Gap and owner |
+  |---|---|---|---|
+  | Transactional availability 99.9% | `http_server_request_duration_seconds` 5xx share; *Availability*, *Error budget* panels; `ApiErrorRateHigh` | 100% over the session | A formal SLO needs traffic definitions and a maintenance policy (doc 12 §1) — platform, at `T-01` |
+  | Normal API p95 < 500 ms | Same histogram excluding file routes; `ApiLatencyHigh`; perf smoke | 28 ms (smoke, 8 req/s) | Representative load is IN-12 F-12.4 — platform |
+  | Supplier search p95 < 1.5 s | `/rfqs/match` series; perf smoke | 27 ms | Search freshness is not yet reported with the results (doc 12 §3) — sourcing, with the scoring work (Phase 3) |
+  | Critical event enqueue p95 < 30 s | `jobwork_outbox_lag_seconds` (due to handled, first attempts); `OutboxLagObjectiveMissed` | well under 1 s | — |
+  | Audit coverage 100% of critical commands | Not a runtime signal: an inventory test (every mutation writes audit) | — | IN-12 F-12.3 audit-coverage inventory — platform |
+  | RPO ≤ 15 min, RTO ≤ 2 h | Not measurable before a restore drill | — | IN-12 F-12.2 timed drill — platform |
+
+  Doc 12 §7 dashboard rows not yet measurable, with owners: provider latency and circuit state, object-storage error rate (platform, at `T-01`); database replication and PITR health (platform, at `T-01`); unacknowledged transmittal age, inspections, NCRs, shipments, settlement, support SLAs (each with its increment, IN-13–IN-18); malware detections as a metric (platform: a scan-verdict counter); secret and patch status beyond the nightly dependency audit (security, at `T-01`).
+- [x] Every paging alert has a runbook file; alert payloads contain no sensitive data (doc 12 §8). Test-enforced: `runbooks.db.spec.ts` resolves every `runbook_url`; `alerts-dashboards.spec.ts` refuses templated annotations and holds label names to small fixed sets.
+- [x] Nightly pipeline green end to end at least once — locally, through the same `infra/nightly.sh` the workflow runs (2026-10-04). The first GitHub run comes with the next push: before this increment the repository had no workflow GitHub could see.
+
+**Closed 2026-10-04.** `pnpm -r build && pnpm typecheck && pnpm lint && TZ=Asia/Kolkata pnpm test` — 601 tests green (api 279, ui 164, database 70, worker 39, web-kit 22, portal-web 21, observability 6), from 519 at the start of IN-11; the suite also passes under `TZ=UTC`.
+
+Not done, and recorded: virtualised and bulk-select queue tables; SLA policy publishing (calendar only); an operations-lead escalation role; container rescans and restore verification in the nightly; the vitest 4 upgrade (moderate advisory, review by 2026-11-04); search-freshness reporting; a reviewed read cache of non-sensitive projections for the installed portal.
