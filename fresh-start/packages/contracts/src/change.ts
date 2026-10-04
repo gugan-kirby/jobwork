@@ -68,7 +68,7 @@ export const liftInterimDecisionSchema = z.object({ reason: z.string().trim().mi
 
 export const recordImpactSchema = z.object({
   ...versioned,
-  areas: z.record(impactAreaSchema, impactAnswerSchema),
+  areas: z.partialRecord(impactAreaSchema, impactAnswerSchema),
   /** Tax-inclusive change to what the customer pays; negative is a credit. */
   customerPriceDeltaMinor: z.number().int(),
   deliveryDateDeltaDays: z.number().int().min(-365).max(365),
