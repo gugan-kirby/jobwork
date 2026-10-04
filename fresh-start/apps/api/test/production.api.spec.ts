@@ -113,6 +113,16 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     return (await production()).workPackages.find((w) => w['workPackageId'] === workPackageId)!;
   }
 
+  /** IN-14: JobWork quality writes a plan from the launch template, adds a drawing characteristic, and approves it. */
+  async function approveQualityPlan(workPackageId: string): Promise<void> {
+    const draft = await quality.post('/api/v1/quality-plans', { workPackageId, templateCode: 'cnc_machined_part' });
+    expect(draft.status).toBe(201);
+    const bore = { kind: 'variable', drawingReference: '7', name: 'Bore diameter', criticality: 'critical', unit: 'mm', nominal: '12', lower: { value: '11.98', inclusive: true }, upper: { value: '12.02', inclusive: true }, stages: ['fai', 'final'] };
+    const saved = await quality.post(`/api/v1/quality-plans/${draft.body['planId']}/draft`, { expectedVersion: draft.body['aggregateVersion'], stages: draft.body['stages'], characteristics: [...(draft.body['characteristics'] as Body[]), bore] });
+    expect(saved.status).toBe(201);
+    expect((await quality.post(`/api/v1/quality-plans/${draft.body['planId']}/approve`, { expectedVersion: saved.body['aggregateVersion'] })).status).toBe(201);
+  }
+
   function milestones(w: Body): Body[] {
     return w['milestones'] as Body[];
   }
@@ -320,7 +330,11 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     const acked = await supplierA.post(`/api/v1/supplier/transmittals/${transmittal['transmittalId']}/acknowledge`, { expectedVersion: transmittal['aggregateVersion'], note: 'Drawing pack received.' });
     expect(acked.status).toBe(201);
     expect((acked.body['transmittal'] as Body)['status']).toBe('acknowledged');
-    await sourcing.post(`/api/v1/purchase-orders/${poA}/work-package`, { plannedStart: '2026-10-06', plannedFinish: '2026-10-26', qualityPlanPresent: true });
+    await sourcing.post(`/api/v1/purchase-orders/${poA}/work-package`, { plannedStart: '2026-10-06', plannedFinish: '2026-10-26' });
+    // IN-14: the quality plan is a real approved plan against the baseline in force, not a checkbox.
+    w = await wp(wpA);
+    expect((w['gates'] as Body[]).filter((g) => !g['pass']).map((g) => g['key'])).toEqual(['compliance']);
+    await approveQualityPlan(wpA);
     w = await wp(wpA);
     expect(w['allGreen']).toBe(true);
 
@@ -335,7 +349,7 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     expect(w['baselinesUsed']).toEqual([{ baselineId, number: expect.stringMatching(/^BL-/), transmittalNumber: expect.any(String), effectiveFrom: expect.any(String) }]);
     expect(milestones(w)[0]!['status']).toBe('ready');
     // A released plan is frozen.
-    expect((await sourcing.post(`/api/v1/purchase-orders/${poA}/work-package`, { plannedStart: '2026-10-07', plannedFinish: '2026-10-27', qualityPlanPresent: true })).status).toBe(409);
+    expect((await sourcing.post(`/api/v1/purchase-orders/${poA}/work-package`, { plannedStart: '2026-10-07', plannedFinish: '2026-10-27' })).status).toBe(409);
     expect((await customer.get(`/api/v1/orders/${orderId}`)).body['status']).toBe('manufacturing_in_progress');
   });
 
@@ -468,10 +482,10 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     const planned = await sourcing.post(`/api/v1/purchase-orders/${poB}/work-package`, {
       plannedStart: '2026-10-06',
       plannedFinish: '2026-10-20',
-      qualityPlanPresent: true,
       milestones: [{ title: 'Parts machined and inspected', customerLabel: 'Production complete', plannedDate: '2026-10-20', evidencePolicy: 'none', minEvidence: 0 }],
     });
     const wpB = (planned.body['workPackages'] as Body[]).find((w) => w['purchaseOrderId'] === poB)!;
+    await approveQualityPlan(wpB['workPackageId'] as string);
     expect((await sourcing.post(`/api/v1/work-packages/${wpB['workPackageId']}/release`, { expectedVersion: wpB['aggregateVersion'] })).status).toBe(201);
     let only = milestones(await wp(wpB['workPackageId'] as string))[0]!;
     await supplierB.post(`/api/v1/supplier/milestones/${only['milestoneId']}/start`, { expectedVersion: only['aggregateVersion'] });
