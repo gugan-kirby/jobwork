@@ -80,8 +80,9 @@ export class DecideApprovalCommand {
             tx,
           );
 
+          // Kinds owned by other modules (finance's allocation, IN-13's change) apply their own effect.
           const effect =
-            request.kind === 'allocation'
+            request.kind === 'allocation' || request.kind === 'change'
               ? await this.effects.apply(request.kind, { requestId, subjectId: request.subjectId, context: request.context, decision: cmd.decision, decidedBy: actor.userId }, tx)
               : await this.apply(request.kind, request.subjectId, cmd.decision, actor.userId, tx);
 

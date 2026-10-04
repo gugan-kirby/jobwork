@@ -243,5 +243,7 @@ function approvalTarget(row: ApprovalRequestRow): { href: string; title: string 
       return { href: `/cost-sheets/${context.costSheetId ?? row.subjectId}`, title: context.label ?? 'Cost sheet' };
     case 'quote':
       return { href: `/quotes/${context.quoteId ?? row.subjectId}`, title: context.label ?? 'Customer quotation' };
+    case 'change':
+      return { href: `/changes/${row.subjectId}`, title: context.label ?? 'Engineering change' };
   }
 }
