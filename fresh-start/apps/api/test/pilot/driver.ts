@@ -158,6 +158,35 @@ export class Pilot {
     this.drawingVersionId = await this.cleanDrawing(this.orgs.customer);
   }
 
+  /** One more eligible supplier, signed in: for bursts that need many at once. */
+  async extraSupplier(name: string, email: string): Promise<{ orgId: string; profileId: string; client: TestClient }> {
+    const orgId = (await this.one<{ id: string }>(`INSERT INTO iam.organization (type, legal_name, display_name) VALUES ('supplier', $1, $1) RETURNING id`, [name])).id;
+    const user = await this.one<{ id: string }>(
+      `INSERT INTO iam.user_account (email, password_hash, password_params_version, display_name, status, email_verified_at) VALUES ($1, $2, 1, $3, 'active', now()) RETURNING id`,
+      [email, await hashPassword(PASSWORD), name],
+    );
+    const m = await this.one<{ id: string }>(`INSERT INTO iam.membership (user_id, organization_id) VALUES ($1, $2) RETURNING id`, [user.id, orgId]);
+    await this.pg.query(`INSERT INTO iam.membership_role (membership_id, role_id) SELECT $1, id FROM iam.role WHERE key = ANY($2::text[])`, [m.id, ['org_admin', 'supplier_estimator']]);
+    const profileId = (await this.one<{ id: string }>(
+      `INSERT INTO supplier.supplier_profile (organization_id, region_class, status, decided_by, decided_at, submitted_by, trade_name, primary_contact_name, primary_contact_email, primary_contact_phone, summary)
+       VALUES ($1, 'chennai_metro', 'active', gen_random_uuid(), now(), gen_random_uuid(), $2, 'Contact', 'contact@example.test', '+91 90000 00000', 'We machine things') RETURNING id`,
+      [orgId, name],
+    )).id;
+    for (const capabilityId of [this.capabilities.milling, this.capabilities.aluminium]) {
+      await this.pg.query(`INSERT INTO supplier.supplier_capability (supplier_profile_id, capability_id, version_no) VALUES ($1, $2, 1)`, [profileId, capabilityId]);
+    }
+    for (const kind of ['gst', 'pan', 'bank_account']) {
+      await this.pg.query(
+        `INSERT INTO supplier.verification_item (supplier_profile_id, kind, version_no, status, submitted_by, submitted_at, reviewed_by, reviewed_at, expires_at)
+         VALUES ($1, $2, 1, 'verified', gen_random_uuid(), now(), gen_random_uuid(), now(), now() + interval '200 days')`,
+        [profileId, kind],
+      );
+    }
+    const client = new TestClient(this.baseUrl);
+    ok(await client.post('/api/v1/auth/login', { email, password: PASSWORD }), 201, `sign in ${email}`);
+    return { orgId, profileId, client };
+  }
+
   /** A scanned-clean drawing the given organization owns. */
   async cleanDrawing(orgId: string): Promise<string> {
     const doc = await this.one<{ id: string }>(`INSERT INTO dms.document (owning_organization_id, logical_type, title) VALUES ($1, 'drawing_2d', 'Bracket drawing') RETURNING id`, [orgId]);
