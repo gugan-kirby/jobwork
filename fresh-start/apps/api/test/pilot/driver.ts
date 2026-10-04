@@ -273,6 +273,8 @@ export class Pilot {
       ok(await this.as.sourcing.post(`/api/v1/rfqs/${rfqId}/invitations`, { supplierProfileId: this.profiles[supplier] }), 201, `invite ${supplier}`);
     }
     ok(await this.as.sourcing.post(`/api/v1/rfqs/${rfqId}/release`, { expectedVersion: await this.rfqVersion(rfqId) }), 201, 'release rfq');
+    // The worker sends invitations within seconds of release; recipients are resolved then.
+    await this.dispatchNotifications();
     const seen = ok(await this.as[suppliers[0]!].get(`/api/v1/supplier/rfqs/${rfqId}`), 200, 'supplier reads rfq');
     return { rfqId, itemId: (seen['items'] as Body[])[0]!['rfqItemId'] as string };
   }
@@ -414,7 +416,12 @@ export class Pilot {
     const { evaluationId, rows } = await this.evaluate(round.rfqId);
     const award = ok(await this.proposeAward(round.rfqId, round.itemId, evaluationId, round.winner.bidVersionId, awardExtra), 201, 'propose award');
     ok(await this.decide(approver, award['approvalRequestId'] as string), 201, 'approve award');
-    const sheet = await this.approvedCostSheet(award['awardId'] as string);
+    return { ...round, evaluationRows: rows, award, ...(await this.approvedAwardToPurchaseOrder(award['awardId'] as string)) };
+  }
+
+  /** Approved award → cost sheet → quote → acceptance → PO acknowledged by supplier A. */
+  async approvedAwardToPurchaseOrder(awardId: string): Promise<Omit<SourcedDeal, 'rfqId' | 'itemId' | 'winner' | 'loser' | 'evaluationRows' | 'award'>> {
+    const sheet = await this.approvedCostSheet(awardId);
     const quoteId = await this.sentQuote(sheet.costSheetVersionId);
     const accept = { key: `accept-${randomUUID()}`, body: await this.acceptanceBody(quoteId) };
     const accepted = ok(await this.accept(quoteId, accept.key, accept.body), 201, 'accept quote');
@@ -422,7 +429,7 @@ export class Pilot {
     const pos = await this.issuePurchaseOrders(orderId);
     const purchaseOrderId = pos[0]!['purchaseOrderId'] as string;
     await this.acknowledgePurchaseOrder('supplierA', purchaseOrderId);
-    return { ...round, evaluationRows: rows, awardId: award['awardId'] as string, award, costSheet: sheet, quoteId, accept, order: accepted, orderId, purchaseOrders: pos, purchaseOrderId };
+    return { awardId, costSheet: sheet, quoteId, accept, order: accepted, orderId, purchaseOrders: pos, purchaseOrderId };
   }
 
   // ------------------------------------------------------------------ evidence
