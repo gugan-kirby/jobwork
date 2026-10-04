@@ -96,7 +96,7 @@ export function DataTable<Row>({
                     borderBottom: '1px solid var(--table-border)',
                     padding: 'var(--table-cell-pad)',
                     font: 'var(--text-caption)',
-                    color: 'var(--color-text-muted)',
+                    color: 'var(--color-text-muted-on-tint)',
                     whiteSpace: 'nowrap',
                     width: column.width,
                   }}

@@ -32,6 +32,9 @@
   --color-border: var(--neutral-200);
   --color-text: var(--neutral-900);
   --color-text-muted: var(--neutral-600);
+  /* Muted text that sits on a tinted fill (table headers, input adornments): neutral-600
+     clears 4.5:1 on white but only 4.39:1 on neutral-100 (F-12.4 browser axe pass). */
+  --color-text-muted-on-tint: var(--neutral-700);
   --color-action: var(--blue-600);
   --color-action-hover: var(--blue-700);
   --color-focus-ring: var(--blue-600);

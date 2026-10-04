@@ -18,6 +18,7 @@ export const token = {
   border: cssVar('color-border'),
   text: cssVar('color-text'),
   textMuted: cssVar('color-text-muted'),
+  textMutedOnTint: cssVar('color-text-muted-on-tint'),
   action: cssVar('color-action'),
   actionHover: cssVar('color-action-hover'),
   focusRing: cssVar('color-focus-ring'),

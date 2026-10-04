@@ -88,6 +88,15 @@ describe('design tokens (DS-01, DS-06, doc 21 §9)', () => {
     expect(contrast(resolve('color-text', vars), surface)).toBeGreaterThanOrEqual(4.5);
     // Muted is confined to metadata but must still clear 4.5:1 at our 13px caption size.
     expect(contrast(resolve('color-text-muted', vars), surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(resolve('color-text-muted', vars), resolve('color-bg', vars))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('muted text on a tinted fill uses its own token and clears 4.5:1 (F-12.4)', () => {
+    const onTint = resolve('color-text-muted-on-tint', vars);
+    expect(contrast(onTint, resolve('table-header-bg', vars))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(onTint, resolve('neutral-100', vars))).toBeGreaterThanOrEqual(4.5);
+    // The plain muted token does not, which is why the tinted fills may not use it.
+    expect(contrast(resolve('color-text-muted', vars), resolve('table-header-bg', vars))).toBeLessThan(4.5);
   });
 
   it('the hero keeps its light text legible on the brand blue (F-MX.2)', () => {
