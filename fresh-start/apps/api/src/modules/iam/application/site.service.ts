@@ -7,6 +7,7 @@ import { DomainError } from '../../../platform/http/domain-error';
 import { IamRepository } from '../infrastructure/iam.repository';
 import { AuditWriter } from '../../../platform/commands/audit.writer';
 import { contextFromActor } from '../../../platform/commands/command';
+import { DatabaseService } from '../../../platform/database/database.service';
 
 export class SiteNotFound extends DomainError {
   constructor() {
@@ -30,6 +31,7 @@ export class SiteService {
   constructor(
     private readonly repo: IamRepository,
     private readonly audit: AuditWriter,
+    private readonly db: DatabaseService,
   ) {}
 
   private requireOrganization(actor: Actor): string {
@@ -56,21 +58,20 @@ export class SiteService {
       if (!existing) throw new SiteNotFound();
     }
 
-    const site = await this.repo.saveSite({
-      ...input,
-      organizationId,
-      siteId: input.siteId ?? null,
-      gstin: input.gstin ?? null,
-      createdBy: actor.userId,
-    });
-
-    await this.audit.write(null, contextFromActor(actor), {
-      action: input.siteId ? 'iam.site_updated' : 'iam.site_added',
-      subjectType: 'organization_site',
-      subjectId: site.siteId,
-      // The address itself is not audit payload: the trail is read by more people than
-      // the address book is.
-      data: { organizationId, label: site.label, kind: site.kind, city: site.city },
+    const site = await this.db.withTransaction(async (client) => {
+      const saved = await this.repo.saveSite(
+        { ...input, organizationId, siteId: input.siteId ?? null, gstin: input.gstin ?? null, createdBy: actor.userId },
+        client,
+      );
+      await this.audit.write(client, contextFromActor(actor), {
+        action: input.siteId ? 'iam.site_updated' : 'iam.site_added',
+        subjectType: 'organization_site',
+        subjectId: saved.siteId,
+        // The address itself is not audit payload: the trail is read by more people than
+        // the address book is.
+        data: { organizationId, label: saved.label, kind: saved.kind, city: saved.city },
+      });
+      return saved;
     });
     this.log.info({ siteId: site.siteId, organizationId }, 'iam.site_saved');
     return site;
@@ -79,13 +80,15 @@ export class SiteService {
   async archive(actor: Actor, siteId: string): Promise<void> {
     const organizationId = this.requireOrganization(actor);
     this.assertMayMaintain(actor);
-    const archived = await this.repo.archiveSite(siteId, organizationId);
-    if (!archived) throw new SiteNotFound();
-    await this.audit.write(null, contextFromActor(actor), {
-      action: 'iam.site_archived',
-      subjectType: 'organization_site',
-      subjectId: siteId,
-      data: { organizationId },
+    await this.db.withTransaction(async (client) => {
+      const archived = await this.repo.archiveSite(siteId, organizationId, client);
+      if (!archived) throw new SiteNotFound();
+      await this.audit.write(client, contextFromActor(actor), {
+        action: 'iam.site_archived',
+        subjectType: 'organization_site',
+        subjectId: siteId,
+        data: { organizationId },
+      });
     });
   }
 }

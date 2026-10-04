@@ -35,10 +35,10 @@ export class AccountService {
     action: string,
     subjectType: string,
     subjectId: string,
-    data?: Record<string, unknown>,
-    opts: { reason?: string | undefined; client?: PoolClient } = {},
+    data: Record<string, unknown> | undefined,
+    opts: { reason?: string | undefined; client: PoolClient },
   ): Promise<void> {
-    await this.auditWriter.write(opts.client ?? null, contextFromActor(actor), {
+    await this.auditWriter.write(opts.client, contextFromActor(actor), {
       action,
       subjectType,
       subjectId,
@@ -60,9 +60,9 @@ export class AccountService {
 
   /** The two self-describing fields (F-MX.8). Email change is the verified flow of doc 20 §2. */
   async updateProfile(actor: Actor, input: { displayName: string; phone: string }): Promise<void> {
-    await this.repo.updateProfile(actor.userId, input);
-    await this.auditSecurity(actor, 'iam.profile_updated', 'user', actor.userId, {
-      displayNameChanged: input.displayName !== actor.displayName,
+    await this.db.withTransaction(async (client) => {
+      await this.repo.updateProfile(actor.userId, input, client);
+      await this.auditSecurity(actor, 'iam.profile_updated', 'user', actor.userId, { displayNameChanged: input.displayName !== actor.displayName }, { client });
     });
   }
 
@@ -80,9 +80,7 @@ export class AccountService {
     await this.db.withTransaction(async (client) => {
       await this.repo.rotateSessionToken(actor.sessionId, hashToken(token), client);
       await this.repo.setSessionOrganization(actor.sessionId, organizationId, client);
-    });
-    await this.auditSecurity(actor, 'auth.org_context_switched', 'session', actor.sessionId, {
-      organizationId,
+      await this.auditSecurity(actor, 'auth.org_context_switched', 'session', actor.sessionId, { organizationId }, { client });
     });
     this.log.info({ userId: actor.userId, organizationId }, 'auth.org_context_switched');
     return { token, csrfToken: generateToken() };
@@ -128,8 +126,8 @@ export class AccountService {
         { exceptSessionId: actor.sessionId },
         client,
       );
+      await this.auditSecurity(actor, 'auth.mfa_enrolled', 'user', actor.userId, undefined, { client });
     });
-    await this.auditSecurity(actor, 'auth.mfa_enrolled', 'user', actor.userId);
     this.log.info({ userId: actor.userId }, 'auth.mfa_enrolled');
     return { recoveryCodes };
   }

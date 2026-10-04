@@ -10,6 +10,7 @@ import { NotAuthorized, OrganizationNotFound } from '../domain/errors';
 import { IamRepository } from '../infrastructure/iam.repository';
 import { AuditWriter } from '../../../platform/commands/audit.writer';
 import { contextFromActor } from '../../../platform/commands/command';
+import { DatabaseService } from '../../../platform/database/database.service';
 
 @Injectable()
 export class OrganizationService {
@@ -18,6 +19,7 @@ export class OrganizationService {
   constructor(
     private readonly repo: IamRepository,
     private readonly audit: AuditWriter,
+    private readonly db: DatabaseService,
   ) {}
 
   /** Platform administration: creates customer/supplier organizations ahead of first invitations. */
@@ -29,17 +31,18 @@ export class OrganizationService {
     requireRole(actor, 'platform_admin');
     requireTransactionalStrength(actor);
 
-    const org = await this.repo.createOrganization({
-      type: input.type,
-      legalName: input.legalName,
-      displayName: input.displayName,
-      createdBy: actor.userId,
-    });
-    await this.audit.write(null, contextFromActor(actor), {
-      action: 'iam.organization_created',
-      subjectType: 'organization',
-      subjectId: org.id,
-      data: { type: input.type },
+    const org = await this.db.withTransaction(async (client) => {
+      const created = await this.repo.createOrganization(
+        { type: input.type, legalName: input.legalName, displayName: input.displayName, createdBy: actor.userId },
+        client,
+      );
+      await this.audit.write(client, contextFromActor(actor), {
+        action: 'iam.organization_created',
+        subjectType: 'organization',
+        subjectId: created.id,
+        data: { type: input.type },
+      });
+      return created;
     });
     this.log.info({ organizationId: org.id, type: input.type }, 'iam.organization_created');
     return { organizationId: org.id };
@@ -142,15 +145,16 @@ export class OrganizationService {
     const organization = await this.repo.findOrganization(organizationId);
     if (!organization) throw new OrganizationNotFound();
 
-    const changed = await this.repo.setOrganizationStatus(organizationId, status);
-    if (!changed) throw new NotAuthorized(`The organization is already ${status}`);
-
-    await this.audit.write(null, contextFromActor(actor), {
-      action: status === 'active' ? 'iam.organization_reinstated' : 'iam.organization_suspended',
-      subjectType: 'organization',
-      subjectId: organizationId,
-      ...(reason ? { reason } : {}),
-      data: { status, previousStatus: organization.status },
+    await this.db.withTransaction(async (client) => {
+      const changed = await this.repo.setOrganizationStatus(organizationId, status, client);
+      if (!changed) throw new NotAuthorized(`The organization is already ${status}`);
+      await this.audit.write(client, contextFromActor(actor), {
+        action: status === 'active' ? 'iam.organization_reinstated' : 'iam.organization_suspended',
+        subjectType: 'organization',
+        subjectId: organizationId,
+        ...(reason ? { reason } : {}),
+        data: { status, previousStatus: organization.status },
+      });
     });
     this.log.warn({ organizationId, status, by: actor.userId }, 'iam.organization_status_changed');
   }
