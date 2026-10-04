@@ -243,6 +243,27 @@ The operations quality screens:
 
 Browser walk on the dev stack at desktop width and at 390 px.
 
+**Deviations (2026-10-05, F-14.4):**
+
+- `GET /quality-units` was added. Entry screens offer the units in the database's reference data, never a copy in the browser, and a characteristic offers only units of its own dimension.
+- The supplier's result entry is a plain table, with labelled inputs per cell (`aria-label`) and serials per piece. Declared precision is the decimal places as typed, so "12.010" declares 3, and nothing is rounded.
+- Inspection stage names come from shared label maps in both apps.
+- `INSPECTION_STAGES` moved to `@jobwork/contracts/constants`, so browser code keeps zod out of its bundle (F-FE.3 boundary test).
+- Operations gained `lib/upload-api.ts`, the portal's narrow `FileUpload` surface, for JobWork's own calibration certificates.
+
+**Verification (2026-10-05, F-14.4).**
+
+- `MeasurementGrid` tests (3, including axe).
+- Browser walk on the dev stack (SO-2026-0002, WP-2026-0001):
+  1. JobWork quality writes a plan from `cnc_machined_part`; approval is refused without a drawing characteristic; the bore (balloon 7) is added, saved and approved.
+  2. QI-2026-0001 (FAI) is planned from the plan.
+  3. The supplier registers BG-01 and records its calibration with an uploaded certificate (scanned by the worker), then submits Ra 3.2 µm and the bore as 0.4724 inch (shown as 11.99896 mm).
+  4. JobWork quality, badge "1 waiting", reviews and passes.
+  5. QI-2026-0002 is measured with VC-02, whose calibration expired, and a 32 µm transcription. Review shows both blockers; the Ra correction keeps the original under "Corrections on record"; accepting the caliper with a reason clears the last blocker; it passes.
+- At 390 px the grid scrolls inside its card and the page does not overflow.
+- Fixed during the walk: raw stage codes ("fai") on supplier screens, and the reviewer's note marked "(required)" when it is needed only to fail.
+- 751 tests green.
+
 ## F-14.5 FAI cycle on the launch template
 
 | File | Action | Contents |
