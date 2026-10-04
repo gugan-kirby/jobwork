@@ -10,6 +10,11 @@ export interface OutboxEventRow {
   correlationId: string;
   data: Record<string, unknown>;
   attempts: number;
+  /**
+   * When this attempt became due: the commit for a new event, the replay for a replayed
+   * one, the end of the backoff for a retry. Lag is measured from here (F-11.4).
+   */
+  dueAt?: Date;
 }
 
 export interface HandlerResult {

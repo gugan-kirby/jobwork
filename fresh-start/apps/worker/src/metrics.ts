@@ -28,7 +28,7 @@ export function createWorkerMetrics(version: string): WorkerMetrics {
   });
   const lag = new Histogram({
     name: 'jobwork_outbox_lag_seconds',
-    help: 'Commit to handled, per outbox event (doc 12 §1: critical event enqueue p95 under 30 s).',
+    help: 'Due to handled for first attempts: commit, or replay (doc 12 §1: critical event enqueue p95 under 30 s).',
     buckets: [0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 900],
     registers,
   });
@@ -40,7 +40,7 @@ export function createWorkerMetrics(version: string): WorkerMetrics {
       const type = safeLabel(eventType);
       handled.inc({ event_type: type, outcome });
       duration.observe({ event_type: type }, seconds);
-      if (outcome === 'delivered') lag.observe(lagSeconds);
+      if (outcome === 'delivered' && lagSeconds !== null) lag.observe(Math.max(0, lagSeconds));
     },
     sweep: (name) => (outcome) => {
       sweeps.inc({ sweep: name, outcome });

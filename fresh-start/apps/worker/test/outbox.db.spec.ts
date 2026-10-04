@@ -158,4 +158,29 @@ describe('outbox poller', () => {
     expect(row.rows[0]?.status).toBe('dead');
     expect(row.rows[0]?.last_error).toContain('no handler');
   });
+
+  it('measures lag from when an attempt became due: a replay from its replay, a retry not at all (F-11.4)', async () => {
+    // Drain anything earlier cases left due, so this tick sees only the two below.
+    await pool.query(`UPDATE platform.outbox_event SET status = 'delivered' WHERE status IN ('pending', 'processing')`);
+    const registry = new HandlerRegistry().register('test.lag.v1', async () => undefined);
+    const seen: Array<{ outcome: string; lag: number | null }> = [];
+    const poller = new OutboxPoller(pool, registry, log, DEFAULT_POLLER_OPTIONS, (_type, outcome, _seconds, lag) => seen.push({ outcome, lag }));
+    // A month-old dead letter replayed just now: attempts reset, due now.
+    await pool.query(
+      `INSERT INTO platform.outbox_event (event_type, aggregate_type, aggregate_id, correlation_id, occurred_at, next_attempt_at, attempts)
+       VALUES ('test.lag.v1', 'test', 'replayed', 'corr-replay', now() - interval '30 days', now(), 0)`,
+    );
+    // A retry whose backoff just ended.
+    await pool.query(
+      `INSERT INTO platform.outbox_event (event_type, aggregate_type, aggregate_id, correlation_id, occurred_at, next_attempt_at, attempts)
+       VALUES ('test.lag.v1', 'test', 'retried', 'corr-retry', now() - interval '10 minutes', now(), 2)`,
+    );
+    await poller.tick();
+    expect(seen).toHaveLength(2);
+    const lags = seen.map((s) => s.lag);
+    expect(lags.filter((l) => l === null)).toHaveLength(1);
+    const measured = lags.find((l) => l !== null)!;
+    expect(measured).toBeGreaterThanOrEqual(0);
+    expect(measured).toBeLessThan(5);
+  });
 });

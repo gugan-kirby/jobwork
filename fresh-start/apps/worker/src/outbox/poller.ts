@@ -31,8 +31,13 @@ export function retryDelayMs(attempt: number, opts: PollerOptions, random = Math
  * delivery, retry, or dead-letter state. Stuck 'processing' rows past the visibility
  * timeout are reclaimed (crash recovery).
  */
-/** What happened to one event, for metrics (F-11.3). `lagSeconds` is commit to handled. */
-export type OutcomeObserver = (eventType: string, outcome: 'delivered' | 'retry' | 'dead', seconds: number, lagSeconds: number) => void;
+/**
+ * What happened to one event, for metrics (F-11.3). `lagSeconds` is due-to-handled for a
+ * first attempt — a new event's commit, or a replay — and null for a retry, whose wait was
+ * a deliberate backoff. Measured from the commit, a replay of a month-old dead letter
+ * would report a month of "lag" against a 30-second objective.
+ */
+export type OutcomeObserver = (eventType: string, outcome: 'delivered' | 'retry' | 'dead', seconds: number, lagSeconds: number | null) => void;
 
 export class OutboxPoller {
   private timer: NodeJS.Timeout | null = null;
@@ -60,7 +65,8 @@ export class OutboxPoller {
         RETURNING o.id, o.event_type AS "eventType", o.occurred_at AS "occurredAt",
                   o.aggregate_type AS "aggregateType", o.aggregate_id AS "aggregateId",
                   o.aggregate_version AS "aggregateVersion", o.organization_id AS "organizationId",
-                  o.actor, o.correlation_id AS "correlationId", o.data, o.attempts`,
+                  o.actor, o.correlation_id AS "correlationId", o.data, o.attempts,
+                  o.next_attempt_at AS "dueAt"`,
       [this.opts.batchSize, this.opts.visibilityTimeoutMs],
     );
     return res.rows as OutboxEventRow[];
@@ -121,7 +127,9 @@ export class OutboxPoller {
     for (const event of events) {
       const started = performance.now();
       const outcome = await this.processOne(event);
-      this.observe(event.eventType, outcome, (performance.now() - started) / 1000, (Date.now() - new Date(event.occurredAt).getTime()) / 1000);
+      const due = event.dueAt ?? event.occurredAt;
+      const lag = event.attempts === 1 ? (Date.now() - new Date(due).getTime()) / 1000 : null;
+      this.observe(event.eventType, outcome, (performance.now() - started) / 1000, lag);
     }
     return events.length;
   }
