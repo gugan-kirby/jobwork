@@ -21,16 +21,29 @@
   },
   "devDependencies": {
     "@jobwork/config": "workspace:*",
-    "eslint": "^9.30.0",
+    "eslint": "^9.39.5",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.40.0"
+    "typescript-eslint": "^8.71.0"
   },
+  "//": [
+    "pnpm.overrides (ES-30, added 2026-10-04 by F-11.5, review by 2026-11-04 or on the next @nestjs/platform-fastify release):",
+    "fastify ^5.12.5 - @nestjs/platform-fastify 11.2.7 pins fastify 5.11.3 (GHSA-hwr6-493r-vm6h, GHSA-9q9j-q6p8-xq58 and two more highs, plus X-Forwarded-* spoofing under trustProxy).",
+    "fast-uri - via fastify's ajv compiler (host case normalization, mailto header injection; moderate).",
+    "brace-expansion - via eslint > minimatch 3 (DoS; dev tooling only).",
+    "Not overridden: vitest < 4.1.11 (moderate, test runner only) - needs the vitest 4 major; tracked in IN-11 F-11.5."
+  ],
   "pnpm": {
     "onlyBuiltDependencies": [
       "@swc/core",
       "argon2",
       "esbuild",
       "sharp"
-    ]
+    ],
+    "overrides": {
+      "fastify": "^5.12.5",
+      "brace-expansion@<1.1.21": "^1.1.21",
+      "fast-uri@>=3.0.0 <3.1.8": "^3.1.8",
+      "fast-uri@>=4.0.0 <4.1.5": "^4.1.5"
+    }
   }
 }

@@ -17,9 +17,13 @@ import { ProblemFilter } from './platform/http/problem.filter';
  * are only as true as this: trusting too little makes every browser the web app's proxy;
  * trusting everyone lets a client pick its own address.
  */
-function trustProxy(value: string): boolean | number | string {
-  if (value === 'true' || value === 'false') return value === 'true';
-  if (/^\d+$/.test(value)) return Number(value);
+function trustProxy(value: string): boolean | string {
+  if (value === 'false') return false;
+  // A hop count cannot tell a proxy from a client that reached the API directly, and
+  // Fastify 5.12 dropped it for that reason (GHSA X-Forwarded-* spoofing): name the hops.
+  if (value === 'true' || /^\d+$/.test(value)) {
+    throw new Error(`TRUST_PROXY=${value} trusts any peer; name the proxy addresses (e.g. loopback or 10.0.0.0/8)`);
+  }
   return value;
 }
 

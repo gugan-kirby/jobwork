@@ -32,8 +32,9 @@ const envSchema = z.object({
   RATE_LIMIT_PREFIX: z.string().regex(/^[a-z0-9:_-]{1,40}$/).default('rl'),
   /**
    * Which proxy hops may name the client address in `X-Forwarded-For` (Fastify
-   * `trustProxy`: `loopback`, a CIDR list, or a hop count). The web apps' rewrite proxy
-   * is a loopback hop locally; deployed, the edge must set the header and be named here.
+   * `trustProxy`: `loopback`, or a comma-separated address/CIDR list; `false` for none).
+   * Hop counts and `true` are refused: neither checks that the peer is a proxy. The web
+   * apps' rewrite proxy is a loopback hop locally; deployed, name the edge and web hosts.
    */
   TRUST_PROXY: z.string().default('loopback'),
   /** F-11.3: Prometheus metrics on their own port; 0 serves none (tests). Never the API port. */

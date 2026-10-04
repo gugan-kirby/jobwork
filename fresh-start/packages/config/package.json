@@ -13,6 +13,6 @@
     "test": "true"
   },
   "devDependencies": {
-    "typescript-eslint": "^8.40.0"
+    "typescript-eslint": "^8.71.0"
   }
 }
