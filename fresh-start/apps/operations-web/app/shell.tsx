@@ -27,6 +27,7 @@ const BASE_NAVIGATION: NavItem[] = [
   { href: '/quotes', label: 'Quotes' },
   { href: '/sales-orders', label: 'Orders' },
   { href: '/production', label: 'Production' },
+  { href: '/changes', label: 'Changes' },
   { href: '/finance', label: 'Finance' },
   { href: '/approvals', label: 'Approvals' },
   { href: '/leakage-reviews', label: 'Held messages' },
