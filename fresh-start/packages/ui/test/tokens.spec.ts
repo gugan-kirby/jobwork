@@ -95,6 +95,7 @@ describe('design tokens (DS-01, DS-06, doc 21 §9)', () => {
     const onTint = resolve('color-text-muted-on-tint', vars);
     expect(contrast(onTint, resolve('table-header-bg', vars))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(onTint, resolve('neutral-100', vars))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(onTint, resolve('surface-tint', vars))).toBeGreaterThanOrEqual(4.5);
     // The plain muted token does not, which is why the tinted fills may not use it.
     expect(contrast(resolve('color-text-muted', vars), resolve('table-header-bg', vars))).toBeLessThan(4.5);
   });
