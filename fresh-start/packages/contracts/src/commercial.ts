@@ -169,6 +169,9 @@ export const awardLineSchema = z.object({
   unit: z.string(),
   unitPriceMinor: z.number().int().nonnegative(),
   setupAmountMinor: z.number().int().nonnegative(),
+  /** The bid's own freight to JobWork and tooling/NRE, on the first line citing that bid (0019). */
+  freightAmountMinor: z.number().int().nonnegative(),
+  nreAmountMinor: z.number().int().nonnegative(),
   lineTotalMinor: z.number().int().nonnegative(),
 });
 
