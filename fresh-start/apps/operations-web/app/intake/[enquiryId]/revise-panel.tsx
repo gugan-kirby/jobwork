@@ -24,7 +24,16 @@ const INSPECTION_LEVELS = [
  * their bids stay exactly as submitted. Shown only to engineering, and only while the
  * enquiry is being sourced; the server refuses the rest (an award pending or approved).
  */
-export function RevisePanel({ enquiry, onRevised }: { enquiry: Enquiry; onRevised: () => Promise<void> }): React.JSX.Element | null {
+export function RevisePanel({
+  enquiry,
+  latestRevisionNo,
+  onRevised,
+}: {
+  enquiry: Enquiry;
+  /** The newest frozen revision; what the next one is numbered after. */
+  latestRevisionNo: number;
+  onRevised: () => Promise<void>;
+}): React.JSX.Element | null {
   const [engineer, setEngineer] = useState(false);
   const [itemId, setItemId] = useState(enquiry.items[0]?.enquiryItemId ?? '');
   const item = enquiry.items.find((i) => i.enquiryItemId === itemId) ?? enquiry.items[0];
@@ -88,7 +97,7 @@ export function RevisePanel({ enquiry, onRevised }: { enquiry: Enquiry; onRevise
       <h3 style={{ font: 'var(--text-body-strong)', marginBottom: 'var(--space-2)' }}>Revise requirement</h3>
       <Stack gap={3}>
         <p style={{ font: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-          For a change after suppliers have started pricing. Rounds still open on revision {enquiry.currentRevisionNo} close as superseded and their
+          For a change after suppliers have started pricing. Rounds still open on revision {latestRevisionNo} close as superseded and their
           suppliers are told; their bids are kept as submitted and cannot be awarded. After an award, use engineering change control.
         </p>
         {done ? (
@@ -125,7 +134,7 @@ export function RevisePanel({ enquiry, onRevised }: { enquiry: Enquiry; onRevise
             disabledReason={changed ? 'Say why the requirement changed' : 'Change at least one field'}
             onCommand={revise}
           >
-            Freeze revision {(enquiry.currentRevisionNo ?? 0) + 1}
+            Freeze revision {latestRevisionNo + 1}
           </CommandButton>
         </div>
       </Stack>

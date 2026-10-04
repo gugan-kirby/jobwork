@@ -453,7 +453,11 @@ export default function IntakeDetailPage() {
                     <p style={{ color: 'var(--status-positive-fg)' }}>
                       Approved. Revision {enquiry.currentRevisionNo} is what sourcing quotes against.
                     </p>
-                    <RevisePanel key={enquiry.aggregateVersion} enquiry={enquiry} onRevised={load} />
+                    <RevisePanel
+                      enquiry={enquiry}
+                      latestRevisionNo={Math.max(0, ...revisions.map((r) => r.revisionNo))}
+                      onRevised={load}
+                    />
                   </Stack>
                 ) : null}
 
