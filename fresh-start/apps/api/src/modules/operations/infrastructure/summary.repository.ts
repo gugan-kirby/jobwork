@@ -112,6 +112,11 @@ export class SummaryRepository {
     return this.count(`SELECT count(*)::int AS n, min(created_at) AS oldest FROM orders.work_package WHERE status = 'planned'`);
   }
 
+  /** Messages held by the contact-leakage gate, invisible to their readers until decided (F-10.4). */
+  leakageReviewsOpen(): Promise<QueueCount> {
+    return this.count(`SELECT count(*)::int AS n, min(created_at) AS oldest FROM communication.leakage_review WHERE status = 'open'`);
+  }
+
   milestonesToVerify(): Promise<QueueCount> {
     return this.count(`SELECT count(*)::int AS n, min(submitted_at) AS oldest FROM orders.milestone WHERE status = 'evidence_submitted'`);
   }

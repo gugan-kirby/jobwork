@@ -5,6 +5,7 @@ import { DmsModule } from './modules/dms';
 import { IamModule } from './modules/iam';
 import { SourcingModule } from './modules/sourcing';
 import { CommercialModule } from './modules/commercial';
+import { CommunicationModule } from './modules/communication';
 import { OrdersModule } from './modules/orders';
 import { SupplierModule } from './modules/supplier';
 import { PlatformModule } from './platform/platform.module';
@@ -18,6 +19,7 @@ import { PlatformModule } from './platform/platform.module';
     SourcingModule,
     CommercialModule,
     OrdersModule,
+    CommunicationModule,
     OperationsModule,
     HealthModule,
   ],

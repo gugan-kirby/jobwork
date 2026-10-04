@@ -94,6 +94,8 @@ const ACKNOWLEDGED_UNTIL_NOTIFICATIONS = [
   'orders.milestone_evidence_rejected.v1',
   'orders.milestone_verified.v1',
   'orders.milestone_delayed.v1',
+  'communication.message_released.v1',
+  'communication.message_rejected.v1',
 ] as const;
 
 function buildMailer(smtpUrl: string): Mailer {

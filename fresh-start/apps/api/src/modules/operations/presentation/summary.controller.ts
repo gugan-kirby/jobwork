@@ -134,6 +134,14 @@ const QUEUES: QueueDefinition[] = [
     load: (repo) => repo.milestonesToVerify(),
   },
   {
+    key: 'leakage_reviews_open',
+    label: 'Messages held for review',
+    detail: 'They may name a party or carry contact details; nobody outside sees them until decided.',
+    href: '/leakage-reviews',
+    roles: ['jobwork_support', 'jobwork_sourcing'],
+    load: (repo) => repo.leakageReviewsOpen(),
+  },
+  {
     key: 'invitations_pending',
     label: 'Invitations not yet accepted',
     detail: 'People who cannot sign in yet. Resend if the link went stale.',
