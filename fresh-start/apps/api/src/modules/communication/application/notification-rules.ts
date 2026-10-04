@@ -107,6 +107,13 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
       ? [{ templateKey: 'supplier.rfq_invitation', audience: suppliers(rfq.invitedOrganizationIds), variables: { rfqReference: rfq.reference, deadline: dateLabel(rfq.deadlineAt) }, link: `/rfqs/${e.aggregateId}` }]
       : [];
   },
+  // F-12.5: a round closed under suppliers who bid on it; their bids stand as submitted.
+  'sourcing.rfq_superseded.v1': async (e) => {
+    const organizations = strings(e.data['supplierOrganizationIds']);
+    return organizations.length > 0
+      ? [{ templateKey: 'supplier.rfq_superseded', audience: suppliers(organizations), variables: { rfqReference: str(e.data['reference']) || 'Your RFQ' }, link: `/rfqs/${e.aggregateId}` }]
+      : [];
+  },
   'orders.purchase_order_issued.v1': async (e) => [
     {
       templateKey: 'supplier.purchase_order_issued',

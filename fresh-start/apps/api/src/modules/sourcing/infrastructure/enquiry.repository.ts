@@ -15,7 +15,9 @@ import type {
   JobType,
   MaterialSupply,
   RequirementRevision,
+  ReviseRequirementItem,
 } from '@jobwork/contracts';
+import { EnquiryItemNotFound } from '../domain/enquiry';
 import { DatabaseService } from '../../../platform/database/database.service';
 
 type Queryable = Pool | PoolClient;
@@ -433,7 +435,7 @@ export class EnquiryRepository {
    * not merely trusted.
    */
   async freezeRequirement(
-    input: { enquiryId: string; kind: 'intake' | 'reviewed'; frozenBy: string; snapshot: unknown },
+    input: { enquiryId: string; kind: 'intake' | 'reviewed'; frozenBy: string; snapshot: unknown; revisionReason?: string },
     tx: Queryable,
   ): Promise<RequirementRevision> {
     const previous = await tx.query<{ id: string; revision_no: number }>(
@@ -447,8 +449,8 @@ export class EnquiryRepository {
 
     const res = await tx.query<{ id: string; frozen_at: Date }>(
       `INSERT INTO sourcing.requirement
-         (enquiry_id, revision_no, kind, snapshot, content_hash, supersedes_id, frozen_by)
-       VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)
+         (enquiry_id, revision_no, kind, snapshot, content_hash, supersedes_id, frozen_by, revision_reason)
+       VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8)
        RETURNING id, frozen_at`,
       [
         input.enquiryId,
@@ -458,6 +460,7 @@ export class EnquiryRepository {
         contentHash,
         previous.rows[0]?.id ?? null,
         input.frozenBy,
+        input.revisionReason ?? null,
       ],
     );
 
@@ -468,7 +471,57 @@ export class EnquiryRepository {
       contentHash,
       frozenAt: res.rows[0]!.frozen_at.toISOString(),
       snapshot: input.snapshot,
+      revisionReason: input.revisionReason ?? null,
     };
+  }
+
+  /**
+   * Engineering's edits to what suppliers price (F-12.5). The live rows change; what was
+   * quoted stays in the frozen revisions and the rounds' own lines. Returns how many
+   * fields actually changed, so a revision that changes nothing can be refused.
+   */
+  async reviseItems(enquiryId: string, items: ReadonlyArray<ReviseRequirementItem>, tx: Queryable): Promise<number> {
+    const columns: Record<string, string> = {
+      description: 'description',
+      materialGrade: 'material_grade',
+      quantityBreakpoints: 'quantity_breakpoints',
+      toleranceClass: 'tolerance_class',
+      criticalTolerance: 'critical_tolerance',
+      surfaceFinish: 'surface_finish',
+      heatTreatment: 'heat_treatment',
+      coating: 'coating',
+      inspectionLevel: 'inspection_level',
+      qualityNote: 'quality_note',
+    };
+    const json = new Set(['quantityBreakpoints', 'criticalTolerance']);
+    let changed = 0;
+    for (const item of items) {
+      const sets: string[] = [];
+      const values: unknown[] = [enquiryId, item.enquiryItemId];
+      for (const [field, column] of Object.entries(columns)) {
+        const value = (item as Record<string, unknown>)[field];
+        if (value === undefined) continue;
+        values.push(json.has(field) ? (value === null ? null : JSON.stringify(value)) : value);
+        const param = `$${values.length}${json.has(field) ? '::jsonb' : ''}`;
+        sets.push(`${column} = ${param}`);
+      }
+      if (sets.length === 0) continue;
+      const res = await tx.query<{ n: number }>(
+        `WITH before AS (SELECT * FROM sourcing.enquiry_item WHERE enquiry_id = $1 AND id = $2 FOR UPDATE),
+              after AS (
+                UPDATE sourcing.enquiry_item i SET ${sets.join(', ')}, updated_at = now()
+                  FROM before WHERE i.id = before.id
+                RETURNING i.*)
+         SELECT (SELECT count(*) FROM before)::int AS found,
+                (SELECT count(*) FROM after, before
+                  WHERE (to_jsonb(after) - 'updated_at') IS DISTINCT FROM (to_jsonb(before) - 'updated_at'))::int AS n`,
+        values,
+      );
+      const row = res.rows[0] as unknown as { found: number; n: number } | undefined;
+      if (!row || row.found === 0) throw new EnquiryItemNotFound(item.enquiryItemId);
+      changed += row.n;
+    }
+    return changed;
   }
 
   /** The revision a new sourcing round quotes against: the newest frozen one. */
@@ -499,8 +552,9 @@ export class EnquiryRepository {
       content_hash: string;
       frozen_at: Date;
       snapshot: unknown;
+      revision_reason: string | null;
     }>(
-      `SELECT id, revision_no, kind, content_hash, frozen_at, snapshot
+      `SELECT id, revision_no, kind, content_hash, frozen_at, snapshot, revision_reason
          FROM sourcing.requirement WHERE enquiry_id = $1 ORDER BY revision_no`,
       [enquiryId],
     );
@@ -511,6 +565,7 @@ export class EnquiryRepository {
       contentHash: row.content_hash,
       frozenAt: row.frozen_at.toISOString(),
       snapshot: row.snapshot,
+      revisionReason: row.revision_reason,
     }));
   }
 
