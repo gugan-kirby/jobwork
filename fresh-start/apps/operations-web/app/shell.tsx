@@ -72,12 +72,29 @@ export function OperationsShell(props: ShellProps): React.JSX.Element {
 function OperationsFrame({ environmentLabel, children }: ShellProps): React.JSX.Element {
   const pathname = usePathname();
   const [summary, setSummary] = useState<OperationsSummary | null>(null);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     // Anonymous, external, or offline: navigation without counts is still correct.
     api<OperationsSummary>('/operations/summary')
       .then(setSummary)
       .catch(() => setSummary(null));
+  }, [pathname]);
+
+  // F-10.3: the bell counts this person's unread notifications.
+  useEffect(() => {
+    let cancelled = false;
+    api<{ unread: number }>('/notifications/unread-count')
+      .then((r) => {
+        if (!cancelled) setUnread(r.unread);
+      })
+      // Signed out or offline: the bell simply shows no count.
+      .catch(() => {
+        if (!cancelled) setUnread(0);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
   if (UNSHELLED.some((path) => pathname?.startsWith(path))) {
@@ -100,6 +117,7 @@ function OperationsFrame({ environmentLabel, children }: ShellProps): React.JSX.
       navigation={navigation}
       currentPath={pathname ?? undefined}
       environmentLabel={environmentLabel}
+      notifications={{ href: '/notifications', count: unread }}
     >
       {children}
     </AppShell>
