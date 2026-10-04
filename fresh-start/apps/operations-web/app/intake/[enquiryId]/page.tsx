@@ -27,6 +27,7 @@ import {
   type Column,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
+import { ThreadPanel } from '../../thread-panel';
 
 const TOPICS: ClarificationTopic[] = [
   'material',
@@ -481,6 +482,7 @@ export default function IntakeDetailPage() {
             </>
           }
         />
+        <ThreadPanel contextType="enquiry" contextId={enquiryId} title="Conversation with the customer" />
       </Stack>
     </Page>
   );

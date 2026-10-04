@@ -23,6 +23,7 @@ import {
   formatMoney,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
+import { ThreadPanel } from '../../thread-panel';
 
 /**
  * One sales order (IN-08): the acceptance evidence, the commercial gate and why it says
@@ -242,6 +243,10 @@ export default function SalesOrderPage(): React.JSX.Element {
             </Stack>
           </Card>
         ) : null}
+        <ThreadPanel contextType="sales_order" contextId={salesOrderId} title="Conversation with the customer" />
+        {order.purchaseOrders.map((po) => (
+          <ThreadPanel key={po.purchaseOrderId} contextType="purchase_order" contextId={po.purchaseOrderId} title={`Conversation with ${po.supplierDisplayName} (${po.number})`} />
+        ))}
       </Stack>
     </Page>
   );

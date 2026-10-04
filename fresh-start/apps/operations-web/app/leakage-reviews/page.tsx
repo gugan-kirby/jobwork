@@ -118,7 +118,7 @@ export default function LeakageReviewsPage(): React.JSX.Element {
     { key: 'reader', header: 'Would be read by', render: (row) => row.readerLabel },
     { key: 'author', header: 'Written by', render: (row) => row.authorName },
     { key: 'found', header: 'Flags', numeric: true, render: (row) => row.findingCount },
-    { key: 'when', header: 'Held since', render: (row) => row.createdAt.slice(0, 16).replace('T', ' ') },
+    { key: 'when', header: 'Held since', render: (row) => new Date(row.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) },
     {
       key: 'status',
       header: 'Status',

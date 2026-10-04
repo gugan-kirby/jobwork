@@ -27,6 +27,7 @@ import {
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
+import { ThreadPanel } from '../../thread-panel';
 
 /**
  * One sourcing round (F-06.6). The comparison table is the point: same lines, same
@@ -484,6 +485,7 @@ export default function RfqDetailPage(): React.JSX.Element {
             Close for evaluation
           </CommandButton>
         </Card>
+        <ThreadPanel contextType="rfq" contextId={rfqId} title="Supplier questions" description="Each supplier's exchange with JobWork is private to it. Answers for everyone go to every invited supplier without names." />
       </Stack>
     </Page>
   );
