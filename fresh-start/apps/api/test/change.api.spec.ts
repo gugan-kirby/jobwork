@@ -200,4 +200,14 @@ describe('Engineering change control (F-13.2)', () => {
       'change.change_closed',
     ]);
   });
+
+  it('lets a customer point a request only at its own documents, which can end up in a supplier’s drawing pack', async () => {
+    const order = { salesOrderId: deal.orderId, title: 'Add a laser-marked part number', reason: 'Traceability on the new line' };
+    // The supplier's own milestone evidence is not the customer's to put into a baseline.
+    const foreign = await p.as.buyer.post(`/api/v1/orders/${deal.orderId}/changes`, { ...order, contextDocumentVersionIds: [prod.evidenceVersionId] });
+    expect([foreign.status, foreign.body['code']]).toEqual([422, 'CONTEXT_DOCUMENT_UNAVAILABLE']);
+    const unknown = await p.as.buyer.post(`/api/v1/orders/${deal.orderId}/changes`, { ...order, contextDocumentVersionIds: ['00000000-0000-4000-8000-000000000000'] });
+    expect(unknown.body['code']).toBe('CONTEXT_DOCUMENT_UNAVAILABLE');
+    ok(await p.as.buyer.post(`/api/v1/orders/${deal.orderId}/changes`, { ...order, contextDocumentVersionIds: [revisionB.documentVersionId] }), 201, 'own document');
+  });
 });
