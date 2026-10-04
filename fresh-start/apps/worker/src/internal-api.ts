@@ -1,4 +1,10 @@
-import type { BeginScanResponse, RecordScanResultRequest, ScanResultResponse } from '@jobwork/contracts';
+import type {
+  BeginScanResponse,
+  DispatchNotificationsResponse,
+  RecordDeliveryRequest,
+  RecordScanResultRequest,
+  ScanResultResponse,
+} from '@jobwork/contracts';
 import { mintServiceToken, SERVICE_TOKEN_HEADER } from '@jobwork/service-auth';
 
 export class InternalApiError extends Error {
@@ -77,6 +83,22 @@ export class InternalApiClient {
   /** Payment reconcile sweep (F-08.5): closes intents nobody paid before they expired. */
   sweepPayments(ctx: { correlationId: string; idempotencyKey: string }): Promise<{ expired: number }> {
     return this.post<{ expired: number }>('/api/v1/internal/payments/reconcile-sweep', undefined, ctx);
+  }
+
+  /** F-10.3: who hears about a committed event, rendered; idempotent per event. */
+  dispatchNotifications(
+    eventId: string,
+    ctx: { correlationId: string; idempotencyKey: string },
+  ): Promise<DispatchNotificationsResponse> {
+    return this.post<DispatchNotificationsResponse>('/api/v1/internal/notifications/dispatch', { eventId }, ctx);
+  }
+
+  recordDelivery(
+    deliveryId: string,
+    body: RecordDeliveryRequest,
+    ctx: { correlationId: string; idempotencyKey: string },
+  ): Promise<{ outcome: string }> {
+    return this.post<{ outcome: string }>(`/api/v1/internal/notifications/deliveries/${deliveryId}/result`, body, ctx);
   }
 
   private async post<T>(

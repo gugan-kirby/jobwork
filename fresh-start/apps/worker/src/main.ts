@@ -18,6 +18,9 @@ import { verificationExpiryScan } from './outbox/handlers/verification-expiry';
 import { SignatureScanner } from './scan/scanner';
 import { DEFAULT_POLLER_OPTIONS, OutboxPoller } from './outbox/poller';
 import { HandlerRegistry } from './outbox/registry';
+import { NOTIFIED_EVENT_TYPES } from '@jobwork/contracts';
+import { defaultChannels } from './notifications/channels';
+import { notificationHandler } from './notifications/deliver';
 import { registerPgTypeParsers } from '@jobwork/database';
 
 registerPgTypeParsers();
@@ -53,12 +56,9 @@ const envSchema = z.object({
 });
 
 const ACKNOWLEDGED_UNTIL_NOTIFICATIONS = [
-  'sourcing.enquiry_submitted',
   'sourcing.enquiry_approved_for_sourcing',
   'sourcing.enquiry_declined',
   'sourcing.enquiry_cancelled',
-  'sourcing.clarification_requested',
-  'sourcing.clarification_answered',
   'supplier.admitted.v1',
   'supplier.availability_changed.v1',
   'supplier.declaration_withdrawn.v1',
@@ -66,37 +66,24 @@ const ACKNOWLEDGED_UNTIL_NOTIFICATIONS = [
   'supplier.onboarding_submitted.v1',
   'commercial.approval_decided.v1',
   'commercial.award_proposed.v1',
-  'commercial.cost_sheet_approval_requested.v1',
-  'commercial.quote_approval_requested.v1',
-  'commercial.quote_sent.v1',
   'commercial.quote_revision_requested.v1',
   'commercial.quote_rejected.v1',
   'commercial.quote_withdrawn.v1',
   'commercial.quote_expired.v1',
-  'commercial.quote_accepted.v1',
   'orders.sales_order_created.v1',
   'orders.sales_order_released.v1',
-  'orders.purchase_order_issued.v1',
   'orders.purchase_order_acknowledged.v1',
-  'finance.invoice_issued.v1',
-  'finance.payment_received.v1',
   'finance.payment_failed.v1',
   'finance.payment_suspense.v1',
   'finance.allocation_proposed.v1',
   'finance.credit_hold_placed.v1',
   'dms.baseline_released.v1',
-  'dms.transmittal_issued.v1',
   'dms.transmittal_acknowledged.v1',
   'orders.work_package_released.v1',
   'orders.work_package_completed.v1',
   'orders.containment_recorded.v1',
-  'orders.milestone_evidence_submitted.v1',
-  'orders.milestone_evidence_rejected.v1',
   'orders.milestone_verified.v1',
   'orders.milestone_delayed.v1',
-  'communication.message_posted.v1',
-  'communication.message_held.v1',
-  'communication.message_released.v1',
   'communication.message_rejected.v1',
 ] as const;
 
@@ -166,10 +153,8 @@ async function main(): Promise<void> {
     .register('supplier.verification_returned', acknowledgeHandler(logger, 'outbox event acknowledged'))
     .register('supplier.verification_revoked', acknowledgeHandler(logger, 'outbox event acknowledged'))
     .register('supplier.verification_expiring', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('sourcing.rfq_released.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
     .register('sourcing.rfq_closed.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
     .register('sourcing.rfq_declined.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('sourcing.bid_submitted.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
     .register('sourcing.rfq_deadline_passed.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
     .register('supplier.verification_expired', acknowledgeHandler(logger, 'outbox event acknowledged'))
     .register('supplier.capability_published', acknowledgeHandler(logger, 'outbox event acknowledged'))
@@ -178,6 +163,10 @@ async function main(): Promise<void> {
   // Published by IN-02…IN-08 commands and consumed by the notification increment (IN-10).
   // Until then they are acknowledged rather than left to dead-letter (doc 07 §10): a
   // dead-letter is an alarm, and an alarm that always rings is one nobody answers.
+  // F-10.3: committed events that tell someone something. The API decides who and renders
+  // the words; the worker delivers and reports (doc 20 §9: no business state here).
+  const deliver = notificationHandler({ api: internalApi, channels: defaultChannels(mailer), log: logger.child({ module: 'communication.notifications' }) });
+  for (const eventType of NOTIFIED_EVENT_TYPES) registry.register(eventType, deliver);
   for (const eventType of ACKNOWLEDGED_UNTIL_NOTIFICATIONS) {
     registry.register(eventType, acknowledgeHandler(logger, 'outbox event acknowledged'));
   }
