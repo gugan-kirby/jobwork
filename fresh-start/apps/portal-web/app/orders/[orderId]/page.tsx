@@ -23,6 +23,7 @@ import {
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
 import { ThreadPanel } from '../../thread-panel';
+import { ChangesPanel } from './changes-panel';
 
 /**
  * Order detail and tracking (prototype tiles 11–12, corrected per doc 06 §13): the next
@@ -239,6 +240,8 @@ function OrderDetail() {
             })}
           </Stack>
         </Card>
+
+        <ChangesPanel orderId={order.orderId} currency={order.currency} open={order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'payment_needed'} />
 
         <Card title="Contract record">
           <p style={{ font: 'var(--text-caption)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
