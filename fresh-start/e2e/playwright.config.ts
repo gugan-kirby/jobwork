@@ -10,6 +10,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const root = '..';
 const channel = process.env.E2E_CHANNEL;
+// Same server as DATABASE_URL (credentials and all), database jobwork_e2e.
+const e2eDatabase = new URL(process.env.DATABASE_URL ?? 'postgres://localhost:5432/jobwork_dev');
+e2eDatabase.pathname = '/jobwork_e2e';
 
 export default defineConfig({
   testDir: './tests',
@@ -36,7 +39,7 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 180_000,
       env: {
-        DATABASE_URL: 'postgres://localhost:5432/jobwork_e2e',
+        DATABASE_URL: e2eDatabase.toString(),
         SESSION_SECRET: 'e2e-session-secret-value',
         // Sign-ins and commands far beyond one person's budget; limits have their own suite.
         RATE_LIMIT_MODE: 'off',

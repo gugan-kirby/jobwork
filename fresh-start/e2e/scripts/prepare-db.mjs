@@ -16,7 +16,11 @@ import pg from 'pg';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const name = process.env.E2E_DATABASE ?? 'jobwork_e2e';
 if (!/^jobwork_e2e[a-z0-9_]*$/.test(name)) throw new Error(`refusing to prepare ${name}: e2e databases are named jobwork_e2e…`);
-const admin = process.env.E2E_ADMIN_URL ?? 'postgres://localhost:5432/postgres';
+// The server is the one DATABASE_URL names (CI carries credentials there); the
+// maintenance database `postgres` is used to drop and create the journeys' database.
+const base = new URL(process.env.E2E_ADMIN_URL ?? process.env.DATABASE_URL ?? 'postgres://localhost:5432/postgres');
+base.pathname = '/postgres';
+const admin = base.toString();
 const url = new URL(admin);
 url.pathname = `/${name}`;
 const databaseUrl = url.toString();
