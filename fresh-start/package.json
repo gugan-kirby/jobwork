@@ -18,7 +18,9 @@
     "stack:status": "bash infra/stack.sh status",
     "stack:observability": "bash infra/stack.sh observability",
     "stack:observability:down": "bash infra/stack.sh observability-down",
-    "nightly": "bash infra/nightly.sh"
+    "nightly": "bash infra/nightly.sh",
+    "drill:restore": "bash infra/drills/restore.sh",
+    "drill:outage": "bash infra/drills/provider-outage.sh"
   },
   "devDependencies": {
     "@jobwork/config": "workspace:*",
