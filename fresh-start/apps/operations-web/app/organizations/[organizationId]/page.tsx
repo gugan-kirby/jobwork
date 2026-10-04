@@ -73,6 +73,8 @@ export default function OrganizationDetailPage(): React.JSX.Element {
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState('');
   const [reason, setReason] = useState('');
+  // Why someone is suspended or reinstated: recorded with the decision (BR-SYS-05).
+  const [peopleReason, setPeopleReason] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('');
 
@@ -97,6 +99,7 @@ export default function OrganizationDetailPage(): React.JSX.Element {
       await api(path, { method: 'POST', body, idempotencyKey: crypto.randomUUID() });
       setNotice(message);
       setReason('');
+      setPeopleReason('');
       await load();
     } catch (err) {
       if (err instanceof ApiError) setError(err);
@@ -188,10 +191,12 @@ export default function OrganizationDetailPage(): React.JSX.Element {
               size="sm"
               variant="danger"
               receiptLabel="Suspended"
+              disabled={peopleReason.trim().length < 3}
+              disabledReason="Say why above; it is recorded with the suspension"
               onCommand={() =>
                 command(
                   `/admin/memberships/${row.membershipId}/suspend`,
-                  {},
+                  { reason: peopleReason.trim() },
                   `${row.email} can no longer sign in here.`,
                 )
               }
@@ -206,7 +211,7 @@ export default function OrganizationDetailPage(): React.JSX.Element {
               onCommand={() =>
                 command(
                   `/admin/memberships/${row.membershipId}/reinstate`,
-                  reason.trim() ? { reason: reason.trim() } : {},
+                  peopleReason.trim() ? { reason: peopleReason.trim() } : {},
                   `${row.email} can sign in again.`,
                 )
               }
@@ -222,7 +227,7 @@ export default function OrganizationDetailPage(): React.JSX.Element {
               onCommand={() =>
                 command(
                   `/admin/users/${row.userId}/reinstate`,
-                  reason.trim() ? { reason: reason.trim() } : {},
+                  peopleReason.trim() ? { reason: peopleReason.trim() } : {},
                   `${row.email}'s account is active again.`,
                 )
               }
@@ -357,6 +362,9 @@ export default function OrganizationDetailPage(): React.JSX.Element {
         </Card>
 
         <Card title="People" description="Suspending a membership signs them out immediately." flush>
+          <div style={{ padding: 'var(--space-4) var(--space-5) 0' }}>
+            <ReasonField label="Reason for suspending or reinstating" audience="internal" value={peopleReason} onChange={setPeopleReason} />
+          </div>
           <DataTable
             caption="People who can sign in for this organization"
             columns={memberColumns}

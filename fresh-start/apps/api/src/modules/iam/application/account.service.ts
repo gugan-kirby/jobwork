@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PoolClient } from 'pg';
 import { createLogger, type Logger } from '@jobwork/observability';
 import { type Actor, requireRole } from './actor';
 import {
@@ -35,11 +36,13 @@ export class AccountService {
     subjectType: string,
     subjectId: string,
     data?: Record<string, unknown>,
+    opts: { reason?: string | undefined; client?: PoolClient } = {},
   ): Promise<void> {
-    await this.auditWriter.write(null, contextFromActor(actor), {
+    await this.auditWriter.write(opts.client ?? null, contextFromActor(actor), {
       action,
       subjectType,
       subjectId,
+      ...(opts.reason ? { reason: opts.reason } : {}),
       ...(data !== undefined ? { data } : {}),
     });
   }
@@ -133,7 +136,12 @@ export class AccountService {
 
   // ---- suspension commands (AUTH-06, FR-104) ----
 
-  async suspendMembership(actor: Actor, membershipId: string): Promise<void> {
+  /**
+   * Suspensions and reinstatements write their audit row, with the reason, in the same
+   * transaction as the change (`BR-SYS-02`, `BR-SYS-05`): nobody loses access without a
+   * recorded why, and no record exists for a change that did not happen.
+   */
+  async suspendMembership(actor: Actor, membershipId: string, reason: string): Promise<void> {
     const membership = await this.repo.findMembershipById(membershipId);
     if (!membership || membership.status !== 'active') throw new MembershipNotFound();
 
@@ -155,9 +163,7 @@ export class AccountService {
         { organizationId: suspended.organizationId },
         client,
       );
-    });
-    await this.auditSecurity(actor, 'iam.membership_suspended', 'membership', membershipId, {
-      organizationId: membership.organizationId,
+      await this.auditSecurity(actor, 'iam.membership_suspended', 'membership', membershipId, { organizationId: membership.organizationId }, { reason, client });
     });
     this.log.warn({ membershipId, by: actor.userId }, 'auth.membership_suspended');
   }
@@ -180,11 +186,10 @@ export class AccountService {
       (actor.organizationId === membership.organizationId && actor.roles.includes('org_admin'));
     if (!authorized) throw new NotAuthorized();
 
-    const reinstated = await this.repo.reinstateMembership(membershipId);
-    if (!reinstated) throw new MembershipNotFound();
-    await this.auditSecurity(actor, 'iam.membership_reinstated', 'membership', membershipId, {
-      organizationId: membership.organizationId,
-      ...(reason ? { reason } : {}),
+    await this.db.withTransaction(async (client) => {
+      const reinstated = await this.repo.reinstateMembership(membershipId, client);
+      if (!reinstated) throw new MembershipNotFound();
+      await this.auditSecurity(actor, 'iam.membership_reinstated', 'membership', membershipId, { organizationId: membership.organizationId }, { reason, client });
     });
     this.log.info({ membershipId, by: actor.userId }, 'auth.membership_reinstated');
   }
@@ -192,15 +197,15 @@ export class AccountService {
   async reinstateUser(actor: Actor, userId: string, reason?: string): Promise<void> {
     if (!actor.isInternal) throw new NotAuthorized();
     requireRole(actor, 'platform_admin', 'security_admin');
-    const reinstated = await this.repo.reinstateUser(userId);
-    if (!reinstated) throw new UserNotSuspended();
-    await this.auditSecurity(actor, 'iam.user_reinstated', 'user', userId, {
-      ...(reason ? { reason } : {}),
+    await this.db.withTransaction(async (client) => {
+      const reinstated = await this.repo.reinstateUser(userId, client);
+      if (!reinstated) throw new UserNotSuspended();
+      await this.auditSecurity(actor, 'iam.user_reinstated', 'user', userId, undefined, { reason, client });
     });
     this.log.info({ userId, by: actor.userId }, 'auth.user_reinstated');
   }
 
-  async suspendUser(actor: Actor, userId: string): Promise<void> {
+  async suspendUser(actor: Actor, userId: string, reason: string): Promise<void> {
     if (!actor.isInternal) throw new NotAuthorized();
     requireRole(actor, 'platform_admin', 'security_admin');
     if (userId === actor.userId) throw new NotAuthorized('Cannot suspend yourself');
@@ -208,8 +213,8 @@ export class AccountService {
     await this.db.withTransaction(async (client) => {
       await this.repo.suspendUser(userId, client);
       await this.repo.revokeUserSessions(userId, 'user_suspended', {}, client);
+      await this.auditSecurity(actor, 'iam.user_suspended', 'user', userId, undefined, { reason, client });
     });
-    await this.auditSecurity(actor, 'iam.user_suspended', 'user', userId);
     this.log.warn({ userId, by: actor.userId }, 'auth.user_suspended');
   }
 }

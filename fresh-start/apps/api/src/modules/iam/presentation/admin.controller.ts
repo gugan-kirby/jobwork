@@ -128,8 +128,10 @@ export class AdminController {
   async suspendMembership(
     @CurrentActor() actor: Actor,
     @Param('membershipId') membershipId: string,
+    @Req() request: FastifyRequest,
   ): Promise<{ ok: true }> {
-    await this.account.suspendMembership(actor, membershipId);
+    const body = parseBody(suspensionRequestSchema, request.body ?? {});
+    await this.account.suspendMembership(actor, membershipId, body.reason);
     return { ok: true };
   }
 
@@ -148,8 +150,10 @@ export class AdminController {
   async suspendUser(
     @CurrentActor() actor: Actor,
     @Param('userId') userId: string,
+    @Req() request: FastifyRequest,
   ): Promise<{ ok: true }> {
-    await this.account.suspendUser(actor, userId);
+    const body = parseBody(suspensionRequestSchema, request.body ?? {});
+    await this.account.suspendUser(actor, userId, body.reason);
     return { ok: true };
   }
 
