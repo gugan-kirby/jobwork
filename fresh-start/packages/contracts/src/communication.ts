@@ -254,5 +254,7 @@ export const NOTIFIED_EVENT_TYPES = [
   'communication.message_posted.v1',
   'communication.message_released.v1',
   'communication.message_held.v1',
+  'platform.sla_escalated.v1',
+  'platform.queue_item_reassigned.v1',
 ] as const;
 export type NotifiedEventType = (typeof NOTIFIED_EVENT_TYPES)[number];

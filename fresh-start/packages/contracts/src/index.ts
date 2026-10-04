@@ -321,3 +321,6 @@ export * from './production';
 
 // ------------------------------------------------------------------ communication (IN-10)
 export * from './communication';
+
+// ------------------------------------------------------------------ operations hardening (IN-11)
+export * from './operations';
