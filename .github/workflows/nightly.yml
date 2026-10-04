@@ -39,18 +39,6 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
-      minio:
-        image: minio/minio:edge-cicd
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "curl -fsS http://localhost:9000/minio/health/live"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 20
     env:
       DATABASE_URL: postgres://jobwork:jobwork@localhost:5432/jobwork_dev
       SESSION_SECRET: ci-only-secret
@@ -69,6 +57,21 @@ jobs:
           node-version-file: fresh-start/.nvmrc
           cache: pnpm
           cache-dependency-path: fresh-start/pnpm-lock.yaml
+      - name: Start the object store
+        # MinIO deleted its public images (Docker Hub 2026-09-11; Quay no longer serves them
+        # either). pgsty/silo is the maintained Apache-2.0 fork: same S3 API, same MINIO_*
+        # variables and /minio/health routes. Its images start no server without arguments,
+        # which a service container cannot pass, so it runs as a step. Pinned by digest (DO-06).
+        run: |
+          docker run -d --name objects -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            pgsty/silo:RELEASE.2026-09-16T00-00-00Z@sha256:635197cb9f36d01bee221d34d1c7d7960f6a95c48b0b6c01d99cd13bdae51a46 silo server /data
+          for _ in $(seq 1 60); do
+            curl -fsS http://localhost:9000/minio/health/live && exit 0
+            sleep 1
+          done
+          docker logs objects
+          exit 1
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm migrate

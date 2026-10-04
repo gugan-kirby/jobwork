@@ -11,6 +11,12 @@ services (`postgresql@16`, `redis`). MinIO and mail capture join the stack in IN
 | MinIO | 9000 (API), 9001 (console) | `jobwork-dev` / `jobwork-dev-secret` |
 | Mailpit (compose only) | 1025 (SMTP), 8025 (UI) | none — dev fallback is `SMTP_URL=log://` writing to `var/mail/` |
 
+**Object store.** MinIO's community edition is archived and its public images are gone
+(Docker Hub deleted them on 2026-09-11; Quay no longer serves them). Homebrew's `minio` still
+runs locally; CI and `docker-compose.yml` use `pgsty/silo`, the maintained Apache-2.0 fork with
+the same S3 API and `MINIO_*` variables, pinned by digest. The production object store is a
+`T-01` decision either way.
+
 Reset: `pnpm stack:down`, drop the database with `dropdb jobwork_dev`, then `pnpm stack:up && pnpm migrate`.
 All credentials above are development-only values (DO-15).
 
