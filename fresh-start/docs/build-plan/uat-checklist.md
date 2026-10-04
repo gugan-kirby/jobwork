@@ -1,6 +1,6 @@
 # Phase 1 UAT checklist (IN-12 F-12.1)
 
-Human acceptance of the pilot scenarios (doc 19 §10: 1–5, 9, 12 for Phase 1; 6 from IN-13) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
+Human acceptance of the pilot scenarios (doc 19 §10: 1–5, 9, 12 for Phase 1; 6 from IN-13; 7 from IN-14) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
 
 **Where and with what.** On staging, with approved anonymized fixtures (doc 13, UAT row). Never use production data, real customer or supplier identities, real CAD, or real payment credentials (`ES-39`). Each tester uses their own account with only the roles listed below, and MFA is enrolled where the role requires it. The payment provider is in sandbox mode.
 
@@ -93,6 +93,23 @@ Start from an order in production: advance paid, baseline released and acknowled
 | 6.10 | Supplier A production | `/supplier/orders/[id]` | Acknowledge the new drawing pack and amendment | Drawing pack shows the new transmittal acknowledged; work can start again | ☐ |
 | 6.11 | Engineering | `/changes/[id]` | Verify with a note; close | "This change is closed" | ☐ |
 | 6.12 | Finance | `/sales-orders/[id]` | Invoice the change installment | Invoice total equals the customer's approved price change | ☐ |
+
+## Scenario 7: first-article inspection on the launch template (IN-14)
+
+Start from an order in production planning: baseline released and acknowledged, work package planned. Testers add **JobWork quality** (`jobwork_quality`, two people) and **Supplier A quality** (`supplier_quality`).
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 7.1 | Sourcing | `/sales-orders/[id]/production` | Look at the work package's gates | Compliance is red: "No approved quality plan for the current baseline" | ☐ |
+| 7.2 | JobWork quality | same page → Write quality plan | Open the draft from "CNC machined part"; try to approve | Refused: a drawing characteristic is required | ☐ |
+| 7.3 | JobWork quality | `/quality/plans/[id]` | Add the bore (balloon 7, critical, 11.98–12.02 mm, both included) and the length; save; approve | Plan v1 approved; compliance turns green; sourcing can release | ☐ |
+| 7.4 | Supplier A quality | `/supplier/quality` | Register a bore gauge and a caliper; record each calibration with its certificate | Each shows "calibrated" with its due date in IST; one given an expired due date shows "calibration expired" | ☐ |
+| 7.5 | JobWork quality | `/quality/plans/[id]` → Plan inspection | Plan the first article | QI number; the supplier is notified | ☐ |
+| 7.6 | Supplier A quality | `/supplier/inspections/[id]` | Start; enter one value in inches and the length with the expired caliper; submit | Grid shows the inch value with its mm equivalent; the caliper result says "calibration expired" | ☐ |
+| 7.7 | JobWork quality (not the planner if possible) | `/quality/inspections/[id]` | Start review | "Cannot pass yet" lists the caliper; Pass is disabled | ☐ |
+| 7.8 | JobWork quality | same | Correct a deliberately mistyped value with a reason; accept the caliper with a reason; pass | "Corrections on record" keeps the mistyped value; the inspection passes; the supplier is told | ☐ |
+| 7.9 | Supplier A quality | `/supplier/inspections/[id]` | Plan and submit a second FAI with an oversize bore (JobWork quality plans it) | JobWork quality cannot pass it; failing it needs a note the supplier reads | ☐ |
+| 7.10 | Customer requester | `/orders/[id]` | Look at the order | No inspection, instrument or result is visible | ☐ |
 
 ## Scenario 9: duplicate and delayed payment callback, reconciliation
 

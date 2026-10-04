@@ -281,6 +281,15 @@ The FAI cycle the scenario runs:
 5. JobWork quality passes the inspection.
 6. A second FAI with a failed critical dimension is failed, and `quality.inspection_failed.v1` carries what IN-15 needs.
 
+**Verification (2026-10-05, F-14.5).** `scenario-07-fai-cycle.api.spec.ts` (4):
+
+- The work package's release snapshot records the compliance gate passing on an approved `cnc_machined_part` v1 plan: two drawing dimensions (critical bore, major length) plus the template's Ra and visual.
+- The first article passes after a 32/3.2 µm correction (five result rows; the 32 µm stays a fail on record) and an accepted out-of-calibration caliper, with a seven-step audit trail.
+- A second first article with a 12.031 mm bore cannot pass. Its caliper reading is sent for reinspection, it fails with a note, and `quality.inspection_failed.v1` names the critical bore, balloon 7 and sample 1. The supplier is told of both decisions.
+- The customer's order view and the other supplier see nothing.
+
+UAT steps 7.1–7.10 are in `uat-checklist.md`.
+
 ## Decisions taken on the owner's behalf
 
 Taken as safe defaults so the build can proceed; each is reversible and recorded here for review.
@@ -300,6 +309,8 @@ Taken as safe defaults so the build can proceed; each is reversible and recorded
 
 ## Increment exit
 
-- [ ] Golden measurement suite green, with cannot-evaluate paths proven (unknown unit, mixed dimensions, no factor).
-- [ ] An FAI plan → inspection → results → review cycle demonstrated on the launch template (scenario 7).
-- [ ] The compliance gate needs an approved plan on the current baseline. No inspection result is ever rewritten: corrections supersede and the originals are kept.
+- [x] Golden measurement suite green, with cannot-evaluate paths proven (unknown unit, mixed dimensions, no factor): `measurement.spec.ts` (43), mutation-checked; microinch end to end in `quality.api.spec.ts`.
+- [x] An FAI plan → inspection → results → review cycle demonstrated on the launch template: scenario 7, and the F-14.4 browser walk.
+- [x] The compliance gate needs an approved plan on the current baseline (`production.api.spec.ts`, `change.api.spec.ts`). No inspection result is ever rewritten: the database refuses it and corrections supersede (`quality.db.spec.ts`, scenario 7).
+
+**IN-14 build closed 2026-10-05** (PRs #23–#28). Owner items carried: the defaults above for review (`D-06` launch template above all); UAT scenario 7 runs with the owner's UAT on staging.
