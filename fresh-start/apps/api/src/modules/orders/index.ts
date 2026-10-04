@@ -2,3 +2,5 @@
 export { OrdersModule } from './orders.module';
 export { OrdersRepository } from './infrastructure/orders.repository';
 export { FinanceRepository } from './infrastructure/finance.repository';
+export { ProductionRepository, type BaselineRecord } from './infrastructure/production.repository';
+export { baselineHash, governingConflicts } from './domain/production';

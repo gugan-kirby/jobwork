@@ -121,3 +121,15 @@ export const JOB_TYPE_LABELS: Record<(typeof JOB_TYPES)[number], string> = {
   new_model: 'New model',
   correction_ecn: 'Correction / ECN',
 };
+
+/** Doc 09 §8 change impact areas, in the order the matrix asks them (IN-13). */
+export const CHANGE_IMPACT_AREAS = [
+  { key: 'configuration', label: 'Configuration', question: 'Which item, revision, interface, BOM, cavity, serial/lot and quantity?' },
+  { key: 'wip', label: 'Work in progress', question: 'What is complete, in machine, procured, reusable, reworkable or scrap?' },
+  { key: 'process_tooling', label: 'Process and tooling', question: 'Route, program, fixture, tool or mould, setup, subcontractor impact?' },
+  { key: 'quality', label: 'Quality', question: 'New characteristics, sampling, FAI/PPAP, instrument, validation or regression?' },
+  { key: 'commercial', label: 'Commercial', question: 'Supplier delta, JobWork margin, customer price, tax, cancellation liability?' },
+  { key: 'schedule', label: 'Schedule', question: 'Critical path, material, rework, approval, inspection and shipment effect?' },
+  { key: 'contract', label: 'Contract', question: 'Warranty, acceptance, IP/NDA, liability or terms amendment?' },
+  { key: 'logistics', label: 'Logistics', question: 'Extra movement, return, packaging, customs/e-waybill/document impact?' },
+] as const;

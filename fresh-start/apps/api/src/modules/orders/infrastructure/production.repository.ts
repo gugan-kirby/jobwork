@@ -179,6 +179,14 @@ export class ProductionRepository {
          JOIN iam.organization o ON o.id = d.owning_organization_id AND o.type = 'internal'
          JOIN dms.document_version dv ON dv.document_id = d.id AND dv.version_no = d.current_version_no
          JOIN dms.file_object f ON f.id = dv.file_object_id
+       UNION ALL
+       -- IN-13: the revisions an open change brings in (a customer's new drawing version).
+       SELECT DISTINCT d.id, dv.id, d.title, d.logical_type, dv.version_no, dv.original_filename, f.sha256, dv.status, f.scan_state, 'change'
+         FROM change.change_request c
+         JOIN dms.document_version dv ON dv.id = ANY(c.context_document_version_ids)
+         JOIN dms.document d ON d.id = dv.document_id
+         JOIN dms.file_object f ON f.id = dv.file_object_id
+        WHERE c.sales_order_id = $1 AND c.status NOT IN ('closed', 'withdrawn', 'rejected')
        ORDER BY 10, 3`,
       [salesOrderId],
     );
@@ -304,13 +312,65 @@ export class ProductionRepository {
     return res.rows.map((r) => r.id);
   }
 
-  async releaseBaseline(input: { baselineId: string; manifestHash: string; releasedBy: string; supersedes: string | null }, tx: Queryable): Promise<void> {
+  async releaseBaseline(input: { baselineId: string; manifestHash: string; releasedBy: string; supersedes: string | null; changeRequestId?: string | null }, tx: Queryable): Promise<void> {
     await tx.query(
       `UPDATE dms.baseline SET status = 'released', manifest_hash = $2, released_by = $3, released_at = now(), supersedes_baseline_id = $4,
-              aggregate_version = aggregate_version + 1
+              change_request_id = $5, aggregate_version = aggregate_version + 1
         WHERE id = $1`,
-      [input.baselineId, input.manifestHash, input.releasedBy, input.supersedes],
+      [input.baselineId, input.manifestHash, input.releasedBy, input.supersedes, input.changeRequestId ?? null],
     );
+  }
+
+  /**
+   * One purchase order's transmittal of a released baseline: supersedes its live one,
+   * grants the supplier each exact version, and marks the PO as having its baseline.
+   */
+  async transmitBaseline(
+    input: { baseline: BaselineRecord; purchaseOrderId: string; supplierOrganizationId: string; dueAt: Date; issuedBy: string; now: Date },
+    tx: Queryable,
+  ): Promise<{ transmittalId: string; number: string; grants: number; supersedes: string | null } | null> {
+    const live = await this.liveTransmittal(input.purchaseOrderId, tx);
+    if (live && live.baselineId === input.baseline.id) return null;
+    const number = await this.allocateNumber('TR', input.now, tx);
+    if (live) await tx.query(`UPDATE dms.transmittal SET status = 'superseded', aggregate_version = aggregate_version + 1 WHERE id = $1`, [live.id]);
+    const transmittalId = await this.issueTransmittal(
+      { number, baselineId: input.baseline.id, purchaseOrderId: input.purchaseOrderId, recipientOrganizationId: input.supplierOrganizationId, manifestHash: input.baseline.manifestHash!, dueAt: input.dueAt, issuedBy: input.issuedBy },
+      tx,
+    );
+    if (live) await this.supersedeTransmittal(live.id, transmittalId, tx);
+    let grants = 0;
+    for (const item of input.baseline.items) {
+      if (await this.grantVersion({ documentVersionId: item.documentVersionId, organizationId: input.supplierOrganizationId, grantedBy: input.issuedBy }, tx)) grants += 1;
+    }
+    await this.markPurchaseOrderBaselineReleased(input.purchaseOrderId, tx);
+    return { transmittalId, number, grants, supersedes: live?.id ?? null };
+  }
+
+  /**
+   * A supplier keeps no access to a drawing the new baseline dropped: it may not
+   * manufacture from it. Evidence rows that referenced it keep referencing it.
+   */
+  async revokeStaleGrants(input: { organizationId: string; oldBaselineId: string; keepVersionIds: string[]; by: string }, tx: Queryable): Promise<number> {
+    const res = await tx.query(
+      `UPDATE dms.audience_grant SET revoked_at = now(), revoked_by = $4
+        WHERE organization_id = $1 AND revoked_at IS NULL
+          AND document_version_id IN (SELECT document_version_id FROM dms.baseline_item WHERE baseline_id = $2)
+          AND NOT (document_version_id = ANY($3::uuid[]))`,
+      [input.organizationId, input.oldBaselineId, input.keepVersionIds, input.by],
+    );
+    return res.rowCount ?? 0;
+  }
+
+  /** The interim stop in force on a purchase order, if any (IN-13). */
+  async activeStop(purchaseOrderId: string, tx?: Queryable): Promise<{ changeNumber: string; reason: string; expiresAt: Date } | null> {
+    const res = await this.q(tx).query<{ changeNumber: string; reason: string; expiresAt: Date }>(
+      `SELECT c.number AS "changeNumber", d.reason, d.expires_at AS "expiresAt"
+         FROM change.interim_decision d JOIN change.change_request c ON c.id = d.change_request_id
+        WHERE d.purchase_order_id = $1 AND d.decision = 'stop' AND d.lifted_at IS NULL AND d.expires_at > now()
+        ORDER BY d.issued_at DESC LIMIT 1`,
+      [purchaseOrderId],
+    );
+    return res.rows[0] ?? null;
   }
 
   // ----------------------------------------------------------------- transmittals

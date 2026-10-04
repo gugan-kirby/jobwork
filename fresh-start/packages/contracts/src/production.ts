@@ -34,7 +34,7 @@ export const baselineCandidateSchema = z.object({
   fileSha256: z.string(),
   status: z.string(),
   scanState: z.string(),
-  source: z.enum(['governing', 'reference', 'assisted_photo', 'internal']),
+  source: z.enum(['governing', 'reference', 'assisted_photo', 'internal', 'change']),
   selectable: z.boolean(),
   reason: z.string().nullable(),
 });

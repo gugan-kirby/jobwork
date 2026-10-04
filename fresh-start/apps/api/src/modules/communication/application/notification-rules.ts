@@ -114,6 +114,24 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
       ? [{ templateKey: 'supplier.rfq_superseded', audience: suppliers(organizations), variables: { rfqReference: str(e.data['reference']) || 'Your RFQ' }, link: `/rfqs/${e.aggregateId}` }]
       : [];
   },
+  // IN-13: the customer decides a change that moves its price, date or scope.
+  'change.customer_decision_requested.v1': async (e) => [
+    {
+      templateKey: 'customer.change_decision_needed',
+      audience: customer(str(e.data['customerOrganizationId'])),
+      variables: { changeNumber: str(e.data['number']), orderNumber: str(e.data['orderNumber']) },
+      link: `/orders/${str(e.data['salesOrderId'])}`,
+    },
+  ],
+  // IN-13: a supplier is told to stop or continue while a change is decided.
+  'change.interim_decision_issued.v1': async (e) => [
+    {
+      templateKey: 'supplier.change_interim_decision',
+      audience: suppliers([str(e.data['supplierOrganizationId'])]),
+      variables: { purchaseOrderNumber: str(e.data['purchaseOrderNumber']), decisionLabel: e.data['decision'] === 'stop' ? 'stop work on it until further notice' : 'continue as planned' },
+      link: `/supplier/orders/${str(e.data['purchaseOrderId'])}`,
+    },
+  ],
   'orders.purchase_order_issued.v1': async (e) => [
     {
       templateKey: 'supplier.purchase_order_issued',

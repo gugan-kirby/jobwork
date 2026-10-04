@@ -15,7 +15,7 @@ function sources(dir: string): string[] {
 
 /**
  * Every event type the API commits to the outbox, read from its source: the literals in
- * every outbox spec's `eventType:` expression and in communication's `messageEvent(…)`
+ * every outbox spec's `eventType:` expression, communication's `messageEvent(…)` and the change command's `this.event(…)`
  * helper, plus the one templated family (supplier
  * onboarding decisions, `supplier.${verb}.v1`) expanded from its verb table. A new
  * template fails the suite until it is expanded here too.
@@ -32,6 +32,8 @@ function emittedEventTypes(): Map<string, string> {
     }
     // Communication builds its message events through one helper.
     for (const m of text.matchAll(/messageEvent\(\s*'([a-z0-9_.]+)'/g)) found.set(m[1]!, file);
+    // IN-13's change command builds its events through `this.event(change, version, '…')`.
+    for (const m of text.matchAll(/this\.event\([^,]+,[^,]+,\s*'([a-z0-9_]+\.[a-z0-9_.]+)'/g)) found.set(m[1]!, file);
     for (const m of text.matchAll(/eventType:\s*`([^`]+)`/g)) {
       if (m[1] !== 'supplier.${rule.verb}.v1') throw new Error(`unexpanded event type template ${m[1]} in ${file}`);
       for (const v of text.matchAll(/verb:\s*'([a-z_]+)'/g)) found.set(`supplier.${v[1]}.v1`, file);

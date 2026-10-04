@@ -11,11 +11,13 @@ import { ObjectStore } from './infrastructure/object-store';
 import { DocumentsController } from './presentation/documents.controller';
 import { DownloadController } from './presentation/download.controller';
 import { InternalScanController } from './presentation/internal-scan.controller';
+import { DocumentRevisionHooks } from './application/document-revision-hooks';
 
 @Module({
   imports: [IamModule],
   controllers: [DocumentsController, DownloadController, InternalScanController],
   providers: [
+    DocumentRevisionHooks,
     DmsRepository,
     ObjectStore,
     InitiateUploadCommand,
@@ -25,6 +27,6 @@ import { InternalScanController } from './presentation/internal-scan.controller'
     GrantAudienceCommand,
     RevokeGrantCommand,
   ],
-  exports: [DmsRepository, ObjectStore],
+  exports: [DmsRepository, ObjectStore, DocumentRevisionHooks],
 })
 export class DmsModule {}

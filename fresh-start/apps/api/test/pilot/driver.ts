@@ -1,4 +1,5 @@
-import { createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { signRequest } from '@jobwork/object-store';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { NOTIFIED_EVENT_TYPES } from '@jobwork/contracts';
 import { mintServiceToken, SCAN_WORKER_PRINCIPAL, SERVICE_TOKEN_HEADER } from '@jobwork/service-auth';
@@ -194,10 +195,13 @@ export class Pilot {
       `INSERT INTO dms.file_object (storage_key, byte_size, declared_media_type, sha256, scan_state, owning_organization_id) VALUES ($1, 2048, 'application/pdf', $2, 'clean', $3) RETURNING id`,
       [`clean/${randomBytes(8).toString('hex')}`, randomBytes(32).toString('hex'), orgId],
     );
-    return (await this.one<{ id: string }>(
+    const version = await this.one<{ id: string }>(
       `INSERT INTO dms.document_version (document_id, version_no, file_object_id, original_filename, status, created_by) VALUES ($1, 1, $2, 'bracket.pdf', 'available', gen_random_uuid()) RETURNING id`,
       [doc.id, file.id],
-    )).id;
+    );
+    // As finalize would: the document points at its current version, so a later upload is version 2.
+    await this.pg.query(`UPDATE dms.document SET current_version_no = 1 WHERE id = $1`, [doc.id]);
+    return version.id;
   }
 
   private totp(secret: string, email: string): string {
@@ -523,6 +527,75 @@ export class Pilot {
     });
     const text = await res.text();
     return { status: res.status, body: text ? (JSON.parse(text) as Body) : {} };
+  }
+
+  // ----------------------------------------------------------------- production (IN-13)
+
+  /** The customer pays the advance through the dev gateway: the order is commercially released. */
+  async payAdvance(deal: SourcedDeal): Promise<void> {
+    const invoiceId = ((deal.order['invoices'] as Body[])[0]!['invoiceId']) as string;
+    const intent = ok(await this.as.approver.post(`/api/v1/invoices/${invoiceId}/pay`), 201, 'start payment');
+    const row = await this.one<{ provider_intent_id: string; amount_minor: string }>(`SELECT provider_intent_id, amount_minor FROM finance.payment_intent WHERE id = $1`, [intent['paymentIntentId']]);
+    const paid = await this.paymentCallback({ type: 'payment.captured', intentId: row.provider_intent_id, transactionId: `txn_${randomUUID()}`, amountMinor: Number(row.amount_minor) });
+    if (paid.body['outcome'] !== 'processed') throw new Error(`advance not processed: ${JSON.stringify(paid.body)}`);
+  }
+
+  async productionView(orderId: string): Promise<Body> {
+    return ok(await this.as.engineering.get(`/api/v1/sales-orders/${orderId}/production`), 200, 'production view');
+  }
+
+  async supplierProduction(supplier: 'supplierA' | 'supplierB', purchaseOrderId: string): Promise<Body> {
+    return ok(await this.as[supplier].get(`/api/v1/supplier/purchase-orders/${purchaseOrderId}/production`), 200, 'supplier production view');
+  }
+
+  /**
+   * A sourced deal taken into production: advance paid, the drawing baselined, transmitted
+   * and acknowledged, the work package planned and released, the first milestone started
+   * with evidence submitted.
+   */
+  async intoProduction(deal: SourcedDeal): Promise<{ baselineId: string; workPackageId: string; milestoneId: string; evidenceVersionId: string }> {
+    await this.payAdvance(deal);
+    const assembled = ok(await this.as.engineering.post(`/api/v1/sales-orders/${deal.orderId}/baselines`, { items: [{ documentVersionId: this.drawingVersionId, purpose: 'governing' }] }), 201, 'assemble baseline');
+    const draft = (assembled['baselines'] as Body[]).find((b) => b['status'] === 'draft')!;
+    ok(await this.as.engineering.post(`/api/v1/baselines/${draft['baselineId']}/release`, { expectedVersion: draft['aggregateVersion'] }), 201, 'release baseline');
+    ok(await this.as.engineering.post(`/api/v1/sales-orders/${deal.orderId}/transmittals`, { baselineId: draft['baselineId'] }), 201, 'issue transmittals');
+    const sv = await this.supplierProduction('supplierA', deal.purchaseOrderId);
+    const transmittal = sv['transmittal'] as Body;
+    ok(await this.as.supplierA.post(`/api/v1/supplier/transmittals/${transmittal['transmittalId']}/acknowledge`, { expectedVersion: transmittal['aggregateVersion'], note: 'Drawing pack received.' }), 201, 'acknowledge transmittal');
+    ok(await this.as.sourcing.post(`/api/v1/purchase-orders/${deal.purchaseOrderId}/work-package`, { plannedStart: daysFromNow(1), plannedFinish: daysFromNow(21), qualityPlanPresent: true }), 201, 'plan work package');
+    const wp = ((await this.productionView(deal.orderId))['workPackages'] as Body[]).find((w) => w['purchaseOrderId'] === deal.purchaseOrderId)!;
+    ok(await this.as.sourcing.post(`/api/v1/work-packages/${wp['workPackageId']}/release`, { expectedVersion: wp['aggregateVersion'] }), 201, 'release work package');
+    const first = ((await this.supplierProduction('supplierA', deal.purchaseOrderId))['workPackage'] as Body)['milestones'] as Body[];
+    ok(await this.as.supplierA.post(`/api/v1/supplier/milestones/${first[0]!['milestoneId']}/start`, { expectedVersion: first[0]!['aggregateVersion'] }), 201, 'start milestone');
+    const evidenceVersionId = await this.cleanDrawing(this.orgs.supplierA);
+    const started = ((await this.supplierProduction('supplierA', deal.purchaseOrderId))['workPackage'] as Body)['milestones'] as Body[];
+    ok(await this.as.supplierA.post(`/api/v1/supplier/milestones/${started[0]!['milestoneId']}/evidence`, { expectedVersion: started[0]!['aggregateVersion'], items: [{ documentVersionId: evidenceVersionId }] }), 201, 'submit evidence');
+    return { baselineId: draft['baselineId'] as string, workPackageId: wp['workPackageId'] as string, milestoneId: started[0]!['milestoneId'] as string, evidenceVersionId };
+  }
+
+  /**
+   * A new version of an existing document, uploaded and scanned the way the product does
+   * it: initiate with the document id, PUT the bytes, finalize, then the scanner's verdict.
+   * Needs the object store.
+   */
+  async uploadRevision(client: TestClient, documentId: string, filename: string): Promise<{ documentVersionId: string; versionNo: number }> {
+    const env = { endpoint: process.env['OBJECT_STORE_ENDPOINT'] ?? 'http://localhost:9000', accessKeyId: process.env['OBJECT_STORE_ACCESS_KEY'] ?? 'minioadmin', secretAccessKey: process.env['OBJECT_STORE_SECRET_KEY'] ?? 'minioadmin', region: process.env['OBJECT_STORE_REGION'] ?? 'us-east-1' };
+    for (const bucket of [process.env['OBJECT_STORE_BUCKET_QUARANTINE'] ?? 'jobwork-quarantine', process.env['OBJECT_STORE_BUCKET_CLEAN'] ?? 'jobwork-clean']) {
+      const signed = signRequest({ accessKeyId: env.accessKeyId, secretAccessKey: env.secretAccessKey, region: env.region }, { endpoint: env.endpoint, objectPath: bucket, method: 'PUT' });
+      const res = await fetch(signed.url, { method: 'PUT', headers: signed.headers });
+      if (!res.ok && res.status !== 409) throw new Error(`object store not reachable: ${res.status}`);
+    }
+    const bytes = Buffer.from(`%PDF-1.4\n% ${filename} ${randomUUID()}\n%%EOF\n`);
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const init = ok(await client.post('/api/v1/documents/uploads', { purpose: 'drawing_2d', filename, declaredMediaType: 'application/pdf', byteSize: bytes.length, sha256, documentId }), 201, 'initiate revision upload');
+    const grant = init['grant'] as { method: string; url: string; headers: Record<string, string> };
+    const put = await fetch(grant.url, { method: grant.method, headers: grant.headers, body: bytes });
+    if (!put.ok) throw new Error(`revision PUT failed: ${put.status}`);
+    const fin = ok(await client.post(`/api/v1/documents/uploads/${init['uploadSessionId']}/finalize`, { byteSize: bytes.length, sha256 }), 201, 'finalize revision');
+    const file = await this.one<{ id: string }>(`SELECT file_object_id AS id FROM dms.document_version WHERE id = $1`, [fin['documentVersionId']]);
+    ok(await this.service(`/internal/documents/scans/${file.id}/begin`), 201, 'scan begin');
+    ok(await this.service(`/internal/documents/scans/${file.id}/result`, { verdict: 'clean', reason: 'clean', detectedMediaType: 'application/pdf', scanner: { name: 'test-scanner', version: '1' } }), 201, 'scan result');
+    return { documentVersionId: fin['documentVersionId'] as string, versionNo: fin['versionNo'] as number };
   }
 
   /** Signs and posts a provider callback the way the dev gateway does. */

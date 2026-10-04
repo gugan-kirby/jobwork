@@ -52,6 +52,19 @@ Tests:
 - a supplier sees only its own POs' changes;
 - the customer never sees supplier cost.
 
+**Deviations (2026-10-05, F-13.2):**
+
+- Migration `0021_change_control.sql` (one per functionality). `change_request.supplier_brief` was added: suppliers see JobWork's brief, never the proposer's title or reason, which may name the customer.
+- The doc 06 §9 machine gains the exits a real process needs, enforced by trigger and domain alike: triage → closed (a clarification), withdrawal before approval, an approver returning the impact, and the customer rejecting an internally approved change.
+- The candidate baseline is assembled with IN-09's existing tool and named in the impact. Baseline candidates now include the document versions an open change brings in, since a customer's new revision is not an enquiry document.
+- Internal approval is "any one of" a role set, as the engine works: engineering for a purely technical change, sales once money moves on either leg. The finance-below-margin-floor rule is not built: a change carries price and cost deltas, not a recomputed margin. Recorded for the owner.
+- `customerPriceDeltaMinor` is tax-inclusive. The `change` installment carries it, and its invoice splits tax at the order's accepted rate.
+- Milestone start also refuses while the live transmittal is unacknowledged (`BR-ENG-07`), and acknowledging a transmittal records the work package's baseline history. Without this, a supplier could carry on under a superseded baseline.
+- Interim decisions last at most 30 days and are lifted by the release. Stale supplier grants (versions in the old baseline but not the new) are revoked at release.
+- The worker's event-coverage scan and the audit inventory learned the change command's `event()` and `move()` helpers. Every change transition appears in the audit inventory.
+
+**Verification (2026-10-05, F-13.2).** `test/change.api.spec.ts` (7) runs a production deal through a document-revision change to closure, and `database/tests/change-control.db.spec.ts` (6) covers the schema. 681 tests green.
+
 ## F-13.3 Change UX
 
 | File | Action | Contents |

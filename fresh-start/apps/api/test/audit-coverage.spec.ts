@@ -41,6 +41,11 @@ function operations(): Operation[] {
       const end = i + 1 < hits.length ? hits[i + 1]!.index : text.length;
       found.push({ name: hit[1]!, file: relative(SRC, path), body: text.slice(hit.index, end) });
     });
+    // IN-13: transitions run through the change command's `move()`, which always returns
+    // one audit row for its transition; they are listed, and their body is that helper.
+    for (const hit of text.matchAll(/this\.move\(\s*actor,\s*\w+,\s*'([a-z0-9._-]+)'/g)) {
+      found.push({ name: hit[1]!, file: relative(SRC, path), body: 'audit: [this.audit(change, version, plan.action)]' });
+    }
   }
   return found.sort((a, b) => a.name.localeCompare(b.name));
 }

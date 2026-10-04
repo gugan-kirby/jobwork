@@ -328,3 +328,6 @@ export * from './communication';
 
 // ------------------------------------------------------------------ operations hardening (IN-11)
 export * from './operations';
+
+// ------------------------------------------------------------------ engineering change (IN-13)
+export * from './change';

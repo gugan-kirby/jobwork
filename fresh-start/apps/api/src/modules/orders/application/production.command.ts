@@ -181,12 +181,13 @@ export class ProductionCommand {
 
   /** The live gate matrix for a work package, from authoritative records only. */
   private async gatesFor(wp: WorkPackageRecord, tx?: PoolClient) {
-    const [order, po, baseline, transmittal, supplier] = await parallelReads(tx, [
+    const [order, po, baseline, transmittal, supplier, stop] = await parallelReads(tx, [
       () => this.orders.findSalesOrder(wp.salesOrderId, tx),
       () => this.orders.findPurchaseOrder(wp.purchaseOrderId, tx),
       () => this.production.releasedBaseline(wp.salesOrderId, tx),
       () => this.production.liveTransmittal(wp.purchaseOrderId, tx),
       () => this.production.supplierStanding(wp.supplierOrganizationId, tx),
+      () => this.production.activeStop(wp.purchaseOrderId, tx),
     ]);
     const holds = order ? await this.finance.listActiveHolds(order.customerOrganizationId, tx) : [];
     const gates = computeReleaseGates({
@@ -200,6 +201,7 @@ export class ProductionCommand {
       plan: { plannedStart: wp.plannedStart, plannedFinish: wp.plannedFinish, milestoneCount: wp.milestones.length },
       supplier,
       qualityPlanPresent: wp.qualityPlanPresent,
+      interimStop: stop ? { changeNumber: stop.changeNumber, reason: stop.reason, expiresAt: stop.expiresAt.toISOString() } : null,
     });
     return { gates, baseline, transmittal, po };
   }
@@ -367,23 +369,14 @@ export class ProductionCommand {
           const outbox: OutboxSpec[] = [];
           let issued = 0;
           for (const po of pos) {
-            const live = await this.production.liveTransmittal(po.id, tx);
-            if (live && live.baselineId === baseline.id) continue;
-            const number = await this.production.allocateNumber('TR', now, tx);
-            if (live) await tx.query(`UPDATE dms.transmittal SET status = 'superseded', aggregate_version = aggregate_version + 1 WHERE id = $1`, [live.id]);
-            const transmittalId = await this.production.issueTransmittal(
-              { number, baselineId: baseline.id, purchaseOrderId: po.id, recipientOrganizationId: po.supplierOrganizationId, manifestHash: baseline.manifestHash, dueAt: new Date(now.getTime() + cmd.acknowledgmentDays * 86_400_000), issuedBy: actor.userId },
+            const sent = await this.production.transmitBaseline(
+              { baseline, purchaseOrderId: po.id, supplierOrganizationId: po.supplierOrganizationId, dueAt: new Date(now.getTime() + cmd.acknowledgmentDays * 86_400_000), issuedBy: actor.userId, now },
               tx,
             );
-            if (live) await this.production.supersedeTransmittal(live.id, transmittalId, tx);
-            let grants = 0;
-            for (const item of baseline.items) {
-              if (await this.production.grantVersion({ documentVersionId: item.documentVersionId, organizationId: po.supplierOrganizationId, grantedBy: actor.userId }, tx)) grants += 1;
-            }
-            await this.production.markPurchaseOrderBaselineReleased(po.id, tx);
+            if (!sent) continue;
             issued += 1;
-            audit.push({ action: 'dms.transmittal_issued', subjectType: 'transmittal', subjectId: transmittalId, data: { number, baselineId: baseline.id, purchaseOrderId: po.id, recipientOrganizationId: po.supplierOrganizationId, manifestHash: baseline.manifestHash, grants, supersedes: live?.id ?? null } });
-            outbox.push({ eventType: 'dms.transmittal_issued.v1', aggregateType: 'transmittal', aggregateId: transmittalId, data: { transmittalId, number, recipientOrganizationId: po.supplierOrganizationId } });
+            audit.push({ action: 'dms.transmittal_issued', subjectType: 'transmittal', subjectId: sent.transmittalId, data: { number: sent.number, baselineId: baseline.id, purchaseOrderId: po.id, recipientOrganizationId: po.supplierOrganizationId, manifestHash: baseline.manifestHash, grants: sent.grants, supersedes: sent.supersedes } });
+            outbox.push({ eventType: 'dms.transmittal_issued.v1', aggregateType: 'transmittal', aggregateId: sent.transmittalId, data: { transmittalId: sent.transmittalId, number: sent.number, recipientOrganizationId: po.supplierOrganizationId } });
           }
           if (issued === 0) throw new ProductionRefusal('TRANSMITTALS_CURRENT', 'Every supplier already has this baseline');
           return { result: undefined, audit, outbox };
@@ -702,6 +695,10 @@ export class ProductionCommand {
           this.checkVersion(cmd.expectedVersion, t.aggregateVersion);
           if (t.status !== 'issued') throw new ProductionRefusal('TRANSMITTAL_NOT_OPEN', 'This transmittal is not waiting for acknowledgment', `It is ${t.status}.`);
           await this.production.acknowledgeTransmittal({ transmittalId, by: actor.userId, note: cmd.note }, tx);
+          // From now this supplier's work package follows the acknowledged baseline (BR-ENG-04).
+          const wpId = await this.production.workPackageIdForPurchaseOrder(t.purchaseOrderId, tx);
+          const wpRow = wpId ? await this.production.findWorkPackage(wpId, tx) : null;
+          if (wpRow?.releasedAt) await this.production.recordWorkPackageBaseline({ workPackageId: wpRow.id, baselineId: t.baselineId, transmittalId, by: actor.userId }, tx);
           return {
             result: t.purchaseOrderId,
             audit: [{ action: 'dms.transmittal_acknowledged', subjectType: 'transmittal', subjectId: transmittalId, data: { number: t.number, manifestHash: t.manifestHash, note: cmd.note, late: t.acknowledgmentDueAt.getTime() < Date.now() } }],
@@ -738,6 +735,14 @@ export class ProductionCommand {
         handler: async (tx, _ctx, cmd: MilestoneVersionRequest) => {
           const { milestone, wp } = await this.lockedMilestone(milestoneId, cmd.expectedVersion, tx);
           if (milestone.status !== 'ready') throw new ProductionRefusal('MILESTONE_NOT_READY', 'This milestone cannot start yet', milestone.status === 'not_ready' ? 'The previous milestone is not verified yet.' : `It is ${milestone.status.replace(/_/g, ' ')}.`);
+          // IN-13: an interim stop holds new work, and a new baseline must be acknowledged
+          // before anything more is made to it (BR-ENG-07).
+          const stop = await this.production.activeStop(wp.purchaseOrderId, tx);
+          if (stop) throw new ProductionRefusal('INTERIM_STOP', `Work on this order is stopped under change ${stop.changeNumber}`, stop.reason);
+          const live = await this.production.liveTransmittal(wp.purchaseOrderId, tx);
+          if (live && live.status !== 'acknowledged') {
+            throw new ProductionRefusal('TRANSMITTAL_NOT_ACKNOWLEDGED', 'Acknowledge the current transmittal first', `Transmittal ${live.number} carries baseline ${live.baselineNumber}; work continues once you acknowledge it.`);
+          }
           await this.production.setMilestone({ milestoneId, status: 'in_progress', started: actor.userId }, tx);
           if (wp.status === 'released') await this.production.setWorkPackageStatus({ workPackageId: wp.id, status: 'in_production' }, tx);
           const order = await this.orders.findSalesOrder(wp.salesOrderId, tx, true);

@@ -13,7 +13,7 @@ export interface InstallmentRecord {
   id: string;
   salesOrderId: string;
   seq: number;
-  kind: 'advance' | 'balance';
+  kind: 'advance' | 'balance' | 'change';
   label: string;
   amountMinor: number;
   currency: string;
@@ -31,7 +31,7 @@ export interface InvoiceRecord {
   installmentId: string | null;
   customerOrganizationId: string;
   customerDisplayName: string;
-  kind: 'advance' | 'balance' | 'final';
+  kind: 'advance' | 'balance' | 'final' | 'change';
   currency: string;
   lines: InvoiceLine[];
   subtotalMinor: number;
@@ -289,6 +289,12 @@ export class FinanceRepository {
       [customerOrganizationId, excludeSalesOrderId],
     );
     return num(res.rows[0]!.open);
+  }
+
+  /** The price delta of the order amendment a change installment carries (IN-13). */
+  async changeAmendmentAmount(installmentId: string, tx: Queryable): Promise<number | null> {
+    const res = await tx.query<{ price_delta_minor: string }>(`SELECT price_delta_minor FROM orders.order_amendment WHERE installment_id = $1`, [installmentId]);
+    return res.rows[0] ? Number(res.rows[0].price_delta_minor) : null;
   }
 
   // ----------------------------------------------------------------- journals
