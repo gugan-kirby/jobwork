@@ -682,4 +682,25 @@ describe('Evaluation, award, cost sheet, customer quote (IN-07)', () => {
     const row = await pg.query<{ status: string }>(`SELECT status FROM commercial.customer_quote WHERE id = $1`, [fastId]);
     expect(row.rows[0]!.status).toBe('expired');
   });
+
+  it('re-quotes in a fresh offer set once every option in the last one closed without an acceptance', async () => {
+    // Standard was rejected and fast expired above: nothing in the set can be decided any more.
+    const sheet = await sales.get(`/api/v1/cost-sheets/${costSheetId}`);
+    const approvedVersion = (sheet.body['versions'] as Array<Record<string, unknown>>).find((v) => v['status'] === 'approved')!;
+    const content = { deliveryLeadDays: 7, paymentTerms: '50% advance, balance before dispatch', validityUntil: new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10) };
+    const requote = await sales.post('/api/v1/quotes', { costSheetVersionId: approvedVersion['costSheetVersionId'], optionLabel: 'standard', content });
+    expect(requote.status).toBe(201);
+    const sets = await pg.query<{ offer_set_id: string; status: string }>(
+      `SELECT offer_set_id, status FROM commercial.customer_quote WHERE enquiry_id = (SELECT enquiry_id FROM commercial.customer_quote WHERE id = $1) ORDER BY created_at`,
+      [requote.body['quoteId']],
+    );
+    expect(sets.rows.map((r) => r.status)).toEqual(['rejected', 'expired', 'draft']);
+    // Fast was itself offered after standard's rejection closed the first set, so each
+    // offer is its own set: three offers, three sets, and the closed ones untouched.
+    expect(new Set(sets.rows.map((r) => r.offer_set_id)).size).toBe(3);
+    // The new set is open again, so a second standard option in it is still refused.
+    const twice = await sales.post('/api/v1/quotes', { costSheetVersionId: approvedVersion['costSheetVersionId'], optionLabel: 'standard', content });
+    expect(twice.status).toBe(409);
+    expect(twice.body['code']).toBe('QUOTE_OPTION_EXISTS');
+  });
 });
