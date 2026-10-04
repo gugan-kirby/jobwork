@@ -1,0 +1,18 @@
+{
+  "name": "@jobwork/config",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint": "./eslint.config.mjs",
+    "./prettier": "./prettier.config.mjs"
+  },
+  "scripts": {
+    "build": "true",
+    "typecheck": "true",
+    "test": "true"
+  },
+  "devDependencies": {
+    "typescript-eslint": "^8.40.0"
+  }
+}
