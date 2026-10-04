@@ -1,4 +1,20 @@
 # Commands run through the executor (operation  file)
+change.classify  modules/change/application/change.command.ts
+change.close  modules/change/application/change.command.ts
+change.complete-impact  modules/change/application/change.command.ts
+change.customer-decide  modules/change/application/change.command.ts
+change.issue-interim-decision  modules/change/application/change.command.ts
+change.lift-interim-decision  modules/change/application/change.command.ts
+change.propose  modules/change/application/change.command.ts
+change.provide-info  modules/change/application/change.command.ts
+change.record-impact  modules/change/application/change.command.ts
+change.release-new-baseline  modules/change/application/change.command.ts
+change.request-info  modules/change/application/change.command.ts
+change.start-triage  modules/change/application/change.command.ts
+change.submit-supplier-impact  modules/change/application/change.command.ts
+change.supplier-acknowledge  modules/change/application/change.command.ts
+change.verify  modules/change/application/change.command.ts
+change.withdraw  modules/change/application/change.command.ts
 commercial.create-evaluation  modules/commercial/application/evaluate.command.ts
 commercial.decide-approval  modules/commercial/application/approval.command.ts
 commercial.draft-quote  modules/commercial/application/quote.command.ts
