@@ -162,11 +162,15 @@ describe('orders and finance schema constraints (F-08.1)', () => {
     await a.query('BEGIN');
     await b.query('BEGIN');
     await a.query(`UPDATE commercial.customer_quote SET status = 'accepted' WHERE id = $1`, [ids[0]]);
-    // b blocks on the partial unique index until a decides.
-    const bUpdate = b.query(`UPDATE commercial.customer_quote SET status = 'accepted' WHERE id = $1`, [ids[1]]);
+    // b blocks on the partial unique index until a decides. Its refusal is awaited from the
+    // start: on a fast machine it lands in the same tick as a's COMMIT, and a rejection with
+    // no handler yet is reported as an unhandled error even though the test then catches it.
+    const bRefused = expect(
+      b.query(`UPDATE commercial.customer_quote SET status = 'accepted' WHERE id = $1`, [ids[1]]),
+    ).rejects.toThrow(/uq_offer_set_single_acceptance/);
     await new Promise((r) => setTimeout(r, 150));
     await a.query('COMMIT');
-    await expect(bUpdate).rejects.toThrow(/uq_offer_set_single_acceptance/);
+    await bRefused;
     await b.query('ROLLBACK');
     await a.end();
     await b.end();
