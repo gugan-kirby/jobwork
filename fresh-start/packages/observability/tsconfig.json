@@ -1,0 +1,10 @@
+{
+  "extends": "../config/tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src", "tests"]
+}
