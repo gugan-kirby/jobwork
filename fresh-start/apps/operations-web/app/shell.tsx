@@ -32,6 +32,7 @@ const BASE_NAVIGATION: NavItem[] = [
   { href: '/leakage-reviews', label: 'Held messages' },
   { href: '/suppliers', label: 'Suppliers' },
   { href: '/organizations', label: 'Organizations' },
+  { href: '/ops-health', label: 'Health' },
   { href: '/audit', label: 'Audit' },
   { href: '/account/security', label: 'Account' },
 ];
