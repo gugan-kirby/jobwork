@@ -16,6 +16,7 @@ export default defineConfig({
   ],
   test: {
     pool: 'forks',
+    setupFiles: ['./test/setup/no-overlapping-queries.ts'],
     testTimeout: 30_000,
     // Suites sign in hundreds of times from one address; `rate-limit.api.spec.ts` turns
     // limits on for itself (F-11.2).
