@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { OperationsSummary } from '@jobwork/contracts';
-import { AppShell, LinkProvider, type NavItem } from '@jobwork/ui';
+import { AppShell, LinkProvider, type NavItem, useCommandTick } from '@jobwork/ui';
 import { api } from '../lib/api';
 
 /**
@@ -75,13 +75,15 @@ function OperationsFrame({ environmentLabel, children }: ShellProps): React.JSX.
   const pathname = usePathname();
   const [summary, setSummary] = useState<OperationsSummary | null>(null);
   const [unread, setUnread] = useState(0);
+  // Counts change when someone acts here as well as when they move on (F-12.4).
+  const commandTick = useCommandTick();
 
   useEffect(() => {
     // Anonymous, external, or offline: navigation without counts is still correct.
     api<OperationsSummary>('/operations/summary')
       .then(setSummary)
       .catch(() => setSummary(null));
-  }, [pathname]);
+  }, [pathname, commandTick]);
 
   // F-10.3: the bell counts this person's unread notifications.
   useEffect(() => {
@@ -97,7 +99,7 @@ function OperationsFrame({ environmentLabel, children }: ShellProps): React.JSX.
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, [pathname, commandTick]);
 
   if (UNSHELLED.some((path) => pathname?.startsWith(path))) {
     return <main id="main">{children}</main>;
