@@ -27,6 +27,12 @@ describe('contentSecurityPolicy', () => {
     expect(scripts).not.toContain("'unsafe-eval'");
   });
 
+  it('lets this origin\'s service worker and manifest load, which strict-dynamic would otherwise refuse (F-11.6)', () => {
+    const policy = directives(contentSecurityPolicy(production));
+    expect(policy.get('worker-src')).toEqual(["'self'"]);
+    expect(policy.get('manifest-src')).toEqual(["'self'"]);
+  });
+
   it('allows eval only under next dev', () => {
     const scripts = directives(contentSecurityPolicy({ ...production, development: true })).get('script-src')!;
     expect(scripts).toContain("'unsafe-eval'");

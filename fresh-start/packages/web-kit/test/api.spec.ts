@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, ApiError } from '../src/api';
+import { api, ApiError, UNAUTHENTICATED_EVENT } from '../src/api';
+import { purgeOfflineCaches } from '../src/offline';
 
 /** F-FE.1: every failure a screen can meet arrives as an ApiError it already renders. */
 
@@ -107,5 +108,43 @@ describe('api()', () => {
     const [, withoutBody] = fetchMock.mock.calls[1]!;
     expect(withoutBody?.headers).toEqual({ 'x-csrf-token': 'token-123' });
     expect(withoutBody).not.toHaveProperty('body');
+  });
+
+  it('refuses a command while offline without sending anything, and never queues it (F-11.6)', async () => {
+    vi.stubGlobal('navigator', { onLine: false });
+    for (const method of ['POST', 'PUT', 'DELETE']) {
+      const error = await failure(api('/invoices/i-1/pay', { method, body: {} }));
+      expect(error.problem).toMatchObject({ status: 0, code: 'CONNECTION_REQUIRED' });
+      expect(error.message).toBe('You are offline, so nothing was sent. Connect and try again.');
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    // Reading is still attempted: the browser may hold the answer, or the network may be back.
+    respond(200, '{}');
+    await expect(api('/orders')).resolves.toEqual({});
+  });
+
+  it('signals a 401 so the shell can purge what a session left behind (BR-AUTH-05)', async () => {
+    const heard: string[] = [];
+    vi.stubGlobal('window', { dispatchEvent: (e: Event) => heard.push(e.type) });
+    respond(401, JSON.stringify({ status: 401, code: 'NOT_AUTHENTICATED', title: 'Authentication required' }));
+    await failure(api('/orders'));
+    expect(heard).toEqual([UNAUTHENTICATED_EVENT]);
+    respond(403, JSON.stringify({ status: 403, code: 'NOT_AUTHORIZED', title: 'Not authorized' }));
+    await failure(api('/orders'));
+    expect(heard).toEqual([UNAUTHENTICATED_EVENT]);
+  });
+});
+
+describe('purgeOfflineCaches', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('deletes every cache and asks the service worker to keep only its offline page', async () => {
+    const store = new Map<string, unknown>([['jobwork-shell-v1', {}], ['jobwork-assets-v1', {}]]);
+    const posted: unknown[] = [];
+    vi.stubGlobal('caches', { keys: async () => [...store.keys()], delete: async (k: string) => store.delete(k) });
+    vi.stubGlobal('navigator', { serviceWorker: { controller: { postMessage: (m: unknown) => posted.push(m) } } });
+    await purgeOfflineCaches();
+    expect([...store.keys()]).toEqual([]);
+    expect(posted).toEqual([{ type: 'purge' }]);
   });
 });

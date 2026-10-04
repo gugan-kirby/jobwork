@@ -1,4 +1,5 @@
-export { api, ApiError, type Problem } from './api';
+export { api, ApiError, UNAUTHENTICATED_EVENT, type Problem } from './api';
+export { purgeOfflineCaches, registerServiceWorker } from './offline';
 export {
   contentSecurityPolicy,
   originOf,

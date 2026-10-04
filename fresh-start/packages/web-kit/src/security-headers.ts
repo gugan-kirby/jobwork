@@ -35,6 +35,11 @@ export function contentSecurityPolicy({
     ['img-src', "'self'", 'blob:', 'data:'],
     ['font-src', "'self'"],
     ['connect-src', "'self'", ...connectOrigins],
+    // F-11.6: the portal's service worker. Without this the worker falls back to
+    // script-src, where 'strict-dynamic' disregards 'self' and no nonce can vouch for a
+    // registration — so it could never install.
+    ['worker-src', "'self'"],
+    ['manifest-src', "'self'"],
     ['object-src', "'none'"],
     ['base-uri', "'self'"],
     ['form-action', "'self'"],

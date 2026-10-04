@@ -56,6 +56,26 @@ function isProblem(value: unknown): value is Problem {
   return typeof candidate.code === 'string' && typeof candidate.status === 'number';
 }
 
+/**
+ * F-11.6 (doc 21 §8): a command is never queued while offline — not a payment, not an
+ * approval, not a release. It is refused before anything leaves the device, in words
+ * that say nothing was sent.
+ */
+function connectionRequired(): ApiError {
+  return new ApiError({
+    status: 0,
+    code: 'CONNECTION_REQUIRED',
+    title: 'Connection needed',
+    detail: 'You are offline, so nothing was sent. Connect and try again.',
+  });
+}
+
+/**
+ * Raised on `window` when the API answers 401 — a session that ended, or a membership
+ * suspended mid-session. The shell purges offline caches on it (`BR-AUTH-05`).
+ */
+export const UNAUTHENTICATED_EVENT = 'jobwork:unauthenticated';
+
 const NOT_JSON = Symbol('not-json');
 
 function parseBody(text: string): unknown {
@@ -77,6 +97,8 @@ export async function api<T>(
   path: string,
   init: { method?: string; body?: unknown; idempotencyKey?: string } = {},
 ): Promise<T> {
+  const method = init.method ?? 'GET';
+  if (method !== 'GET' && typeof navigator !== 'undefined' && navigator.onLine === false) throw connectionRequired();
   const headers: Record<string, string> = {};
   // Fastify refuses a body-less request that claims to carry JSON.
   if (init.body !== undefined) headers['content-type'] = 'application/json';
@@ -89,7 +111,7 @@ export async function api<T>(
   let text: string;
   try {
     response = await fetch(`/api/v1${path}`, {
-      method: init.method ?? 'GET',
+      method,
       headers,
       ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
       credentials: 'same-origin',
@@ -100,6 +122,7 @@ export async function api<T>(
     throw networkUnreachable();
   }
 
+  if (response.status === 401 && typeof window !== 'undefined') window.dispatchEvent(new Event(UNAUTHENTICATED_EVENT));
   const data = parseBody(text);
   if (data === NOT_JSON) throw unexpectedResponse(response.status);
   if (!response.ok) throw isProblem(data) ? new ApiError(data) : unexpectedResponse(response.status);
