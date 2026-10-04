@@ -1,17 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { BusinessCalendar, ControlQueue, OperationsControls, RoleConflictView, SlaConfiguration } from '@jobwork/contracts';
+import type { BusinessCalendar, ControlQueue, DeadLetter, MeResponse, OperationsControls, RoleConflictView, SlaConfiguration } from '@jobwork/contracts';
 import {
   Button,
   Callout,
   Card,
+  CommandButton,
   DataTable,
   DescriptionList,
   ErrorState,
   formatAge,
   LoadingState,
   Page,
+  ReasonField,
   Stack,
   StatusChip,
   UiLink,
@@ -56,6 +58,9 @@ function seconds(value: number): string {
 export default function OpsHealthPage(): React.JSX.Element {
   const [data, setData] = useState<OperationsControls | null>(null);
   const [calendar, setCalendar] = useState<BusinessCalendar | null>(null);
+  const [deadLetters, setDeadLetters] = useState<DeadLetter[] | null>(null);
+  const [canResolve, setCanResolve] = useState(false);
+  const [resolving, setResolving] = useState<DeadLetter | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
 
   const load = useCallback(async () => {
@@ -64,6 +69,11 @@ export default function OpsHealthPage(): React.JSX.Element {
       const [controls, sla] = await Promise.all([api<OperationsControls>('/operations/controls'), api<SlaConfiguration>('/sla')]);
       setData(controls);
       setCalendar(sla.calendars[0] ?? null);
+      if (controls.platform) {
+        const [me, letters] = await Promise.all([api<MeResponse>('/auth/me'), api<{ deadLetters: DeadLetter[] }>('/operations/dead-letters')]);
+        setCanResolve(me.roles.includes('platform_admin'));
+        setDeadLetters(letters.deadLetters);
+      }
     } catch (err) {
       if (!(err instanceof ApiError)) throw err;
       setError(err);
@@ -133,6 +143,33 @@ export default function OpsHealthPage(): React.JSX.Element {
           </Card>
         ) : null}
 
+        {deadLetters && deadLetters.length > 0 ? (
+          <Card
+            title="Events given up on"
+            description="The worker stopped retrying these. Replay one once its cause is fixed; dismiss it if the step is no longer wanted. Both are recorded with your reason (outbox runbook)."
+            flush
+          >
+            <Stack gap={3}>
+              {resolving ? (
+                <ResolvePanel
+                  letter={resolving}
+                  onDone={async () => {
+                    setResolving(null);
+                    await load();
+                  }}
+                  onCancel={() => setResolving(null)}
+                />
+              ) : null}
+              <DataTable
+                caption="Outbox events given up on"
+                columns={deadLetterColumns(canResolve ? setResolving : null)}
+                rows={deadLetters}
+                rowKey={(l) => l.eventId}
+              />
+            </Stack>
+          </Card>
+        ) : null}
+
         {sod ? (
           <Card title="Separation of duties" description="Role combinations one person may not hold. New invitations that would break a rule are refused; these people held the combination before the rule existed.">
             <Stack gap={3}>
@@ -160,5 +197,72 @@ export default function OpsHealthPage(): React.JSX.Element {
         ) : null}
       </Stack>
     </Page>
+  );
+}
+
+function deadLetterColumns(onResolve: ((letter: DeadLetter) => void) | null): Array<Column<DeadLetter>> {
+  const columns: Array<Column<DeadLetter>> = [
+    { key: 'type', header: 'Event', render: (l) => <code>{l.eventType}</code> },
+    { key: 'about', header: 'About', render: (l) => l.aggregateType.replace(/_/g, ' ') },
+    { key: 'age', header: 'Since', numeric: true, render: (l) => formatAge(l.occurredAt) },
+    { key: 'attempts', header: 'Tries', numeric: true, render: (l) => l.attempts },
+    { key: 'error', header: 'Last error', render: (l) => l.lastError ?? '—' },
+  ];
+  if (onResolve) {
+    columns.push({
+      key: 'act',
+      header: '',
+      render: (l) => (
+        <Button size="sm" variant="secondary" onClick={() => onResolve(l)}>
+          Resolve
+        </Button>
+      ),
+    });
+  }
+  return columns;
+}
+
+function ResolvePanel({ letter, onDone, onCancel }: { letter: DeadLetter; onDone: () => Promise<void>; onCancel: () => void }): React.JSX.Element {
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<ApiError | null>(null);
+
+  async function resolve(verb: 'replay' | 'dismiss'): Promise<void> {
+    setError(null);
+    try {
+      await api(`/operations/dead-letters/${letter.eventId}/${verb}`, {
+        method: 'POST',
+        body: { reason: reason.trim() },
+        idempotencyKey: `dead-letter-${verb}-${letter.eventId}`,
+      });
+      await onDone();
+    } catch (err) {
+      if (!(err instanceof ApiError)) throw err;
+      setError(err);
+      throw err;
+    }
+  }
+
+  const ready = reason.trim().length >= 3;
+  return (
+    <div style={{ padding: 'var(--space-4) var(--table-cell-pad) 0' }}>
+      <Stack gap={3}>
+        <p style={{ font: 'var(--text-body-strong)' }}>
+          {letter.eventType}, given up on {formatAge(letter.occurredAt)} ago
+        </p>
+        {error ? <ErrorState message={error.problem.detail ?? error.problem.title} code={error.problem.code} /> : null}
+        <ReasonField label="Why (kept with the decision)" audience="internal" value={reason} onChange={setReason} />
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <CommandButton key="replay" receiptLabel="Queued again" disabled={!ready} disabledReason="Say why" onCommand={() => resolve('replay')}>
+            Replay {letter.eventType}
+          </CommandButton>
+          <CommandButton key="dismiss" variant="secondary" receiptLabel="Dismissed" disabled={!ready} disabledReason="Say why" onCommand={() => resolve('dismiss')}>
+            Dismiss — no longer wanted
+          </CommandButton>
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+      </Stack>
+    </div>
   );
 }
