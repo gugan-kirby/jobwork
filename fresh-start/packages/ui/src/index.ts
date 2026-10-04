@@ -18,6 +18,7 @@ export {
   type CommandButtonProps,
   type CommandProblem,
 } from './primitives/CommandButton';
+export { announceCommandSucceeded, COMMAND_SUCCEEDED_EVENT, useCommandTick } from './primitives/command-events';
 export {
   Checkbox,
   Field,

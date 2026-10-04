@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { PortalSummary } from '@jobwork/contracts';
-import { AppShell, LinkProvider, type NavItem, type TabItem, type TabPrimaryAction } from '@jobwork/ui';
+import { AppShell, LinkProvider, type NavItem, type TabItem, type TabPrimaryAction, useCommandTick } from '@jobwork/ui';
 import { api, ApiError } from '../lib/api';
 import { purgeOfflineCaches, registerServiceWorker, UNAUTHENTICATED_EVENT } from '@jobwork/web-kit';
 
@@ -118,6 +118,8 @@ export function PortalShell(props: ShellProps): React.JSX.Element {
 
 function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Element {
   const pathname = usePathname();
+  // Counts change when someone acts here as well as when they move on (F-12.4).
+  const commandTick = useCommandTick();
   const unshelled = UNSHELLED.some((path) => pathname?.startsWith(path));
   const [audience, setAudience] = useState<Audience>('loading');
   const [summary, setSummary] = useState<PortalSummary | null>(null);
@@ -178,7 +180,7 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
     return () => {
       cancelled = true;
     };
-  }, [audience, pathname]);
+  }, [audience, pathname, commandTick]);
 
   // F-10.3: the bell counts unread notifications, for every signed-in audience.
   const signedIn = audience === 'customer' || audience === 'supplier' || audience === 'internal';
@@ -196,7 +198,7 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
     return () => {
       cancelled = true;
     };
-  }, [signedIn, pathname]);
+  }, [signedIn, pathname, commandTick]);
 
   if (unshelled) {
     return <main id="main">{children}</main>;

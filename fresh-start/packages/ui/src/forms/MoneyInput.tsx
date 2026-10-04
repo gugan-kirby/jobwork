@@ -86,7 +86,7 @@ export function MoneyInput({
               borderRadius: 'var(--field-radius)',
               background: 'var(--neutral-100)',
               font: 'var(--text-caption)',
-              color: 'var(--color-text-muted)',
+              color: 'var(--color-text-muted-on-tint)',
             }}
           >
             {currency}

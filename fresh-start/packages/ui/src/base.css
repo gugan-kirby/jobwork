@@ -828,6 +828,11 @@ code,
   color: var(--color-text-muted);
 }
 
+/* A selected card sits on the tint, where muted text drops below 4.5:1 (F-12.4). */
+.jw-choice-card-on .jw-choice-desc {
+  color: var(--color-text-muted-on-tint);
+}
+
 .jw-choice-mark {
   width: 22px;
   height: 22px;

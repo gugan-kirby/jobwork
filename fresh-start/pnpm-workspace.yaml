@@ -2,3 +2,4 @@ packages:
   - apps/*
   - packages/*
   - database
+  - e2e

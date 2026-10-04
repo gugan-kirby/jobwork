@@ -9,6 +9,10 @@ export default tseslint.config(
       '**/coverage/**',
       '**/*.config.{js,mjs,ts}',
       '**/next-env.d.ts',
+      // Playwright output: the HTML report, traces and the journeys' state file.
+      'e2e/report/**',
+      'e2e/test-results/**',
+      'e2e/.state/**',
     ],
   },
   ...tseslint.configs.recommended,

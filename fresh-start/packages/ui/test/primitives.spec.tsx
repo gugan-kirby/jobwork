@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { CommandButton } from '../src/primitives/CommandButton';
+import { useCommandTick } from '../src/primitives/command-events';
 import { ErrorSummary } from '../src/primitives/ErrorSummary';
 import { TextInput } from '../src/primitives/Field';
 import { ButtonLink, LinkProvider, type UiLinkProps } from '../src/primitives/Link';
@@ -10,6 +11,31 @@ import { Page } from '../src/layout/Page';
 import { RecordCard } from '../src/data/RecordCard';
 import { QueueCard } from '../src/status/QueueCard';
 import { QuickAction } from '../src/status/QuickAction';
+
+describe('command success announcement (F-12.4)', () => {
+  function Counter() {
+    return <span data-testid="tick">{useCommandTick()}</span>;
+  }
+
+  it('lets a shell refresh its counts after a successful command, and only then', async () => {
+    let fail = true;
+    const command = vi.fn(async () => {
+      if (fail) throw new Error('refused');
+    });
+    render(
+      <>
+        <Counter />
+        <CommandButton onCommand={command}>Approve</CommandButton>
+      </>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(command).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('tick').textContent).toBe('0');
+    fail = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(screen.getByTestId('tick').textContent).toBe('1'));
+  });
+});
 
 describe('CommandButton (doc 21 §6, DS-13)', () => {
   it('runs the command once however many times it is clicked mid-flight', async () => {

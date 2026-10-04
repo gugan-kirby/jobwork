@@ -37,7 +37,7 @@ Derived from the prototype identity (`blue #243BDB`, `bg #F6F8FC`, `text #151A2D
 | `blue` (brand) | `#EEF1FD` `#DCE2FB` `#B9C4F6` `#8D9DEF` `#5F74E6` `#3D53DF` `#243BDB` `#1D30B4` `#17278F` `#101C66` | Primary actions, links, selected states, focus ring |
 | `neutral` | `#F6F8FC` `#EEF1F6` `#E1E6EE` `#C9D0DC` `#A5AEBF` `#828CA0` `#667085` `#4A5468` `#2E374B` `#151A2D` | Surfaces, borders, text hierarchy |
 
-Text pairs must meet the contrast bar in §9: body text uses `neutral-900` on light surfaces; `muted` (`neutral-600` `#667085`) is confined to ≥ 18.66 px semibold or non-essential metadata.
+Text pairs must meet the contrast bar in §9: body text uses `neutral-900` on light surfaces; `muted` (`neutral-600` `#667085`) is confined to ≥ 18.66 px semibold or non-essential metadata. On a tinted fill (`neutral-100`: table headers, input adornments) `muted` falls to 4.39:1, so such text uses `muted-on-tint` (`neutral-700` `#4A5468`, 6.72:1); found by the IN-12 browser accessibility pass.
 
 ### Semantic status palette
 
