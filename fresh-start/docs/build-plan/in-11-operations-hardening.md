@@ -124,6 +124,20 @@ Covers: doc 12 §12 list; doc 11 §15 runbook contents.
 |---|---|---|
 | `docs/runbooks/*.md` (12 files) + `docs/runbooks/README.md` | new | One per doc 12 §12 entry: signals and alerts that link here, diagnostics (read-only SQL selecting counts and ids, never contact or file data), mitigation, authority, communication owner, recovery verification, post-incident review |
 | `apps/api/test/runbooks.db.spec.ts` | new | Every SQL block in every runbook parses and runs read-only against the migrated schema |
+| `database/migrations/0017_outbox_dismissal.sql` | new (added 2026-10-04) | Outbox status `dismissed`: a dead letter a person decided needs no side effect |
+| `apps/api/src/modules/operations/application/dead-letter.command.ts`, `presentation/dead-letters.controller.ts`, ops `ops-health` page | new/edit (added 2026-10-04) | List dead letters (type, aggregate type, age, attempts, error — never the payload); replay or dismiss one, with a reason, audited (platform administrators, MFA). The outbox runbook's recovery step was otherwise a raw `UPDATE`, which `DO-14` reserves for incidents |
+
+**Deviations (2026-10-04, F-11.4):**
+
+- Runbooks live in `docs/runbooks/` (12 + an index). Each states its alerts, impact, authority and communication owner; diagnosis is read-only SQL selecting counts, ages, ids and types, plus PromQL. `runbooks.db.spec.ts` runs all 33 SQL blocks read-only against a freshly migrated schema, refuses a block that selects a contact field, amount, file name or message text, and requires every alert's `runbook_url` to resolve; `alerts-dashboards.spec.ts` holds the runbooks' PromQL to the registered metric and label names.
+- Three runbooks describe behaviour for parts not built yet (carrier/tax/ERP integrations, quality and dispatch holds, the restore drill): each says so and names the increment that will add its alert and queries.
+- A dead letter's last error is shown with e-mail addresses and long numbers masked: errors quote what failed.
+
+**Replay drill (2026-10-04, dev stack).** The 13 historical dead letters F-11.3 found were resolved through the new screen and endpoint: 11 of now-acknowledged types replayed and delivered by the fixed worker; 2 `sourcing.enquiry_submitted` dismissed — it is now a notified type, and a replay would have e-mailed triage staff about month-old submissions (the runbook's "dismiss when the step is no longer wanted"). Dead letters went to 0 in Prometheus. The drill exposed one more defect, fixed:
+
+| Defect | Fix |
+|---|---|
+| `OutboxLagObjectiveMissed` went pending after the replay: lag was measured from the original commit, so a month-old replayed event recorded a month of "lag" against the 30-second objective | Lag is measured from when the attempt became due (`next_attempt_at`: the commit for a new event, the replay for a replayed one) and only for first attempts; a retry's deliberate backoff is not lag (poller test) |
 
 ## F-11.5 CI wiring, nightly suites, cross-tenant matrix
 
