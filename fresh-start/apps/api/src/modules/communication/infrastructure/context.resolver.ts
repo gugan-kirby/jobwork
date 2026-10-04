@@ -86,7 +86,7 @@ export class ContextResolver {
             ORDER BY o.display_name`,
           [id, READABLE_INVITATION],
         );
-        const open = !['awarded', 'no_bid', 'expired', 'cancelled'].includes(row.status);
+        const open = !['awarded', 'no_bid', 'expired', 'cancelled', 'superseded'].includes(row.status);
         return {
           type, id, label: row.reference,
           customerOrganizationId: row.customer_organization_id, customerName: row.customer_name,
