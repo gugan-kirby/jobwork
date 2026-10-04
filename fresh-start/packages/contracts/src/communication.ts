@@ -230,3 +230,29 @@ export const recordDeliveryRequestSchema = z.object({
   errorCode: z.string().trim().max(100).optional(),
 });
 export type RecordDeliveryRequest = z.infer<typeof recordDeliveryRequestSchema>;
+
+/**
+ * Committed events that produce notifications (F-10.3). The API holds the rule for each;
+ * the worker subscribes to exactly these. One list, so the two cannot drift.
+ */
+export const NOTIFIED_EVENT_TYPES = [
+  'sourcing.enquiry_submitted',
+  'sourcing.clarification_requested',
+  'sourcing.clarification_answered',
+  'sourcing.rfq_released.v1',
+  'sourcing.bid_submitted.v1',
+  'commercial.cost_sheet_approval_requested.v1',
+  'commercial.quote_approval_requested.v1',
+  'commercial.quote_sent.v1',
+  'commercial.quote_accepted.v1',
+  'orders.purchase_order_issued.v1',
+  'finance.invoice_issued.v1',
+  'finance.payment_received.v1',
+  'dms.transmittal_issued.v1',
+  'orders.milestone_evidence_submitted.v1',
+  'orders.milestone_evidence_rejected.v1',
+  'communication.message_posted.v1',
+  'communication.message_released.v1',
+  'communication.message_held.v1',
+] as const;
+export type NotifiedEventType = (typeof NOTIFIED_EVENT_TYPES)[number];
