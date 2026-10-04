@@ -10,6 +10,7 @@ This directory decomposes the [Implementation plan](../24-implementation-plan.md
 4. **Research before guessing.** Uncertain domain flows, library APIs, or version behaviors are checked against official docs/web first (context7 / web search), then implemented. Never invent provider or framework behavior.
 5. **Standards apply throughout**: doc 22 (`ES-*`) conventions, doc 21 UI contracts, doc 20 auth rules, doc 23 pipeline gates.
 6. **Status** is tracked in the index below (increment granularity) and via each file's exit checklist.
+7. **Branches, commits and publishing** follow [Delivery workflow](delivery-workflow.md) (from IN-12): one branch per unit of work, small commits by area, a pull request with green CI before anything reaches `main`, merged with its history intact.
 
 ## Increment index
 
