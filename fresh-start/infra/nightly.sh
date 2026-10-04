@@ -9,7 +9,9 @@
 #   2. the security suites by name: cross-tenant matrix, adversarial file corpus, the
 #      negative suites, rate limits;
 #   3. a performance smoke against a booted API (doc 12 §1 latency objectives);
-#   4. a dependency audit that fails on high or critical advisories (ES-30).
+#   4. the Phase 1 load bursts: bids, sibling acceptances, upload finalizes (F-12.4);
+#   5. the launch journeys in both apps, with axe and keyboard-only paths (F-12.4);
+#   6. a dependency audit that fails on high or critical advisories (ES-30).
 #
 # Not here yet, recorded in the IN-11 plan: container rescans (no images until T-01) and
 # restore verification (IN-12 F-12.2).
@@ -24,17 +26,17 @@ run() {
   if "$@"; then printf -- '-- ok: %s\n' "$name"; else printf -- '-- FAILED: %s\n' "$name"; status=1; failed+=("$name"); fi
 }
 
-step "1/4 full suite in UTC"
+step "1/6 full suite in UTC"
 run "suite (UTC)" env TZ=UTC pnpm test
 
-step "2/4 security suites"
+step "2/6 security suites"
 run "security suites" env TZ=Asia/Kolkata pnpm --filter @jobwork/api exec vitest run \
   test/cross-tenant-matrix.api.spec.ts test/dms-scan.api.spec.ts test/dms-negative.api.spec.ts \
   test/sourcing-negative.api.spec.ts test/rate-limit.api.spec.ts \
   test/pilot/scenario-12-suspension-cross-party.api.spec.ts test/audit-coverage.spec.ts \
   test/production-config.spec.ts
 
-step "3/4 performance smoke"
+step "3/6 performance smoke"
 mkdir -p var
 PORT="${NIGHTLY_API_PORT:-4100}"
 API_PORT="$PORT" RATE_LIMIT_PREFIX=nightly node apps/api/dist/main.js >var/nightly-api.log 2>&1 &
@@ -46,7 +48,14 @@ done
 run "perf smoke" node infra/perf/smoke.mjs --base "http://127.0.0.1:$PORT" --duration "${NIGHTLY_SMOKE_SECONDS:-60}" --rps 8 --concurrency 4
 kill "$API_PID" 2>/dev/null || true
 
-step "4/4 dependency audit (high and critical)"
+step "4/6 Phase 1 load bursts (F-12.4)"
+run "load bursts" env TZ=Asia/Kolkata pnpm --filter @jobwork/api perf
+
+step "5/6 launch journeys with axe and keyboard paths (F-12.4)"
+# The journeys start their own API and web apps on the standard ports, against jobwork_e2e.
+run "journeys" pnpm --filter @jobwork/e2e e2e
+
+step "6/6 dependency audit (high and critical)"
 run "dependency audit" pnpm audit --audit-level=high
 
 if [ "$status" -ne 0 ]; then
