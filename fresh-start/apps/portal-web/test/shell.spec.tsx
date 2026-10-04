@@ -32,6 +32,7 @@ function serve(...identity: Answer[]): void {
       return next instanceof ApiError ? Promise.reject(next) : Promise.resolve(next);
     }
     if (path === '/portal/summary') return Promise.resolve({ queues: [] });
+    if (path === '/notifications/unread-count') return Promise.resolve({ unread: 3 });
     return Promise.reject(new Error(`unexpected ${path}`));
   });
 }
@@ -122,6 +123,12 @@ describe('PortalShell identity', () => {
     view.rerender(shell());
     await waitFor(() => expect(link('Enquiries')).not.toBeNull());
     expect(calls('/auth/me')).toBe(2);
+  });
+
+  it('shows unread notifications on the bell for a signed-in reader', async () => {
+    serve({ organizationType: 'customer' });
+    render(shell());
+    await waitFor(() => expect(link('Notifications, 3 waiting')).not.toBeNull());
   });
 
   it('never shows a supplier the customer navigation, including while asking', async () => {

@@ -87,8 +87,6 @@ const CUSTOMER_BADGES: Record<string, ReadonlyArray<string>> = {
   '/invoices': ['invoices_unpaid'],
 };
 
-/** Progress, not a to-do: shown on the home screen, never counted on the bell. */
-const INFORMATIONAL_QUEUES = new Set(['enquiries_in_progress', 'orders_in_progress']);
 
 /**
  * `unreachable` is not `anonymous`: it means JobWork could not say who this is, and a
@@ -122,6 +120,7 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
   const unshelled = UNSHELLED.some((path) => pathname?.startsWith(path));
   const [audience, setAudience] = useState<Audience>('loading');
   const [summary, setSummary] = useState<PortalSummary | null>(null);
+  const [unread, setUnread] = useState(0);
 
   // Login, logout and invitation pages are unshelled: passing through one forgets who
   // this was, so the next signed-in page asks again.
@@ -170,6 +169,24 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
     };
   }, [audience, pathname]);
 
+  // F-10.3: the bell counts unread notifications, for every signed-in audience.
+  const signedIn = audience === 'customer' || audience === 'supplier' || audience === 'internal';
+  useEffect(() => {
+    if (!signedIn) return;
+    let cancelled = false;
+    api<{ unread: number }>('/notifications/unread-count')
+      .then((r) => {
+        if (!cancelled) setUnread(r.unread);
+      })
+      // An uncounted bell still opens the feed; the count simply is not shown.
+      .catch(() => {
+        if (!cancelled) setUnread(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn, pathname]);
+
   if (unshelled) {
     return <main id="main">{children}</main>;
   }
@@ -203,10 +220,6 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
   }
 
   const counts = new Map(summary?.queues.map((queue) => [queue.key as string, queue.count]) ?? []);
-  // The bell counts what needs the customer, not what JobWork is busy with.
-  const waiting = (summary?.queues ?? [])
-    .filter((queue) => !INFORMATIONAL_QUEUES.has(queue.key))
-    .reduce((total, queue) => total + queue.count, 0);
 
   if (audience === 'supplier') {
     return (
@@ -217,7 +230,7 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
         environmentLabel={environmentLabel}
         tabs={SUPPLIER_TABS}
         primaryAction={SUPPLIER_PRIMARY}
-        notifications={{ href: '/notifications' }}
+        notifications={{ href: '/notifications', count: unread }}
       >
         {children}
       </AppShell>
@@ -247,7 +260,7 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
       environmentLabel={environmentLabel}
       tabs={tabs}
       primaryAction={CUSTOMER_PRIMARY}
-      notifications={{ href: '/notifications', count: waiting }}
+      notifications={{ href: '/notifications', count: unread }}
     >
       {children}
     </AppShell>
