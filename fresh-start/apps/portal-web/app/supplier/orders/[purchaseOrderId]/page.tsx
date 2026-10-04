@@ -20,6 +20,7 @@ import {
 import { api, ApiError } from '../../../../lib/api';
 import { ThreadPanel } from '../../../thread-panel';
 import { SupplierChangesPanel } from './changes-panel';
+import { InspectionsPanel } from './inspections-panel';
 import { ProductionPanel } from './production-panel';
 
 /**
@@ -140,6 +141,7 @@ export default function SupplierPurchaseOrderPage() {
         ) : null}
         <SupplierChangesPanel purchaseOrderId={purchaseOrderId} />
         <ProductionPanel purchaseOrderId={purchaseOrderId} />
+        <InspectionsPanel purchaseOrderId={purchaseOrderId} />
         <ThreadPanel contextType="purchase_order" contextId={purchaseOrderId} description="Anything about this purchase order, between you and JobWork." />
       </Stack>
     </Page>
