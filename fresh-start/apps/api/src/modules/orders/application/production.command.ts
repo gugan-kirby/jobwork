@@ -205,7 +205,7 @@ export class ProductionCommand {
   }
 
   private async workPackage(row: WorkPackageRecord): Promise<WorkPackage> {
-    const [{ gates }, containment] = await Promise.all([this.gatesFor(row), this.production.listContainment(row.purchaseOrderId)]);
+    const [{ gates }, containment, baselinesUsed] = await Promise.all([this.gatesFor(row), this.production.listContainment(row.purchaseOrderId), this.production.baselinesUsed(row.id)]);
     return {
       workPackageId: row.id,
       number: row.number,
@@ -234,6 +234,7 @@ export class ProductionCommand {
         disposition: c.disposition,
         disposedAt: c.disposedAt ? c.disposedAt.toISOString() : null,
       })),
+      baselinesUsed: baselinesUsed.map((b) => ({ baselineId: b.baselineId, number: b.number, transmittalNumber: b.transmittalNumber, effectiveFrom: b.effectiveFrom.toISOString() })),
       aggregateVersion: row.aggregateVersion,
     };
   }
@@ -323,12 +324,17 @@ export class ProductionCommand {
             const c = candidates.get(item.documentVersionId);
             if (!c?.selectable) throw new ProductionRefusal('BASELINE_ITEM_NOT_ELIGIBLE', `${item.title} is no longer releasable`, c?.reason ?? 'It is no longer linked to this order.', 422);
           }
+          // A baseline in force is only ever replaced through an approved change (FR-604,
+          // BR-ENG-05): this command releases the first one, never a successor.
+          const inForce = await this.production.releasedBaseline(baseline.salesOrderId, tx);
+          if (inForce) {
+            throw new ProductionRefusal('BASELINE_CHANGE_REQUIRED', 'A released baseline is already in force', `${inForce.number} governs this order. A new baseline is released only by an approved engineering change.`, 409);
+          }
           const manifestHash = baselineHash(baseline.items);
-          const superseded = await this.production.supersedeReleasedBaselines(baseline.salesOrderId, tx);
-          await this.production.releaseBaseline({ baselineId, manifestHash, releasedBy: actor.userId, supersedes: superseded[0] ?? null }, tx);
+          await this.production.releaseBaseline({ baselineId, manifestHash, releasedBy: actor.userId, supersedes: null }, tx);
           return {
             result: baseline.salesOrderId,
-            audit: [{ action: 'dms.baseline_released', subjectType: 'baseline', subjectId: baselineId, subjectVersion: baseline.aggregateVersion + 1, data: { number: baseline.number, manifestHash, items: baseline.items.length, superseded } }],
+            audit: [{ action: 'dms.baseline_released', subjectType: 'baseline', subjectId: baselineId, subjectVersion: baseline.aggregateVersion + 1, data: { number: baseline.number, manifestHash, items: baseline.items.length } }],
             outbox: [{ eventType: 'dms.baseline_released.v1', aggregateType: 'baseline', aggregateId: baselineId, data: { baselineId, salesOrderId: baseline.salesOrderId, manifestHash } }],
           };
         },
@@ -462,6 +468,7 @@ export class ProductionCommand {
             releasedAt: new Date().toISOString(),
           };
           await this.production.setWorkPackageStatus({ workPackageId, status: 'released', release: { snapshot, by: actor.userId } }, tx);
+          await this.production.recordWorkPackageBaseline({ workPackageId, baselineId: baseline!.id, transmittalId: transmittal!.id, by: actor.userId }, tx);
           await this.production.makeReady(workPackageId, 1, tx);
           const order = await this.orders.findSalesOrder(wp.salesOrderId, tx, true);
           if (order && (order.status === 'pending_technical_release' || order.status === 'planning')) {
@@ -757,7 +764,9 @@ export class ProductionCommand {
           if (milestone.status !== 'in_progress' && milestone.status !== 'rejected_evidence') {
             throw new ProductionRefusal('MILESTONE_NOT_IN_PROGRESS', 'Start the milestone before submitting evidence', `It is ${milestone.status.replace(/_/g, ' ')}.`);
           }
-          const baseline = await this.production.releasedBaseline(wp.salesOrderId, tx);
+          // The baseline the supplier actually works to: the one it last acknowledged, not
+          // whatever was released since (BR-ENG-04, BR-ENG-07).
+          const baseline = { id: await this.production.acknowledgedBaselineId(wp.purchaseOrderId, tx) };
           const now = Date.now();
           const flags: string[] = [];
           for (const item of cmd.items) {

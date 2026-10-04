@@ -214,6 +214,8 @@ export const workPackageSchema = z.object({
   completedAt: z.string().nullable(),
   milestones: z.array(milestoneSchema),
   containment: z.array(containmentEventSchema),
+  /** Every baseline this work package worked to, oldest first (BR-ENG-04; IN-13). */
+  baselinesUsed: z.array(z.object({ baselineId: z.uuid(), number: z.string(), transmittalNumber: z.string(), effectiveFrom: z.string() })),
   aggregateVersion: z.number().int().positive(),
 });
 

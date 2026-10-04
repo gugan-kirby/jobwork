@@ -264,6 +264,37 @@ export class ProductionRepository {
     return res.rows[0] ? this.findBaseline(res.rows[0].id, tx) : null;
   }
 
+  /** The baseline the supplier last acknowledged for this PO: what its work actually follows. */
+  async acknowledgedBaselineId(purchaseOrderId: string, tx?: Queryable): Promise<string | null> {
+    const res = await this.q(tx).query<{ baseline_id: string }>(
+      `SELECT baseline_id FROM dms.transmittal
+        WHERE purchase_order_id = $1 AND acknowledged_at IS NOT NULL
+        ORDER BY acknowledged_at DESC LIMIT 1`,
+      [purchaseOrderId],
+    );
+    return res.rows[0]?.baseline_id ?? null;
+  }
+
+  async recordWorkPackageBaseline(input: { workPackageId: string; baselineId: string; transmittalId: string; by: string }, tx: Queryable): Promise<void> {
+    await tx.query(
+      `INSERT INTO orders.work_package_baseline (work_package_id, baseline_id, transmittal_id, recorded_by) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (work_package_id, baseline_id) DO NOTHING`,
+      [input.workPackageId, input.baselineId, input.transmittalId, input.by],
+    );
+  }
+
+  async baselinesUsed(workPackageId: string, tx?: Queryable): Promise<Array<{ baselineId: string; number: string; transmittalNumber: string; effectiveFrom: Date }>> {
+    const res = await this.q(tx).query(
+      `SELECT h.baseline_id AS "baselineId", b.number, t.number AS "transmittalNumber", h.effective_from AS "effectiveFrom"
+         FROM orders.work_package_baseline h
+         JOIN dms.baseline b ON b.id = h.baseline_id
+         JOIN dms.transmittal t ON t.id = h.transmittal_id
+        WHERE h.work_package_id = $1 ORDER BY h.effective_from, b.number`,
+      [workPackageId],
+    );
+    return res.rows as Array<{ baselineId: string; number: string; transmittalNumber: string; effectiveFrom: Date }>;
+  }
+
   async supersedeReleasedBaselines(salesOrderId: string, tx: Queryable): Promise<string[]> {
     const res = await tx.query<{ id: string }>(
       `UPDATE dms.baseline SET status = 'superseded', aggregate_version = aggregate_version + 1

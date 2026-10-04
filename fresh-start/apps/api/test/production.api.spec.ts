@@ -262,6 +262,15 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     // Released means frozen: a second release is refused and the items cannot be touched.
     expect((await engineering.post(`/api/v1/baselines/${baselineId}/release`, { expectedVersion: baseline['aggregateVersion'] })).status).toBe(409);
     await expect(pg.query(`DELETE FROM dms.baseline_item WHERE baseline_id = $1`, [baselineId])).rejects.toThrow(/frozen/);
+    // IN-13 F-13.1: a successor is assembled freely but never released outside a change.
+    const successor = await engineering.post(`/api/v1/sales-orders/${orderId}/baselines`, { items: items.map((i) => ({ documentVersionId: i.documentVersionId, purpose: i.purpose })) });
+    expect(successor.status).toBe(201);
+    const draftSuccessor = (successor.body['baselines'] as Body[]).find((b) => b['status'] === 'draft')!;
+    const silent = await engineering.post(`/api/v1/baselines/${draftSuccessor['baselineId']}/release`, { expectedVersion: draftSuccessor['aggregateVersion'] });
+    expect(silent.status).toBe(409);
+    expect(silent.body['code']).toBe('BASELINE_CHANGE_REQUIRED');
+    expect((await one<{ status: string }>(`SELECT status FROM dms.baseline WHERE id = $1`, [baselineId])).status).toBe('released');
+    await expect(pg.query(`UPDATE dms.baseline SET supersedes_baseline_id = $1 WHERE id = $2`, [baselineId, draftSuccessor['baselineId']])).rejects.toThrow(/chk_baseline_supersedes_by_change/);
   });
 
   // ---------------------------------------------------------------- F-09.3 release gate
@@ -322,6 +331,8 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     const snapshot = w['releaseSnapshot'] as Body;
     expect((snapshot['baseline'] as Body)['manifestHash']).toBe((await one<{ manifest_hash: string }>(`SELECT manifest_hash FROM dms.baseline WHERE id = $1`, [baselineId])).manifest_hash);
     expect((snapshot['gates'] as Body[]).every((g) => g['pass'])).toBe(true);
+    // The work package records the baseline it works to (BR-ENG-04).
+    expect(w['baselinesUsed']).toEqual([{ baselineId, number: expect.stringMatching(/^BL-/), transmittalNumber: expect.any(String), effectiveFrom: expect.any(String) }]);
     expect(milestones(w)[0]!['status']).toBe('ready');
     // A released plan is frozen.
     expect((await sourcing.post(`/api/v1/purchase-orders/${poA}/work-package`, { plannedStart: '2026-10-07', plannedFinish: '2026-10-27', qualityPlanPresent: true })).status).toBe(409);
@@ -352,6 +363,15 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     w = await wp(wpA);
     m1 = milestones(w)[0]!;
     expect(m1['status']).toBe('evidence_submitted');
+    // Evidence names the baseline the supplier acknowledged, not merely the latest released.
+    const stamped = await one<{ matches: boolean }>(
+      `SELECT bool_and(e.baseline_id = t.baseline_id) AS matches
+         FROM orders.milestone_evidence e
+         JOIN dms.transmittal t ON t.purchase_order_id = $1 AND t.acknowledged_at IS NOT NULL
+        WHERE e.milestone_id = $2`,
+      [poA, m1['milestoneId']],
+    );
+    expect(stamped.matches).toBe(true);
     expect((await quality.get('/api/v1/production/verification-queue')).body['milestones']).toHaveLength(1);
     // Quality works from the production view alone: order header and POs, no commercial detail.
     const qaView = await quality.get(`/api/v1/sales-orders/${orderId}/production`);

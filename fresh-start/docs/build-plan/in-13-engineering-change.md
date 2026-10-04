@@ -26,6 +26,12 @@ Use cases: UC-06, UC-27.
 
 Tests: a second release outside a change is refused; evidence after a new baseline is issued but not acknowledged names the old baseline; the supplier can no longer download a version the new baseline dropped, while the old evidence rows still reference it.
 
+**Deviations (2026-10-05, F-13.1):**
+
+- One migration per functionality: `0020_baseline_change_guard.sql` here, `0021_change_control.sql` in F-13.2, which adds the foreign key from `dms.baseline.change_request_id`. The column and its CHECK (`supersedes_baseline_id` requires `change_request_id`) land now, so the database already refuses an unauthorized supersede.
+- `releaseBaseline` no longer supersedes at all: it releases only an order's first baseline. Superseding, and with it the revocation of stale supplier grants, moves to F-13.2's release command, the only path that may do either. Two of the tests above (evidence under a newly issued baseline, and the revoked drawing) therefore belong to F-13.2.
+- Existing released work packages are backfilled into `orders.work_package_baseline` from their release snapshots. The production view shows the history as `baselinesUsed`.
+
 ## F-13.2 Change domain and commands
 
 | File | Action | Contents |
