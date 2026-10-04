@@ -288,7 +288,7 @@ The FAI cycle the scenario runs:
 - A second first article with a 12.031 mm bore cannot pass. Its caliper reading is sent for reinspection, it fails with a note, and `quality.inspection_failed.v1` names the critical bore, balloon 7 and sample 1. The supplier is told of both decisions.
 - The customer's order view and the other supplier see nothing.
 
-UAT steps 7.1–7.10 are in `uat-checklist.md`.
+UAT steps 7.1–7.10 are in `uat-checklist.md`. Doc 19 §10 defines scenario 7 as the whole chain through NCR, rework and reinspection; IN-15 F-15.6 extends this file to it.
 
 ## Decisions taken on the owner's behalf
 
