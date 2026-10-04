@@ -113,6 +113,17 @@ Tests: revising after bids supersedes the open round and leaves every bid byte-i
 | `.github/workflows/nightly.yml`, `infra/nightly.sh` | edit | Run both |
 | `docs/build-plan/evidence/a11y-perf-<date>.md` | new | Findings and fixes |
 
+**Deviations (2026-10-05, F-12.4):**
+
+- The journeys run against their own database, `jobwork_e2e`. The API's `webServer` command prepares it first: dropped, migrated, and given its cast as rows, as the pilot driver does. A Playwright setup project, an ordinary test that runs once the servers are up, then builds the records the journeys act on over HTTP. Playwright's documentation does not fix the order of `webServer` and `globalSetup`, so neither depends on it.
+- The web apps start from their production builds on the standard ports, because their API rewrite is fixed at build time. A running dev stack must be stopped first.
+- The package script is `e2e`, not `test`, so `pnpm -r test` never needs a browser.
+- The enquiry wizard is driven by pointer, with fields found by label. Keyboard-only paths cover sign-in, acceptance, PO acknowledgment and approval.
+- The load test is a vitest file on the pilot driver, `apps/api/test/perf/phase1-load.perf.ts`, with its own config and `pnpm perf`. It writes `var/perf/phase1-load.json` for the nightly's artifact.
+- Fixed in this functionality: four accessibility defects (three contrast pairs, one stale count).
+
+**Verification (2026-10-05, F-12.4).** Evidence: `evidence/a11y-perf-2026-10-05.md`. The journeys pass 10 of 10 with no serious or critical axe violation. The bursts held their invariants with p95 at or under 62 ms against 500 ms.
+
 ## Increment exit = Phase 1 exit gate (doc 15 §4)
 
 - [ ] All seven automated pilot scenarios green; human UAT signed per role.
