@@ -1,0 +1,5 @@
+{
+  "//": "Colours for places that cannot read CSS variables (the web app manifest). Must equal tokens.css; test/tokens.spec.ts checks it.",
+  "themeColor": "#243bdb",
+  "backgroundColor": "#f6f8fc"
+}

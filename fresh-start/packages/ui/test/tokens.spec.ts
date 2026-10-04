@@ -105,6 +105,12 @@ describe('design tokens (DS-01, DS-06, doc 21 §9)', () => {
     ).toBeGreaterThanOrEqual(4.5);
   });
 
+  it('keeps brand.json — the manifest\'s colours — equal to the tokens (F-11.6)', () => {
+    const brand = JSON.parse(readFileSync(join(SRC, 'brand.json'), 'utf8')) as { themeColor: string; backgroundColor: string };
+    expect(brand.themeColor.toLowerCase()).toBe(resolve('color-action', vars).toLowerCase());
+    expect(brand.backgroundColor.toLowerCase()).toBe(resolve('color-bg', vars).toLowerCase());
+  });
+
   it('no component hard-codes a colour outside the stylesheet (DS-01)', () => {
     const offenders: string[] = [];
     for (const file of walk(SRC)) {
