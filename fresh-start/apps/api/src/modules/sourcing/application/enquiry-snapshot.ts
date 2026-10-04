@@ -48,5 +48,17 @@ export function requirementSnapshot(enquiry: Enquiry): Record<string, unknown> {
         note: doc.note,
       }))
       .sort((a, b) => a.documentVersionId.localeCompare(b.documentVersionId)),
+    // Answers qualify the requirement (doc 06 §3), so every revision frozen after them
+    // carries them: the approved revision a round is built on included.
+    clarifications: enquiry.clarifications
+      .filter((c) => c.status === 'answered')
+      .map((c) => ({
+        sequenceNo: c.sequenceNo,
+        roundNo: c.roundNo,
+        topic: c.topic,
+        question: c.question,
+        answer: c.answer,
+        askedAgainstRevisionNo: c.askedAgainstRevisionNo,
+      })),
   };
 }
