@@ -121,6 +121,19 @@ The fast-check properties:
 - the outcome is monotone in the value between the bounds;
 - no input passes when it lies outside a bound by any rational amount.
 
+**Verification (2026-10-05, F-14.2).** `measurement.spec.ts` (43):
+
+- **Golden suite: 36 hand-computed cases**, each with its working in `@jobwork/test-kit`. They include 0.1 inch against a 2.54 mm inclusive limit, which passes exactly where binary floating point (2.5400000000000005) would fail, and a °F span trap.
+- **Five fast-check properties:**
+  - determinism;
+  - inch and its exact mm equivalent agree;
+  - no hole between two passing values;
+  - nothing outside a bound by any amount passes;
+  - exact decimal round-trip.
+- **Display rounding** is half-even and never used for judging.
+
+The suite was mutation-checked: ignoring exclusive bounds, and dropping the affine offset, each turned it red.
+
 ## F-14.3 Plans, instruments, inspections (API)
 
 | File | Action | Contents |

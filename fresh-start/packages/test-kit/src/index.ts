@@ -9,3 +9,11 @@ export {
   type CorpusEntry,
   type ZipEntrySpec,
 } from './file-corpus';
+export {
+  CONVERSIONS_V1,
+  MEASUREMENT_GOLDEN,
+  UNITS_V1,
+  type GoldenBound,
+  type GoldenCharacteristic,
+  type GoldenMeasurementCase,
+} from './golden/measurements';
