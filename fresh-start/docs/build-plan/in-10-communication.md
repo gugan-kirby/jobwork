@@ -77,8 +77,28 @@ Covers: `FR-1003`–`FR-1005`; UC-38; outbox-driven only.
 
 Tests: a template referencing a variable outside its allowlist refuses to render (leak guard); dispatching the same event twice yields one notification per recipient and the same delivery ids (provider duplicate edge); a command that rolls back leaves no outbox event and no notification (rollback edge); a customer notification about a quote carries the quote reference, never supplier names or cost; every notification row carries its outbox event id, template version and correlation id; a user reads only their own feed.
 
+**Deviations (2026-10-04, F-10.3):**
+
+- Notification rules live in `application/notification-rules.ts`, not `domain/`: every rule reads the database (a record's reference, an RFQ's invited suppliers, a milestone's PO), so it is application code calling repository lookups. Rendering and the allowlist guard stay pure in `domain/templates.ts`.
+- The list of notified event types is `NOTIFIED_EVENT_TYPES` in `packages/contracts`; the API keeps one rule per entry (test-enforced) and the worker subscribes to exactly that list, so the two cannot drift.
+- Dispatch writes notifications and delivery attempts without the command executor's audit/outbox: notifications are derived records of an event that was already audited, and an outbox event per notification would feed the notifier its own output. The notification row is the record (`FR-1005`): source event, template version, locale, consent basis, correlation id.
+- Delivery ids are derived (SHA-256 of notification id and channel) rather than stored, so every retry of a delivery carries the same id without another table. An attempt left `sending` by a worker that died mid-send is closed as `outcome_unknown` when the next dispatch reopens it.
+- Notification calls use the existing worker principal (`SCAN_WORKER_PRINCIPAL`): it is the worker's one identity, not a scan-specific one.
+- Every notification skips the person whose action produced the event.
+
+**Browser verification (2026-10-04, F-10.3).** With the worker running: a customer message on `ENQ-2026-9435` reached the five JobWork people who work enquiries in-app and by email (`apps/worker/var/mail`), each email naming the record and linking to the operations page, none containing the message; the staff bell showed one unread, the feed opened the enquiry and cleared the bell; a staff reply reached the customer's bell and email, linking to the portal. Two defects only the browser showed, both fixed:
+
+| Defect | Fix |
+|---|---|
+| A feed entry's accessible name ran its parts together ("Unread:Your quotation…ready Valid until…") | Text separators between title, body and time; the "Unread:" label's space sits outside the hidden span |
+| The portal's queue cards said "Due waiting since 6 Sept" — age passed into the card's deadline slot | Age moved into the card's detail text; `due` stays a deadline |
+
 ## Increment exit
 
-- [ ] Doc 03 §7 final negative ("internal content never in external output") green across listings, notifications, exports.
-- [ ] Every notification traces to a committed outbox event with template version and correlation id.
-- [ ] Leakage queue functioning with human review; no silent content mutation.
+- [x] Doc 03 §7 final negative ("internal content never in external output") green across listings, notifications, exports. Listings: external reads select by audience in SQL, and removing either the audience or the counterpart filter fails the suite. Notifications: carry a record reference and a link, never message text (asserted on in-app rows and email bodies). Exports: the quotation and invoice documents are built from commercial records only and never read threads.
+- [x] Every notification traces to a committed outbox event with template version and correlation id — a foreign key, not a convention; dispatch of an uncommitted event is refused and creates nothing.
+- [x] Leakage queue functioning with human review; no silent content mutation — held messages wait for a second person; a redacted release is a new message with lineage, the original kept.
+
+**Closed 2026-10-04.** `pnpm -r build && pnpm typecheck && pnpm lint && TZ=Asia/Kolkata pnpm test` — 519 tests green (api 230, ui 157, database 64, worker 34, web-kit 17, portal-web 15, observability 2), from 445 at the start of IN-10.
+
+Not done, and recorded: attachments in external threads (table only; with the file-metadata leakage stages), SMS and WhatsApp providers (ports refuse until `T-0x` is decided), notification preferences and digests (every v1 notification is transactional), and a per-supplier "new invitation" notification when a supplier is invited to an RFQ after release.

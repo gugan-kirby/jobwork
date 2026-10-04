@@ -32,8 +32,8 @@ This directory decomposes the [Implementation plan](../24-implementation-plan.md
 | [IN-08 Acceptance & payment](in-08-acceptance-contracts-payment.md) | F-08.1–F-08.6 | **done** (verified 2026-10-04) |
 | [IN-09 Baseline & production](in-09-production-baseline.md) | F-09.1–F-09.5 | **done** (verified 2026-10-04) |
 | [F-FE Frontend hardening](f-fe-frontend-hardening.md) | F-FE.1–F-FE.7 | **done** (2026-10-04) |
-| [IN-10 Communication](in-10-communication.md) | F-10.1–F-10.4 | **next** |
-| [IN-11 Operations hardening](in-11-operations-hardening.md) | F-11.1–F-11.6 | not started |
+| [IN-10 Communication](in-10-communication.md) | F-10.1–F-10.4 | **done** (2026-10-04) |
+| [IN-11 Operations hardening](in-11-operations-hardening.md) | F-11.1–F-11.6 | **next** |
 | [IN-12 Pilot readiness](in-12-pilot-readiness.md) | F-12.1–F-12.4 | not started |
 | [IN-13 Engineering change](in-13-engineering-change.md) | F-13.1–F-13.3 | not started |
 | [IN-14 Quality & inspections](in-14-quality-plans-inspections.md) | F-14.1–F-14.3 | not started |
