@@ -95,3 +95,6 @@ export {
 
 // ------------------------------------------------------------------ conversation (IN-10)
 export { HighlightedText, LeakWarning, type LeakWarningProps } from './conversation/LeakWarning';
+export { AUDIENCE_STYLE, AudienceBanner, AudienceChip, type AudienceBannerProps } from './conversation/AudienceBanner';
+export { Composer, type ComposerProps } from './conversation/Composer';
+export { Thread, type ThreadProps } from './conversation/Thread';

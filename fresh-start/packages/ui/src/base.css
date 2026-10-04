@@ -971,3 +971,125 @@ code,
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
+
+/* Tone variables for audience surfaces; the words always say the audience too. */
+.jw-tone-special { --jw-tone-bg: var(--status-special-bg); --jw-tone-fg: var(--status-special-fg); --jw-tone-border: var(--status-special-border); }
+.jw-tone-progress { --jw-tone-bg: var(--status-progress-bg); --jw-tone-fg: var(--status-progress-fg); --jw-tone-border: var(--status-progress-border); }
+.jw-tone-positive { --jw-tone-bg: var(--status-positive-bg); --jw-tone-fg: var(--status-positive-fg); --jw-tone-border: var(--status-positive-border); }
+.jw-tone-attention { --jw-tone-bg: var(--status-attention-bg); --jw-tone-fg: var(--status-attention-fg); --jw-tone-border: var(--status-attention-border); }
+
+.jw-audience-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--jw-tone-bg);
+  border: var(--hairline) solid var(--jw-tone-border);
+  border-radius: var(--radius-sm);
+  color: var(--jw-tone-fg);
+  font: var(--text-body);
+}
+
+.jw-audience-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  background: var(--jw-tone-bg);
+  border: var(--hairline) solid var(--jw-tone-border);
+  border-radius: var(--radius-sm);
+  color: var(--jw-tone-fg);
+  font: var(--text-caption);
+}
+
+.jw-composer {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+/* An internal note looks unlike a message to a customer or supplier, on purpose (doc 14 §11). */
+.jw-composer-internal {
+  background: var(--status-special-bg);
+  border: var(--rule-emphasis) dashed var(--status-special-border);
+}
+
+.jw-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.jw-audience-choice {
+  display: grid;
+  gap: var(--space-1);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.jw-audience-choice legend {
+  font: var(--text-body-strong);
+  margin-bottom: var(--space-1);
+}
+
+.jw-thread {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.jw-message {
+  padding: var(--space-3);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.jw-message-mine {
+  background: var(--status-progress-bg);
+}
+
+.jw-message-internal {
+  background: var(--status-special-bg);
+  border-style: dashed;
+}
+
+.jw-message-meta {
+  font: var(--text-caption);
+  color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.jw-message-lineage {
+  font: var(--text-caption);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.jw-message-body {
+  margin-top: var(--space-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The supplier question JobWork is answering for everyone: reference, not a draft. */
+.jw-share-source {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: var(--rule-emphasis) solid var(--color-border);
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+
+.jw-share-source span {
+  font: var(--text-body-strong);
+}

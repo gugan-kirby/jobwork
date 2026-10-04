@@ -5,6 +5,8 @@ import type { ReactElement } from 'react';
 import { Button } from '../src/primitives/Button';
 import { ButtonLink } from '../src/primitives/Link';
 import { LeakWarning } from '../src/conversation/LeakWarning';
+import { Composer } from '../src/conversation/Composer';
+import { Thread } from '../src/conversation/Thread';
 import { CommandButton } from '../src/primitives/CommandButton';
 import { Checkbox, Select, TextArea, TextInput } from '../src/primitives/Field';
 import { ReasonField } from '../src/primitives/ReasonField';
@@ -217,6 +219,25 @@ const CASES: Array<[string, ReactElement]> = [
     <ErrorState message="That enquiry is not ready to be sourced." code="SOURCING_BLOCKED" correlationId="01a075a6" />,
   ],
   ['RouteError', <RouteError digest="2846135799" onRetry={() => undefined} />],
+  [
+    'Composer',
+    <Composer
+      options={[{ audience: 'internal', label: 'JobWork staff only' }, { audience: 'customer', label: 'JobWork and Kovai Pumps' }]}
+      onCheck={async () => ({ action: 'allow', findings: [] })}
+      onPost={async () => ({ messageId: 'm', status: 'visible', action: 'allow', findings: [] })}
+    />,
+  ],
+  [
+    'Thread (external)',
+    <Thread
+      view={{
+        viewer: 'external',
+        context: { type: 'enquiry', id: 'e', label: 'ENQ-2026-0001' },
+        canPost: [],
+        messages: [{ messageId: 'a', audience: 'customer', authorLabel: 'JobWork', mine: false, body: 'Which colour?', postedAt: '2026-10-04T05:00:00Z', status: 'visible' }],
+      }}
+    />,
+  ],
   [
     'LeakWarning',
     <LeakWarning
