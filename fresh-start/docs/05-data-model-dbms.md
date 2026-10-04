@@ -127,7 +127,7 @@ Constraints:
 
 Version rows carry two explicitly separated field families: **frozen content columns** (everything covered by `content_hash` — lines, totals, terms reference, assumptions) and **mutable disposition columns** (lifecycle status such as sent/accepted/expired, review pointers). "Immutable version" means the frozen family; each artifact's migration names its frozen columns and the immutability trigger/tests protect exactly that list. A state transition on a version is disposition, not content mutation.
 
-Standard/Fast/Premium customer options (`D-12`) are sibling customer-quote aggregates grouped by a `quote_offer_set`; accepting one option withdraws its siblings through the offer set. Options are never modeled as versions of one quote, because versions mean supersession in time, not alternatives.
+Standard/Fast/Premium customer options (`D-12`) are sibling customer-quote aggregates grouped by a `quote_offer_set`; accepting one option withdraws its siblings through the offer set. Options are never modeled as versions of one quote, because versions mean supersession in time, not alternatives. A new offer set starts when every option in the latest set has closed without an acceptance (expired, rejected or withdrawn): a re-quote after expiry or rejection is a new offer, never a reopened quote.
 
 The same pattern applies to bids, cost sheets, documents, invoices, templates, and configuration.
 
