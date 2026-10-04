@@ -1,0 +1,159 @@
+/* JobWork design tokens — doc 21 §§2–5. Layers: primitives → semantic → component.
+   Application code uses semantic tokens only (DS-01). */
+
+:root {
+  /* Brand blue ramp (from prototype #243BDB, doc 21 §3) */
+  --blue-50: #eef1fd;
+  --blue-100: #dce2fb;
+  --blue-200: #b9c4f6;
+  --blue-300: #8d9def;
+  --blue-400: #5f74e6;
+  --blue-500: #3d53df;
+  --blue-600: #243bdb;
+  --blue-700: #1d30b4;
+  --blue-800: #17278f;
+  --blue-900: #101c66;
+
+  /* Neutral ramp */
+  --neutral-50: #f6f8fc;
+  --neutral-100: #eef1f6;
+  --neutral-200: #e1e6ee;
+  --neutral-300: #c9d0dc;
+  --neutral-400: #a5aebf;
+  --neutral-500: #828ca0;
+  --neutral-600: #667085;
+  --neutral-700: #4a5468;
+  --neutral-800: #2e374b;
+  --neutral-900: #151a2d;
+
+  /* Semantic surfaces and text */
+  --color-bg: var(--neutral-50);
+  --color-surface: #ffffff;
+  --color-border: var(--neutral-200);
+  --color-text: var(--neutral-900);
+  --color-text-muted: var(--neutral-600);
+  --color-action: var(--blue-600);
+  --color-action-hover: var(--blue-700);
+  --color-focus-ring: var(--blue-600);
+
+  /* Status triples (DS-06): fg / bg / border */
+  --status-neutral-fg: var(--neutral-700);
+  --status-neutral-bg: var(--neutral-100);
+  --status-neutral-border: var(--neutral-300);
+  --status-progress-fg: var(--blue-700);
+  --status-progress-bg: var(--blue-50);
+  --status-progress-border: var(--blue-200);
+  --status-attention-fg: #b45309;
+  --status-attention-bg: #fef3e2;
+  --status-attention-border: #f3ce9c;
+  --status-positive-fg: #15803d;
+  --status-positive-bg: #e9f7ee;
+  --status-positive-border: #b5e3c4;
+  --status-blocked-fg: #b91c1c;
+  --status-blocked-bg: #fdecec;
+  --status-blocked-border: #f3b8b8;
+  --status-special-fg: #6d28d9;
+  --status-special-bg: #f3eefc;
+  --status-special-border: #d7c5f2;
+
+  /* Spacing (8pt grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 56px;
+  --space-9: 72px;
+  --space-10: 96px;
+
+  /* Radius and elevation */
+  --hairline: 1px;
+  /* The heavier rule that marks a live or selected record (QueueCard, bid versions). */
+  --rule-emphasis: 3px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-raised: 0 1px 3px rgb(21 26 45 / 0.08), 0 1px 2px rgb(21 26 45 / 0.05);
+  --shadow-overlay: 0 6px 20px rgb(21 26 45 / 0.14);
+  --shadow-modal: 0 16px 48px rgb(21 26 45 / 0.22);
+
+  /* Typography scale (doc 21 §4) */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-display: 600 28px/36px var(--font-sans);
+  --text-heading-1: 600 22px/30px var(--font-sans);
+  --text-heading-2: 600 18px/26px var(--font-sans);
+  --text-body: 400 15px/22px var(--font-sans);
+  --text-body-strong: 600 15px/22px var(--font-sans);
+  --text-caption: 400 13px/18px var(--font-sans);
+  --text-mono: 400 13px/20px var(--font-mono);
+
+  /* Motion (doc 21 §5): reveals only, never on a data mutation result */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Breakpoints (doc 21 §5). Declared as tokens for documentation and JS parity;
+     media queries cannot interpolate custom properties, so the literals below and
+     the values here are kept in step deliberately. */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  --bp-2xl: 1536px;
+  --container-narrow: 720px;
+  --container-page: 960px;
+  --container-wide: 1280px;
+
+  /* Phone layer (F-MX.2, doc 21 §12) */
+  --tabbar-height: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* The one light-on-brand surface in the system: the hero. Tested as a pair. */
+  --brand-hero-bg: linear-gradient(135deg, var(--blue-800) 0%, var(--blue-600) 60%, var(--blue-500) 100%);
+  --brand-hero-bg-solid: var(--blue-700);
+  --brand-hero-fg: #ffffff;
+  --brand-hero-fg-muted: var(--blue-100);
+  --surface-tint: var(--blue-50);
+
+  /* Density (DS-02): comfortable default */
+  --row-height: 44px;
+  --control-height: 40px;
+  --table-cell-pad: var(--space-3);
+
+  /* Component layer (DS-01): scoped overrides only, never referenced by apps */
+  --button-primary-bg: var(--color-action);
+  --button-primary-bg-hover: var(--color-action-hover);
+  --button-primary-fg: #ffffff;
+  --button-secondary-bg: var(--color-surface);
+  --button-secondary-fg: var(--color-action);
+  --button-danger-bg: var(--status-blocked-fg);
+  --button-danger-fg: #ffffff;
+  --button-radius: var(--radius-sm);
+  --field-border: var(--color-border);
+  --field-border-invalid: var(--status-blocked-fg);
+  --field-bg: var(--color-surface);
+  --field-radius: var(--radius-sm);
+  /* Narrowest a text field may get before a row wraps instead of squeezing. */
+  --field-min-width: 240px;
+  --table-header-bg: var(--neutral-100);
+  --table-border: var(--color-border);
+  --table-row-hover: var(--neutral-50);
+}
+
+/* Explicit comfortable density, so a portal region can opt in inside a compact app */
+.density-comfortable {
+  --row-height: 44px;
+  --control-height: 40px;
+  --table-cell-pad: var(--space-3);
+}
+
+/* Compact density for the operations app */
+.density-compact {
+  --row-height: 34px;
+  --control-height: 32px;
+  --table-cell-pad: var(--space-2);
+}
+

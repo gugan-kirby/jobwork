@@ -1,0 +1,33 @@
+{
+  "name": "@jobwork/ui",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.css",
+    "./base.css": "./src/base.css"
+  },
+  "scripts": {
+    "build": "true",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "types": "./src/index.ts",
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "@jobwork/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/react": "^19.0.0",
+    "axe-core": "^4.13.0",
+    "jsdom": "^30.0.1",
+    "react": "^19.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.7"
+  }
+}

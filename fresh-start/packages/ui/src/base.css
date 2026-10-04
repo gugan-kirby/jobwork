@@ -1,0 +1,935 @@
+/* JobWork base layer — doc 21 §5 and §9. Imported once per app after tokens.css.
+   Everything here is a global rule that must be true on every screen; anything
+   component-scoped belongs in the component, not in this file. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: var(--text-body);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Reflow to 320px / 400% zoom without loss (doc 21 §9): nothing may force a
+   horizontal scrollbar on the document. Wide content scrolls inside its own box. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+p,
+figure,
+dl,
+dd {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: var(--color-action);
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--color-action-hover);
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+/* 2px blue-600 ring at 2px offset on every interactive element (doc 21 §9).
+   `outline` rather than a box-shadow so it survives overflow and print. */
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Focus must never be fully obscured by a sticky header (WCAG 2.2 SC 2.4.11). */
+:target,
+:focus-visible {
+  scroll-margin-top: var(--space-8);
+}
+
+/* The skip link is the first focusable element in the shell; it is off-screen until
+   focused rather than `display: none`, which would remove it from the tab order. */
+.jw-skip-link {
+  position: absolute;
+  left: var(--space-3);
+  top: calc(-1 * var(--space-10));
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-overlay);
+  font: var(--text-body-strong);
+  text-decoration: none;
+  transition: top var(--motion-fast) var(--motion-ease);
+}
+
+.jw-skip-link:focus {
+  top: var(--space-3);
+}
+
+/* Money, measurements and IDs align in columns (DS-08). */
+.numeric,
+td.numeric,
+th.numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+code,
+.mono {
+  font: var(--text-mono);
+}
+
+/* Visually hidden but announced — used for table captions, live regions and the
+   full value behind a truncated id (DS-10). */
+.jw-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Doc 21 §5: motion is for reveals, and only when the reader wants it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .jw-no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+}
+
+/* Keyframes live here rather than inside the components that use them: a <style>
+   element rendered inside a button becomes part of its textContent and its accessible
+   name, which is how a spinner ends up being read out as "@keyframes jw-spin". */
+@keyframes jw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes jw-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* ---------------------------------------------------------------- component layout
+   These live here rather than in a <style> element inside each component: an injected
+   stylesheet is duplicated per rendered instance and its text becomes part of the
+   host element's textContent. Class names are namespaced `jw-` and owned by the
+   component that uses them. */
+
+/* Stack `divided` — hairline-separated rows. */
+.jw-stack-divided > * + * {
+  border-top: var(--hairline) solid var(--color-border);
+  padding-top: var(--space-3);
+}
+
+/* SplitPane — one column until there is room for two (doc 21 §5, lg). */
+.jw-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .jw-split {
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  }
+}
+
+/* DataTable — the table above `md`, the stacked per-row alternative below it
+   (doc 21 §9 reflow). Exactly one of the two is in the accessibility tree. */
+.jw-table-wrap {
+  display: none;
+}
+
+.jw-table-stack {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .jw-table-wrap {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .jw-table-stack {
+    display: none;
+  }
+}
+
+/* AppShell — navigation collapses to a disclosure below `md`. */
+.jw-nav {
+  display: none;
+}
+
+.jw-nav-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+.jw-account-slot {
+  display: none;
+}
+
+.jw-nav-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: var(--hairline) solid var(--color-border);
+  box-shadow: var(--shadow-overlay);
+}
+
+@media (min-width: 768px) {
+  .jw-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    position: static;
+    margin-left: auto;
+    padding: 0;
+    box-shadow: none;
+    border: 0;
+    background: transparent;
+    flex-direction: row;
+  }
+
+  .jw-nav-toggle {
+    display: none;
+  }
+
+  .jw-account-slot {
+    display: block;
+  }
+}
+
+/* ---------------------------------------------------------------- phone layer (F-MX.2)
+   The prototype's bottom tab bar, brand hero, quick-action grid, chip row, record
+   cards and choice cards. All class-scoped, all token-only. */
+
+.jw-shell {
+  min-height: 100vh;
+}
+
+/* Room above the fixed tab bar so the last card is never hidden behind it. */
+.jw-has-tabbar main {
+  padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom));
+}
+
+.jw-brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--color-action);
+  color: var(--button-primary-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jw-header-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* A 44px icon target (doc 21 §9), used by the bell, the menu and the back chevron. */
+.jw-icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.jw-icon-button:hover {
+  background: var(--neutral-100);
+  color: var(--color-text);
+}
+
+.jw-icon-button-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: 9px;
+  background: var(--status-blocked-fg);
+  color: var(--button-primary-fg);
+  font: 600 11px/18px var(--font-sans);
+  text-align: center;
+}
+
+.jw-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: end;
+  height: calc(var(--tabbar-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--color-surface);
+  border-top: var(--hairline) solid var(--color-border);
+  box-shadow: var(--shadow-overlay);
+}
+
+.jw-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--tabbar-height);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font: var(--text-caption);
+}
+
+.jw-tab:hover {
+  color: var(--color-text);
+}
+
+.jw-tab-current {
+  color: var(--color-action);
+  font: 600 13px/18px var(--font-sans);
+}
+
+.jw-tab-icon {
+  position: relative;
+  display: inline-flex;
+}
+
+.jw-tab-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: 9px;
+  background: var(--status-blocked-fg);
+  color: var(--button-primary-fg);
+  font: 600 11px/18px var(--font-sans);
+  text-align: center;
+}
+
+.jw-tab-primary {
+  justify-content: flex-start;
+  padding-top: 6px;
+}
+
+.jw-tab-primary-disc {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--color-action);
+  color: var(--button-primary-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-overlay);
+  transform: translateY(-14px);
+}
+
+.jw-tab-primary:hover .jw-tab-primary-disc {
+  background: var(--color-action-hover);
+}
+
+@media (min-width: 768px) {
+  .jw-tabbar {
+    display: none;
+  }
+
+  .jw-has-tabbar main {
+    padding-bottom: 0;
+  }
+}
+
+/* Page header: back chevron + centred title on phones, left-aligned row above md. */
+.jw-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.jw-page-title-block {
+  min-width: 0;
+  flex: 1;
+}
+
+.jw-page-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.jw-page-head-back {
+  align-items: flex-start;
+}
+
+/* Centre the 44px chevron on the title line, not on title + description. */
+.jw-page-head-back .jw-page-back {
+  margin-left: calc(-1 * var(--space-2));
+  margin-top: calc(-1 * var(--space-2));
+}
+
+@media (max-width: 767px) {
+  .jw-page-head-back .jw-page-title-block > .jw-page-title {
+    font: var(--text-heading-1);
+    text-align: center;
+  }
+
+  .jw-page-head-back .jw-page-actions {
+    margin-left: auto;
+  }
+}
+
+/* Hero */
+.jw-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--brand-hero-bg-solid);
+  background-image: var(--brand-hero-bg);
+  color: var(--brand-hero-fg);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.jw-hero-splash {
+  border-radius: 0;
+  min-height: 100vh;
+  padding: var(--space-8) var(--space-5) calc(var(--space-8) + var(--safe-bottom));
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.jw-hero-body {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 560px;
+}
+
+.jw-hero-headline {
+  font: 600 24px/30px var(--font-sans);
+}
+
+.jw-hero-splash .jw-hero-headline {
+  font: 700 40px/44px var(--font-sans);
+}
+
+.jw-hero-subline {
+  color: var(--brand-hero-fg-muted);
+  font: var(--text-body);
+}
+
+.jw-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.jw-hero-splash .jw-hero-actions {
+  justify-content: center;
+}
+
+.jw-hero-art {
+  display: flex;
+  justify-content: center;
+  color: var(--brand-hero-fg);
+}
+
+@media (min-width: 640px) {
+  .jw-hero:not(.jw-hero-splash) {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .jw-hero:not(.jw-hero-splash) .jw-hero-art {
+    order: 2;
+  }
+}
+
+/* Quick actions */
+.jw-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 359px) {
+  .jw-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .jw-quick-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.jw-quick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+  min-height: 96px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: var(--hairline) solid var(--color-border);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-text);
+  text-decoration: none;
+  text-align: center;
+  font: var(--text-caption);
+}
+
+.jw-quick:hover {
+  border-color: var(--blue-200);
+  color: var(--color-text);
+}
+
+.jw-quick-disc {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jw-quick-disc-neutral { background: var(--status-neutral-bg); color: var(--status-neutral-fg); }
+.jw-quick-disc-progress { background: var(--status-progress-bg); color: var(--status-progress-fg); }
+.jw-quick-disc-attention { background: var(--status-attention-bg); color: var(--status-attention-fg); }
+.jw-quick-disc-positive { background: var(--status-positive-bg); color: var(--status-positive-fg); }
+.jw-quick-disc-blocked { background: var(--status-blocked-bg); color: var(--status-blocked-fg); }
+.jw-quick-disc-special { background: var(--status-special-bg); color: var(--status-special-fg); }
+
+.jw-quick-label {
+  font: 600 13px/18px var(--font-sans);
+}
+
+.jw-quick-count {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-1);
+  border-radius: 10px;
+  background: var(--status-attention-fg);
+  color: var(--button-primary-fg);
+  font: 600 11px/20px var(--font-sans);
+  text-align: center;
+}
+
+/* Filter chips: a horizontally scrolling radio group. */
+.jw-chips {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: var(--space-1) 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.jw-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.jw-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: 18px;
+  border: var(--hairline) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--text-body);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.jw-chip:hover {
+  border-color: var(--blue-300);
+}
+
+.jw-chip-on {
+  background: var(--color-action);
+  border-color: var(--color-action);
+  color: var(--button-primary-fg);
+  font: var(--text-body-strong);
+}
+
+.jw-chip-count {
+  font: var(--text-caption);
+  opacity: 0.85;
+}
+
+/* Record cards */
+.jw-record-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.jw-record {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-4);
+  min-height: var(--row-height);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: var(--hairline) solid var(--color-border);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.jw-record:hover {
+  border-color: var(--blue-200);
+  color: var(--color-text);
+}
+
+.jw-record-main,
+.jw-record-side {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.jw-record-side {
+  justify-items: end;
+  text-align: right;
+}
+
+.jw-record-ref {
+  color: var(--color-action);
+  font: 600 13px/18px var(--font-mono);
+}
+
+.jw-record-title {
+  font: var(--text-body-strong);
+  overflow-wrap: anywhere;
+}
+
+.jw-record-caption,
+.jw-record-meta {
+  font: var(--text-caption);
+  color: var(--color-text-muted);
+}
+
+.jw-record-figure {
+  font: var(--text-body-strong);
+}
+
+.jw-record-chevron {
+  color: var(--neutral-400);
+  display: inline-flex;
+}
+
+/* Choice cards */
+.jw-choice {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.jw-choice-legend {
+  font: var(--text-body-strong);
+  padding: 0;
+  margin-bottom: var(--space-1);
+}
+
+.jw-choice-hint,
+.jw-choice-error {
+  font: var(--text-caption);
+  margin-bottom: var(--space-2);
+}
+
+.jw-choice-hint {
+  color: var(--color-text-muted);
+}
+
+.jw-choice-error {
+  color: var(--status-blocked-fg);
+  margin-top: var(--space-2);
+}
+
+.jw-choice-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .jw-choice-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jw-choice-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.jw-choice-item {
+  position: relative;
+}
+
+/* Visually hidden, still focusable, so the card is the visible control. */
+.jw-choice-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.jw-choice-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--row-height);
+  border-radius: var(--radius-md);
+  border: var(--hairline) solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.jw-choice-input:focus-visible + .jw-choice-card {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.jw-choice-input:disabled + .jw-choice-card {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.jw-choice-card-on {
+  border-color: var(--color-action);
+  background: var(--surface-tint);
+  box-shadow: inset 0 0 0 1px var(--color-action);
+}
+
+.jw-choice-icon {
+  color: var(--color-action);
+  display: inline-flex;
+  margin-top: 2px;
+}
+
+.jw-choice-text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.jw-choice-label {
+  font: var(--text-body-strong);
+}
+
+.jw-choice-desc {
+  font: var(--text-caption);
+  color: var(--color-text-muted);
+}
+
+.jw-choice-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: var(--hairline) solid var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--button-primary-fg);
+}
+
+.jw-choice-card-on .jw-choice-mark {
+  background: var(--color-action);
+  border-color: var(--color-action);
+}
+
+/* Section heading used between groups on phone screens (tile 4 "Quick Actions"). */
+.jw-section-title {
+  font: var(--text-heading-2);
+  margin-bottom: var(--space-3);
+}
+
+/* Menu list (tile 15/16): icon, label, chevron rows. */
+.jw-menu {
+  display: grid;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: var(--hairline) solid var(--color-border);
+  overflow: hidden;
+}
+
+.jw-menu > * + * {
+  border-top: var(--hairline) solid var(--color-border);
+}
+
+.jw-menu-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: 0;
+  width: 100%;
+  color: var(--color-text);
+  text-decoration: none;
+  font: var(--text-body);
+  cursor: pointer;
+  text-align: left;
+}
+
+.jw-menu-row:hover {
+  background: var(--neutral-50);
+  color: var(--color-text);
+}
+
+.jw-menu-row-danger {
+  color: var(--status-blocked-fg);
+  justify-content: center;
+  font: var(--text-body-strong);
+}
+
+.jw-menu-icon {
+  color: var(--color-text-muted);
+  display: inline-flex;
+}
+
+.jw-menu-label {
+  flex: 1;
+}
+
+.jw-menu-chevron {
+  color: var(--neutral-400);
+  display: inline-flex;
+}
+
+/* Stat tile (tile 15 "Overview"). */
+.jw-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .jw-stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.jw-stat {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: var(--hairline) solid var(--color-border);
+  text-align: center;
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.jw-stat-value {
+  font: 700 24px/30px var(--font-sans);
+  color: var(--color-action);
+  font-variant-numeric: tabular-nums;
+}
+
+.jw-stat-label {
+  font: var(--text-caption);
+  color: var(--color-text-muted);
+}
