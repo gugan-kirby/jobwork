@@ -158,7 +158,7 @@ export default function ApprovalsPage(): React.JSX.Element {
   return (
     <Page
       title="Approvals"
-      description="Awards, cost sheets and quotations waiting for a second pair of eyes. The requester never decides."
+      description="Awards, cost sheets, quotations, cash allocations and engineering changes waiting for a second pair of eyes. The requester never decides."
       width="wide"
       actions={<Select label="Show" value={status} options={FILTERS} onChange={(event) => setStatus(event.target.value)} />}
     >
@@ -211,7 +211,7 @@ export default function ApprovalsPage(): React.JSX.Element {
             stackTitle={(row) => row.title}
             empty={{
               title: status === 'pending' ? 'Nothing waiting' : 'Nothing here',
-              detail: status === 'pending' ? 'Awards, cost sheets and quotations arrive here when somebody asks for approval.' : 'No requests with that status.',
+              detail: status === 'pending' ? 'Awards, cost sheets, quotations, cash allocations and engineering changes arrive here when somebody asks for approval.' : 'No requests with that status.',
             }}
           />
         </Card>
