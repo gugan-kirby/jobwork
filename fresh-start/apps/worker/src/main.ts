@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { z } from 'zod';
 import { createLogger, startMetricsServer } from '@jobwork/observability';
 import { ObjectStoreClient } from '@jobwork/object-store';
-import { SCAN_WORKER_PRINCIPAL } from '@jobwork/service-auth';
+import { productionConfigProblems, SCAN_WORKER_PRINCIPAL } from '@jobwork/service-auth';
 import { InternalApiClient } from './internal-api';
 import { FileMailer, type Mailer } from './mailer';
 import { acknowledgeHandler } from './outbox/handlers/acknowledge';
@@ -78,6 +78,13 @@ async function main(): Promise<void> {
         .join('; ')}`,
     );
   }
+  // F-12.3: production never starts on a secret or credential this repository publishes.
+  const problems = productionConfigProblems(parsed.data, {
+    secrets: ['SERVICE_TOKEN_SECRET'],
+    credentials: ['OBJECT_STORE_ACCESS_KEY', 'OBJECT_STORE_SECRET_KEY'],
+    replaced: { DATABASE_URL: 'postgres://localhost:5432/jobwork_dev' },
+  });
+  if (problems.length > 0) throw new Error(`refusing to start in production: ${problems.join('; ')}`);
   const env = parsed.data;
   const logger = createLogger({ service: 'worker' });
   const pool = new Pool({ connectionString: env.DATABASE_URL, max: 5 });

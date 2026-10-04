@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { productionConfigProblems } from '@jobwork/service-auth';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -57,6 +58,13 @@ export class ConfigService {
         .join('; ');
       throw new Error(`invalid environment configuration: ${issues}`);
     }
+    // F-12.3: production never starts on a secret or credential this repository publishes.
+    const problems = productionConfigProblems(parsed.data, {
+      secrets: ['SESSION_SECRET', 'SERVICE_TOKEN_SECRET', 'PAYMENT_WEBHOOK_SECRET'],
+      credentials: ['OBJECT_STORE_ACCESS_KEY', 'OBJECT_STORE_SECRET_KEY'],
+      replaced: { DATABASE_URL: 'postgres://localhost:5432/jobwork_dev' },
+    });
+    if (problems.length > 0) throw new Error(`refusing to start in production: ${problems.join('; ')}`);
     this.env = parsed.data;
     this.buildVersion = process.env['BUILD_SHA'] ?? 'dev';
   }
