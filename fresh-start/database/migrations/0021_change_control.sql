@@ -23,6 +23,8 @@ CREATE TABLE change.change_request (
   )),
   info_request text,
   info_response text,
+  -- What suppliers are told: written by JobWork, never the proposer's own words (identity shielding).
+  supplier_brief text NOT NULL DEFAULT '',
   customer_approval_required boolean,
   approval_request_id uuid REFERENCES commercial.approval_request (id),
   candidate_baseline_id uuid REFERENCES dms.baseline (id),
