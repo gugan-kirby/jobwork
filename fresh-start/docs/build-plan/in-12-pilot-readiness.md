@@ -126,9 +126,25 @@ Tests: revising after bids supersedes the open round and leaves every bid byte-i
 
 ## Increment exit = Phase 1 exit gate (doc 15 §4)
 
-- [ ] All seven automated pilot scenarios green; human UAT signed per role.
-- [ ] Restore drill within RPO/RTO; provider-outage behaviours match doc 12 §3.
-- [ ] Zero true items on the doc 15 §12 "not ready" list for Phase 1 scope; remaining risks documented with owners.
+- [ ] All seven automated pilot scenarios green; human UAT signed per role. *Automated: done (F-12.1, 45 tests, in CI). UAT: waiting for the owner.*
+- [ ] Restore drill within RPO/RTO; provider-outage behaviours match doc 12 §3. *Outage: done (all four cases). Restore: procedure proven, measured RTO 2.2 s locally. It failed honestly on one development file with no bytes, and RPO needs point-in-time recovery (T-01). It is re-run on staging data before production.*
+- [ ] Zero true items on the doc 15 §12 "not ready" list for Phase 1 scope; remaining risks documented with owners. *One true item, owned by the product owner; see below.*
+
+**Build work closed 2026-10-05.** F-12.1–F-12.5 are merged (PRs #4–#14), with eight defects found by the pilot work and fixed on the way. The exit gate stays open only on the items in **Waiting for the owner**.
+
+**Doc 15 §12 for Phase 1 scope (2026-10-05):**
+
+| Condition | True? | Evidence |
+|---|---|---|
+| Supplier bid editable after submission | No | Immutability trigger (`bid-immutability.db.spec.ts`); pilot 1 and the restore drill prove it holds |
+| Customer sees buy-side identity or cost, or pays or messages a supplier directly | No | Pilots 1, 2, 5 and the e2e journeys check every customer screen and notice; payments go only to JobWork; audience rules (`communication`) |
+| Manufacturing starts without exact baseline and release evidence | No | POs are born `pending_baseline`; red release gates refuse (`production.api.spec.ts`); an unauthorized start is recorded |
+| Dispatch bypasses holds through a generic status change | No (dispatch is Phase 2) | No generic status mutation exists anywhere (`BR-SYS-01`); dispatch arrives with IN-17 |
+| Payment retries duplicate ledger or capture | No | Pilot 9: re-delivered, re-identified, late, stale and forged callbacks; one capture |
+| Cross-tenant access suite absent | No | `cross-tenant-matrix.api.spec.ts` in CI and the nightly |
+| Audit or outbox can diverge from the business change | No | Executor commits all three in one transaction; direct audits held to their transaction by type; `audit-coverage.spec.ts` (F-12.3) |
+| Backup restoration assumed but untested | No | Restore drill run and evidenced (F-12.2); repeat on staging with PITR (T-01) |
+| Legal, tax, invoice and payment responsibilities ambiguous | **Yes** | Needs counsel and a chartered accountant (doc 10 §1); owner |
 
 ## Waiting for the owner
 

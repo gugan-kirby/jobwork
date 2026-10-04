@@ -35,7 +35,7 @@ This directory decomposes the [Implementation plan](../24-implementation-plan.md
 | [F-FE Frontend hardening](f-fe-frontend-hardening.md) | F-FE.1–F-FE.7 | **done** (2026-10-04) |
 | [IN-10 Communication](in-10-communication.md) | F-10.1–F-10.4 | **done** (2026-10-04) |
 | [IN-11 Operations hardening](in-11-operations-hardening.md) | F-11.1–F-11.6 | **done** (2026-10-04) |
-| [IN-12 Pilot readiness](in-12-pilot-readiness.md) | F-12.1–F-12.5 | **in progress** (plan refreshed 2026-10-04) |
+| [IN-12 Pilot readiness](in-12-pilot-readiness.md) | F-12.1–F-12.5 | build **done** 2026-10-05; Phase 1 exit gate open on owner items (UAT, legal/tax, pen test) |
 | [IN-13 Engineering change](in-13-engineering-change.md) | F-13.1–F-13.3 | not started |
 | [IN-14 Quality & inspections](in-14-quality-plans-inspections.md) | F-14.1–F-14.3 | not started |
 | [IN-15 NCR, deviation, release](in-15-ncr-deviation-release.md) | F-15.1–F-15.3 | not started |
