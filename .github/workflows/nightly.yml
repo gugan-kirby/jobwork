@@ -1,0 +1,84 @@
+name: Nightly
+
+# Doc 23 §4 nightly stage (F-11.5): the suite in UTC, the security suites by name, a
+# performance smoke against a booted API, and a dependency audit. The steps live in
+# fresh-start/infra/nightly.sh so a red night can be replayed locally with `pnpm nightly`.
+on:
+  schedule:
+    - cron: '30 20 * * *' # 02:00 India time
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: fresh-start
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jobwork
+          POSTGRES_PASSWORD: jobwork
+          POSTGRES_DB: jobwork_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jobwork"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      minio:
+        image: minio/minio:edge-cicd
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://jobwork:jobwork@localhost:5432/jobwork_dev
+      SESSION_SECRET: ci-only-secret
+      SERVICE_TOKEN_SECRET: ci-only-service-secret
+      OBJECT_STORE_ENDPOINT: http://localhost:9000
+      OBJECT_STORE_ACCESS_KEY: minioadmin
+      OBJECT_STORE_SECRET_KEY: minioadmin
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: fresh-start/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: fresh-start/.nvmrc
+          cache: pnpm
+          cache-dependency-path: fresh-start/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm migrate
+      - run: pnpm seed
+      - run: bash infra/nightly.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-reports
+          path: |
+            fresh-start/var/perf/
+            fresh-start/var/nightly-api.log
+          if-no-files-found: ignore
