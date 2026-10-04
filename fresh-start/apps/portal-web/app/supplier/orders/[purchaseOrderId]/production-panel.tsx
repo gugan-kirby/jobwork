@@ -2,22 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DownloadResponse, SupplierMilestone, SupplierProduction } from '@jobwork/contracts';
-import {
-  Button,
-  Callout,
-  Card,
-  CommandButton,
-  CopyableId,
-  FileUpload,
-  Inline,
-  Select,
-  Stack,
-  StatusChip,
-  TextArea,
-  TextInput,
-  type Tone,
-  type VersionState,
-} from '@jobwork/ui';
+import { Button, Callout, Card, CommandButton, CopyableId, FileUpload, Inline, Select, Stack, StatusChip, TextArea, TextInput, type Tone, type VersionState, useCommandTick } from '@jobwork/ui';
 import { api, ApiError } from '../../../../lib/api';
 import { createUploadApi } from '../../../../lib/upload-api';
 
@@ -65,9 +50,11 @@ export function ProductionPanel({ purchaseOrderId }: { purchaseOrderId: string }
     }
   }, [purchaseOrderId]);
 
+  // Acknowledging a change acknowledges its transmittal too: refresh after any command on the page.
+  const tick = useCommandTick();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, tick]);
 
   if (!view) return null;
 
