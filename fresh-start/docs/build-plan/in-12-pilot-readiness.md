@@ -30,6 +30,16 @@ Covers: doc 19 §10 scenario 5; doc 19 §3 "new revision after quote"; `BR-COM-0
 
 Tests: revising after bids supersedes the open round and leaves every bid byte-identical; an award on the superseded round is refused; a new round is created on the new revision and its bids are awardable; the customer sees "requirements updated", never the supplier side; the command is audited with its reason and emits an outbox event the worker acknowledges.
 
+**Deviations (2026-10-04, F-12.5):**
+
+- `award.command.ts` is unchanged. An award already requires its round to be in `evaluation`, so a superseded round is refused by the existing guard (`AWARD_RFQ_NOT_IN_EVALUATION`, "The round is superseded."). A round on an older revision cannot be live alongside a newer one, because the revision supersedes every live round in its own transaction. `AWARD_REQUIREMENT_SUPERSEDED` would have guarded a state that cannot exist.
+- The revision itself is refused in two more cases: after an award is approved (`REVISION_AFTER_AWARD`, which is engineering change control's job in IN-13), and while an award waits for approval (`REVISION_AWARD_PENDING`, because approving it would land on a round that no longer stands). A revision that changes nothing is refused (`REVISION_UNCHANGED`).
+- The route is `POST /intake/:enquiryId/revise`. The revision edits the enquiry's live items, so the next round copies the revised lines, and it can replace the governing document with another of the enquiry's own attachments.
+- Two events instead of one. `sourcing.requirement_revised.v1` (per enquiry) is acknowledged by the worker. `sourcing.rfq_superseded.v1` (per round) notifies every invited supplier through the new `supplier.rfq_superseded` template (in-app and email). A superseded round's conversation thread closes like an awarded one.
+- The customer's projection is unchanged: the enquiry stays "approved for sourcing" and nothing about rounds or suppliers reaches it (asserted). "Requirements updated" is what the supplier sees, on the list, the detail page and the notice.
+
+**Browser verification (2026-10-04, F-12.5).** Run against the dev stack with the worker running. Engineering revised a dev enquiry whose round had two bids in evaluation. The round showed `superseded` in the operations list. Both suppliers got the in-app notice. The supplier list and detail page said "Closed: requirements updated" and explained that the bid stands but will not be awarded. The revisions table showed each reason. One defect showed only in the browser, now fixed: the receipt naming the superseded rounds vanished when the page reloaded, because the panel was keyed by the enquiry version. Found alongside, outside this functionality: the supplier list shows a countdown on an already-awarded round. That is fixed separately.
+
 ## F-12.1 Pilot scenario harness
 
 | File | Action | Contents |
