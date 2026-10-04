@@ -1,0 +1,114 @@
+# Phase 1 UAT checklist (IN-12 F-12.1)
+
+Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
+
+**Where and with what.** On staging, with approved anonymized fixtures (doc 13, UAT row). Never use production data, real customer or supplier identities, real CAD, or real payment credentials (`ES-39`). Each tester uses their own account with only the roles listed below, and MFA is enrolled where the role requires it. The payment provider is in sandbox mode.
+
+**How to record.** Tick a step only when the expected outcome is seen exactly. For anything else, write the scenario and step number, what happened, and a screenshot reference under **Findings**. A finding blocks sign-off until it is fixed and re-tested, or the owner accepts it in writing.
+
+## Testers and roles
+
+| Tester | Roles | App |
+|---|---|---|
+| Customer requester | `customer_requester` | Portal |
+| Customer approver | `customer_approver` | Portal |
+| Supplier A estimator | `supplier_estimator` (supplier A) | Portal |
+| Supplier B estimator | `supplier_estimator` (supplier B) | Portal |
+| Supplier A production | `supplier_production` (supplier A) | Portal |
+| Engineering | `jobwork_engineering` | Operations |
+| Sourcing | `jobwork_sourcing` | Operations |
+| Sales | `jobwork_sales` | Operations |
+| Finance | `jobwork_finance` | Operations |
+| Platform admin | `platform_admin`, `security_admin` | Operations |
+
+## Scenario 1: clean RFQ, two suppliers, one accepted quote
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 1.1 | Customer requester | `/enquiries/new` | Raise a one-item enquiry with a drawing, quantity 100, required-by date 60 days out; submit | Reference shown; status "submitted"; nothing asks for a supplier | ☐ |
+| 1.2 | Engineering | `/intake` → enquiry | Open it; checklist shows nothing blocking; approve for sourcing | "Approved. Revision 1 is what sourcing quotes against." | ☐ |
+| 1.3 | Sourcing | `/rfqs/new` | Start a round on the enquiry; invite suppliers A and B; release | Round open; both invitations "invited"; deadline in IST | ☐ |
+| 1.4 | Supplier A, Supplier B | `/rfqs` → round | Each opens the round, downloads the drawing, submits a bid | Own bid shown as v1; no customer name anywhere; the other supplier's bid not visible | ☐ |
+| 1.5 | Sourcing | `/rfqs/[id]` | Close for evaluation; run an evaluation; propose an award to the better normalized bid | Both bids ranked with original and normalized totals; award "proposed" | ☐ |
+| 1.6 | Approver (per approval matrix) | `/approvals` | Approve the award | Award approved; requester cannot approve their own | ☐ |
+| 1.7 | Sales | `/quotes` | Build the cost sheet from the award; issue the customer quote | Quote shows JobWork as seller; no supplier name, cost or margin on the customer view | ☐ |
+| 1.8 | Customer approver | `/quotations/[id]` → accept | Accept the quote | Accepted, with an order number; repeated clicks create one order | ☐ |
+| 1.9 | Sourcing | `/sales-orders/[id]` | Release the commercial gate once it passes; issue purchase orders | PO issued to supplier A; the customer sees no PO | ☐ |
+| 1.10 | Supplier A | `/supplier/orders/[id]` | Acknowledge the PO | Acknowledged; the PO shows JobWork as buyer, not the customer | ☐ |
+| 1.11 | Platform admin | `/audit` | Filter by the enquiry, the round, the quote and the PO | Every step above has one audit row with actor, time (IST) and version | ☐ |
+
+## Scenario 2: incomplete enquiry, two clarifications
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 2.1 | Customer requester | `/enquiries/new` | Submit an enquiry with no material grade and no tolerance | Submitted | ☐ |
+| 2.2 | Engineering | `/intake/[id]` | Checklist flags both; send two questions (material, tolerance) | Status "clarification required"; approve is disabled with the reason | ☐ |
+| 2.3 | Customer requester | `/enquiries/[id]` | Answer both questions | Notice received; status back to "in review" after the last answer | ☐ |
+| 2.4 | Engineering | `/intake/[id]` | Approve | Revision 2 frozen; the answers are part of it | ☐ |
+
+## Scenario 3: one decline, single-source approval
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 3.1 | Sourcing | `/rfqs/new` | Round with suppliers A and B | Released | ☐ |
+| 3.2 | Supplier B | `/rfqs/[id]` | Decline with code "capacity" and a reason | Decline recorded; the bid form is gone | ☐ |
+| 3.3 | Supplier A | `/rfqs/[id]` | Bid | v1 shown | ☐ |
+| 3.4 | Sourcing | `/rfqs/[id]` | Close; propose the award | Single-source risk is flagged; the award needs a single-source justification | ☐ |
+| 3.5 | Approver | `/approvals` | Approve with the justification visible | Approved; justification kept in the audit | ☐ |
+
+## Scenario 4: quote revision, concurrency and expiry retry
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 4.1 | Sales | `/quotes/[id]` | Revise an issued quote (new price) | v2 issued; v1 marked superseded, still readable | ☐ |
+| 4.2 | Customer approver | `/quotations/[id]` (two tabs) | Accept in tab 1, then in tab 2 | Tab 2 is told it changed and nothing is accepted twice | ☐ |
+| 4.3 | Customer approver | expired quote | Try to accept after the validity date | Refused with "expired"; sales can re-issue | ☐ |
+| 4.4 | Sales → customer | `/quotes/[id]` → `/quotations/[id]` | Re-issue, then accept | Accepted once; one order | ☐ |
+
+## Scenario 5: engineering revision after a supplier bid
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 5.1 | Supplier A | `/rfqs/[id]` | Bid on an open round | v1 shown | ☐ |
+| 5.2 | Engineering | `/intake/[id]` → Revise requirement | Change the tolerance with a reason | "Revision N is in force", naming the superseded round | ☐ |
+| 5.3 | Suppliers A and B | `/notifications`, `/rfqs` | Open the notice and the round | "Closed: requirements updated"; supplier A's bid unchanged and marked as not awardable | ☐ |
+| 5.4 | Sourcing | `/rfqs/new` | New round on the new revision | Lines show the new tolerance; bids can be taken and awarded | ☐ |
+| 5.5 | Customer requester | `/enquiries/[id]` | Look at the enquiry | No rounds, suppliers or bids are visible | ☐ |
+
+## Scenario 9: duplicate and delayed payment callback, reconciliation
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 9.1 | Finance | `/sales-orders/[id]` | Issue the invoice for the first installment | Invoice issued with GST lines; the customer sees it under `/invoices` | ☐ |
+| 9.2 | Customer approver | `/invoices/[id]` → pay | Pay through the sandbox | Payment "pending" until the provider confirms | ☐ |
+| 9.3 | Finance (with the provider sandbox) | — | Replay the same success callback twice; send one late | One payment recorded; the invoice is paid once; the duplicates are logged | ☐ |
+| 9.4 | Finance | `/finance` | Open the reconciliation queue | Nothing left unmatched; the replayed callbacks did not create a second receipt | ☐ |
+
+## Scenario 12: suspension and cross-party access
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 12.1 | Platform admin | `/organizations/[id]` | Suspend supplier B's estimator, with a reason | Suspended; the reason is in the audit | ☐ |
+| 12.2 | Supplier B estimator | any page | Continue working in the open session | Signed out at the next request; cannot sign in | ☐ |
+| 12.3 | Supplier A estimator | address bar | Open supplier B's bid and the customer's enquiry by URL | "Not found" both times; nothing reveals that they exist | ☐ |
+| 12.4 | Customer requester | address bar | Open a supplier bid or a PO by URL | "Not found" | ☐ |
+| 12.5 | Platform admin | `/audit` | Look for the refused attempts | Each attempt logged with actor and target | ☐ |
+
+## Findings
+
+| Scenario.step | What happened | Evidence | Fixed in | Re-tested |
+|---|---|---|---|---|
+| | | | | |
+
+## Sign-off
+
+| Role | Name | Date | Signature |
+|---|---|---|---|
+| Customer (pilot customer) | | | |
+| Supplier (pilot supplier) | | | |
+| Engineering | | | |
+| Sourcing | | | |
+| Sales | | | |
+| Finance | | | |
+| Platform admin | | | |
+| Owner (Phase 1 exit) | | | |
