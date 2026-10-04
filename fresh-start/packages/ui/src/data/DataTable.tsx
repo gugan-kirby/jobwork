@@ -25,6 +25,8 @@ export interface Column<Row> {
   /** Hidden in the stacked mobile rendering (e.g. a redundant status already in the title). */
   hideOnStack?: boolean | undefined;
   width?: string | undefined;
+  /** Stays in view while a wide table scrolls sideways — the column that says which row this is. */
+  sticky?: boolean | undefined;
 }
 
 export interface DataTableProps<Row> {
@@ -87,7 +89,8 @@ export function DataTable<Row>({
                   style={{
                     position: 'sticky',
                     top: 0,
-                    zIndex: 1,
+                    left: column.sticky ? 0 : undefined,
+                    zIndex: column.sticky ? 2 : 1,
                     textAlign: column.numeric ? 'right' : 'left',
                     background: 'var(--table-header-bg)',
                     borderBottom: '1px solid var(--table-border)',
@@ -122,6 +125,7 @@ export function DataTable<Row>({
                       padding: 'var(--table-cell-pad)',
                       textAlign: column.numeric ? 'right' : 'left',
                       verticalAlign: 'middle',
+                      ...(column.sticky ? { position: 'sticky', left: 0, zIndex: 1, background: 'var(--color-surface)' } : {}),
                     }}
                   >
                     {column.render(row)}
