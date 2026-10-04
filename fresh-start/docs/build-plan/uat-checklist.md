@@ -1,6 +1,6 @@
 # Phase 1 UAT checklist (IN-12 F-12.1)
 
-Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
+Human acceptance of the pilot scenarios (doc 19 §10: 1–5, 9, 12 for Phase 1; 6 from IN-13) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
 
 **Where and with what.** On staging, with approved anonymized fixtures (doc 13, UAT row). Never use production data, real customer or supplier identities, real CAD, or real payment credentials (`ES-39`). Each tester uses their own account with only the roles listed below, and MFA is enrolled where the role requires it. The payment provider is in sandbox mode.
 
@@ -74,6 +74,25 @@ Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by t
 | 5.3 | Suppliers A and B | `/notifications`, `/rfqs` | Open the notice and the round | "Closed: requirements updated"; supplier A's bid unchanged and marked as not awardable | ☐ |
 | 5.4 | Sourcing | `/rfqs/new` | New round on the new revision | Lines show the new tolerance; bids can be taken and awarded | ☐ |
 | 5.5 | Customer requester | `/enquiries/[id]` | Look at the enquiry | No rounds, suppliers or bids are visible | ☐ |
+
+## Scenario 6: engineering change after production start (IN-13)
+
+Start from an order in production: advance paid, baseline released and acknowledged, the first milestone started with evidence submitted.
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 6.1 | Customer requester | `/orders/[id]` → Changes → Request a change | Ask for a laser-marked part number, urgent | The change shows "received"; no price or date yet | ☐ |
+| 6.2 | Engineering | `/changes/[id]` | Start triage; issue a stop on the supplier's PO until a date within 30 days | Stop shown with its end in IST; the production page's technical gate is red | ☐ |
+| 6.3 | Supplier A production | `/supplier/orders/[id]` | Open the order; try to start the next milestone | "Stop affected work until …"; the start is refused | ☐ |
+| 6.4 | Engineering | `/changes/[id]` | Classify as scope with a supplier brief | Status "impact analysis"; the brief is what the supplier sees | ☐ |
+| 6.5 | Supplier A estimator | `/supplier/orders/[id]` → Engineering changes | Send a cost and lead-time estimate | "Your estimate is with JobWork"; no customer name or wording anywhere | ☐ |
+| 6.6 | Engineering | `/sales-orders/[id]/production`, then `/changes/[id]` | Assemble a draft baseline with the marking drawing; answer all eight areas (20 pieces scrap), name the draft, save, complete | "Release" of the draft is disabled on the production page; the change goes to approval | ☐ |
+| 6.7 | Sales | `/approvals` | Approve the engineering change | Change shows "approved", waiting for the customer | ☐ |
+| 6.8 | Customer approver | `/orders/[id]` → Changes | Confirm the effect, approve | Only price (tax included) and delivery days are shown; "You approved this on …" | ☐ |
+| 6.9 | Engineering | `/changes/[id]` | Release the new baseline | Stop lifted; diff shows the marking drawing "added"; amendments listed per PO | ☐ |
+| 6.10 | Supplier A production | `/supplier/orders/[id]` | Acknowledge the new drawing pack and amendment | Drawing pack shows the new transmittal acknowledged; work can start again | ☐ |
+| 6.11 | Engineering | `/changes/[id]` | Verify with a note; close | "This change is closed" | ☐ |
+| 6.12 | Finance | `/sales-orders/[id]` | Invoice the change installment | Invoice total equals the customer's approved price change | ☐ |
 
 ## Scenario 9: duplicate and delayed payment callback, reconciliation
 
