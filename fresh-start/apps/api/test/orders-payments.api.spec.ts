@@ -132,10 +132,12 @@ describe('Acceptance, orders, purchase orders and payments (IN-08)', () => {
          VALUES ($1, 1, 'INR', 900000, 900000, 18, current_date + 30, '45 days from invoice', $2, 'selected') RETURNING id`,
         [bid.rows[0]!.id, randomBytes(32).toString('hex')],
       );
+      // Supplier B quoted freight to JobWork; the award carries it on B's line (0019).
+      const freight = orgId === supplierOrgB ? 25000 : 0;
       await pg.query(
-        `INSERT INTO commercial.award_line (award_id, rfq_item_id, bid_version_id, supplier_organization_id, bid_quantity, quantity, unit, unit_price_minor, setup_amount_minor, line_total_minor)
-         VALUES ($1, $2, $3, $4, 100, $5, 'piece', $6, 0, $7)`,
-        [award.rows[0]!.id, item.rows[0]!.id, version.rows[0]!.id, orgId, quantity, unitPrice, quantity * unitPrice],
+        `INSERT INTO commercial.award_line (award_id, rfq_item_id, bid_version_id, supplier_organization_id, bid_quantity, quantity, unit, unit_price_minor, setup_amount_minor, freight_amount_minor, line_total_minor)
+         VALUES ($1, $2, $3, $4, 100, $5, 'piece', $6, 0, $7, $8)`,
+        [award.rows[0]!.id, item.rows[0]!.id, version.rows[0]!.id, orgId, quantity, unitPrice, freight, quantity * unitPrice + freight],
       );
     }
     const sheet = await pg.query<{ id: string }>(
@@ -437,7 +439,13 @@ describe('Acceptance, orders, purchase orders and payments (IN-08)', () => {
     expect(issued.status).toBe(201);
     const pos = issued.body['purchaseOrders'] as Array<Record<string, unknown>>;
     expect(pos).toHaveLength(2);
-    expect(pos.map((p) => p['totalMinor']).sort()).toEqual([360000, 540000]);
+    expect(pos.map((p) => p['totalMinor']).sort()).toEqual([385000, 540000]);
+    // The PO commits to what the supplier quoted, freight included, and shows it as such.
+    const freightLines = await pg.query<{ freight_amount_minor: string; amount_minor: string }>(
+      `SELECT l.freight_amount_minor, l.amount_minor FROM orders.purchase_order_line l JOIN orders.purchase_order p ON p.id = l.purchase_order_id WHERE p.supplier_organization_id = $1`,
+      [supplierOrgB],
+    );
+    expect(freightLines.rows.map((r) => [Number(r.freight_amount_minor), Number(r.amount_minor)])).toEqual([[25000, 385000]]);
     expect(pos.every((p) => p['baselineStatus'] === 'pending_baseline')).toBe(true);
 
     const twice = await sourcing.post(`/api/v1/sales-orders/${orderId}/purchase-orders`, { expectedVersion: issued.body['aggregateVersion'] });

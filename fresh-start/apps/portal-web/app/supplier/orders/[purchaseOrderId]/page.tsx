@@ -100,6 +100,8 @@ export default function SupplierPurchaseOrderPage() {
                   <span style={{ display: 'block', font: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
                     {line.quantity} {line.unit} × {money(line.unitPriceMinor)}
                     {line.setupAmountMinor > 0 ? ` + setup ${money(line.setupAmountMinor)}` : ''}
+                    {line.freightAmountMinor > 0 ? ` + freight ${money(line.freightAmountMinor)}` : ''}
+                    {line.nreAmountMinor > 0 ? ` + tooling/NRE ${money(line.nreAmountMinor)}` : ''}
                   </span>
                 </span>
                 <span className="numeric">{money(line.amountMinor)}</span>

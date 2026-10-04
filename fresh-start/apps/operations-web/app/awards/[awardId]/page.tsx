@@ -128,6 +128,8 @@ export default function AwardPage(): React.JSX.Element {
     { key: 'qty', header: 'Awarded', numeric: true, render: (l) => `${l.quantity} ${l.unit} (priced at ${l.bidQuantity})` },
     { key: 'unit', header: 'Unit price', numeric: true, render: (l) => money(l.unitPriceMinor) },
     { key: 'setup', header: 'Setup', numeric: true, render: (l) => money(l.setupAmountMinor) },
+    // A bid's freight to JobWork and tooling/NRE, on the first line citing that bid.
+    { key: 'charges', header: 'Freight, NRE', numeric: true, render: (l) => money(l.freightAmountMinor + l.nreAmountMinor) },
     { key: 'total', header: 'Line total', numeric: true, render: (l) => money(l.lineTotalMinor) },
     { key: 'version', header: 'Bid version', render: (l) => <CopyableId label="Bid version" value={l.bidVersionId} /> },
   ];
