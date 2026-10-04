@@ -220,12 +220,20 @@ describe('Operations console administration (F-OPS)', () => {
   });
 
   it('mirrors every suspension with a reinstatement, and refuses self-suspension', async () => {
+    // Nobody loses access without a recorded reason.
+    const bare = await admin.post(`/api/v1/admin/memberships/${customerMembershipId}/suspend`, {});
+    expect(bare.status).toBe(400);
     // Membership: suspended, sessions revoked, then reinstated.
     const suspended = await admin.post(
       `/api/v1/admin/memberships/${customerMembershipId}/suspend`,
-      {},
+      { reason: 'Shared their login with a contractor' },
     );
     expect(suspended.status).toBe(201);
+    const why = await pg.query<{ reason: string }>(
+      `SELECT reason FROM platform.audit_event WHERE action = 'iam.membership_suspended' AND subject_id = $1`,
+      [customerMembershipId],
+    );
+    expect(why.rows.map((r) => r.reason)).toEqual(['Shared their login with a contractor']);
     expect((await customer.get('/api/v1/auth/me')).status).toBe(401);
 
     const reinstated = await admin.post(
@@ -243,7 +251,8 @@ describe('Operations console administration (F-OPS)', () => {
     expect((await backIn.get('/api/v1/auth/me')).status).toBe(200);
 
     // User: same shape, and reinstating an active account is refused rather than ignored.
-    expect((await admin.post(`/api/v1/admin/users/${customerUserId}/suspend`, {})).status).toBe(201);
+    expect((await admin.post(`/api/v1/admin/users/${customerUserId}/suspend`, {})).status).toBe(400);
+    expect((await admin.post(`/api/v1/admin/users/${customerUserId}/suspend`, { reason: 'Account under review' })).status).toBe(201);
     expect((await admin.post(`/api/v1/admin/users/${customerUserId}/reinstate`, {})).status).toBe(
       201,
     );
@@ -318,7 +327,7 @@ describe('Operations console administration (F-OPS)', () => {
     });
     const organizationId = created.body['organizationId'] as string;
     const seeded = await seedUser(organizationId, 'member@history.test', ['customer_requester']);
-    await admin.post(`/api/v1/admin/memberships/${seeded.membershipId}/suspend`, {});
+    await admin.post(`/api/v1/admin/memberships/${seeded.membershipId}/suspend`, { reason: 'Left the company' });
 
     // Filed under the membership, not the organization: a subject-id filter alone would
     // find the creation and miss the suspension, which is the half that matters.
