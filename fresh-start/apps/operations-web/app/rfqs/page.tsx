@@ -99,8 +99,13 @@ export default function RfqControlRoomPage(): React.JSX.Element {
     {
       key: 'deadline',
       header: 'Deadline',
+      // A countdown only while the round takes bids; after that the date is enough.
       render: (row) =>
-        row.deadlineAt ? `${row.deadlineAt.slice(0, 10)} · ${countdown(row.deadlineAt)}` : '—',
+        !row.deadlineAt
+          ? '—'
+          : row.status === 'open' || row.status === 'responses_received'
+            ? `${row.deadlineAt.slice(0, 10)} · ${countdown(row.deadlineAt)}`
+            : row.deadlineAt.slice(0, 10),
     },
     {
       key: 'invited',

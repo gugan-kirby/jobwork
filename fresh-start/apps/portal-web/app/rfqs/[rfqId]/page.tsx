@@ -221,7 +221,7 @@ export default function SupplierRfqPage(): React.JSX.Element {
       actions={
         <Inline gap={2}>
           <StatusChip tone={closed ? 'neutral' : 'progress'}>
-            {rfq.status === 'superseded' ? 'Closed: requirements updated' : countdown(rfq.deadlineAt)}
+            {rfq.status === 'superseded' ? 'Closed: requirements updated' : closed ? 'Bidding closed' : countdown(rfq.deadlineAt)}
           </StatusChip>
           <StatusChip tone={live ? 'positive' : 'attention'}>
             {live ? `your bid v${live.versionNo}` : 'not quoted yet'}
