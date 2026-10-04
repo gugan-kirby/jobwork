@@ -21,6 +21,8 @@ export interface RecipientAudience {
   party: 'customer' | 'supplier' | 'internal';
   organizationIds?: string[];
   roles: readonly string[];
+  /** Narrows to these people, who must still hold one of the roles (F-11.1 assignee). */
+  userIds?: string[];
 }
 
 export interface Recipient {
@@ -77,8 +79,9 @@ export class NotificationRepository {
           AND o.type = $2
           AND ($2 = 'internal' OR o.id = ANY($3::uuid[]))
           AND ($4::uuid IS NULL OR u.id <> $4::uuid)
+          AND ($5::uuid[] IS NULL OR u.id = ANY($5::uuid[]))
         ORDER BY u.email`,
-      [audience.roles, audience.party, audience.organizationIds ?? [], excludeUserId],
+      [audience.roles, audience.party, audience.organizationIds ?? [], excludeUserId, audience.userIds ?? null],
     );
     return rows.rows.map((r) => ({ userId: r.user_id, email: r.email, organizationId: r.organization_id }));
   }

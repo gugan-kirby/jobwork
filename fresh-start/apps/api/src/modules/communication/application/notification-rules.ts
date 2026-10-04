@@ -32,6 +32,7 @@ const SUPPLIER = ['supplier_estimator', 'supplier_production', 'supplier_quality
 const TRIAGE = ['jobwork_sourcing', 'jobwork_engineering'];
 
 const str = (value: unknown): string => (typeof value === 'string' ? value : '');
+const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []);
 
 /** A calendar date as people in Chennai say it: 15 Oct 2026. */
 export function dateLabel(value: string | Date | null): string {
@@ -185,4 +186,28 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
       ? [{ templateKey: 'internal.leakage_review_opened', audience: internal(REVIEWER_ROLES), variables: { contextLabel: context.label }, link: '/leakage-reviews' }]
       : [];
   },
+
+  // ------------------------------------------------------------- queues (F-11.1)
+  // The queue's label and the item's reference only: the reference is a record number or
+  // a neutral word by construction (queue registry), so a name never rides along.
+  'platform.sla_escalated.v1': async (e) => {
+    const variables = { reference: str(e.data['reference']), queueLabel: str(e.data['queueLabel']) };
+    const link = `/queues?queue=${encodeURIComponent(str(e.data['queueKey']))}`;
+    const acting = strings(e.data['actingRoles']);
+    if (str(e.data['notify']) === 'escalation') {
+      const roles = [...new Set([...acting, ...strings(e.data['escalationRoles'])])];
+      return [{ templateKey: 'internal.sla_escalated', audience: internal(roles), variables, link }];
+    }
+    const assignee = str(e.data['assigneeUserId']);
+    const audience: RecipientAudience = assignee ? { ...internal(acting), userIds: [assignee] } : internal(acting);
+    return [{ templateKey: 'internal.sla_due', audience, variables, link }];
+  },
+  'platform.queue_item_reassigned.v1': async (e) => [
+    {
+      templateKey: 'internal.queue_item_assigned',
+      audience: { ...internal(strings(e.data['actingRoles'])), userIds: [str(e.data['assigneeUserId'])] },
+      variables: { reference: str(e.data['reference']), queueLabel: str(e.data['queueLabel']) },
+      link: `/queues?queue=${encodeURIComponent(str(e.data['queueKey']))}`,
+    },
+  ],
 };
