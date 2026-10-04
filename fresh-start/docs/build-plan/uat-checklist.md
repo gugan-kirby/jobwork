@@ -30,8 +30,8 @@ Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by t
 | 1.3 | Sourcing | `/rfqs/new` | Start a round on the enquiry; invite suppliers A and B; release | Round open; both invitations "invited"; deadline in IST | ☐ |
 | 1.4 | Supplier A, Supplier B | `/rfqs` → round | Each opens the round, downloads the drawing, submits a bid | Own bid shown as v1; no customer name anywhere; the other supplier's bid not visible | ☐ |
 | 1.5 | Sourcing | `/rfqs/[id]` | Close for evaluation; run an evaluation; propose an award to the better normalized bid | Both bids ranked with original and normalized totals; award "proposed" | ☐ |
-| 1.6 | Approver (per approval matrix) | `/approvals` | Approve the award | Award approved; requester cannot approve their own | ☐ |
-| 1.7 | Sales | `/quotes` | Build the cost sheet from the award; issue the customer quote | Quote shows JobWork as seller; no supplier name, cost or margin on the customer view | ☐ |
+| 1.6 | Sales | `/approvals` | Approve the award | Award approved; the sourcing proposer cannot approve their own | ☐ |
+| 1.7 | Sales, Finance, second sales user | `/awards/[id]`, `/approvals`, `/quotes` | Build the cost sheet (finance approves it); draft the quote, have a second sales user approve it, send it | Award lines show each supplier's setup, freight and NRE; the customer view shows JobWork as seller and no supplier name, cost or margin | ☐ |
 | 1.8 | Customer approver | `/quotations/[id]` → accept | Accept the quote | Accepted, with an order number; repeated clicks create one order | ☐ |
 | 1.9 | Sourcing | `/sales-orders/[id]` | Release the commercial gate once it passes; issue purchase orders | PO issued to supplier A; the customer sees no PO | ☐ |
 | 1.10 | Supplier A | `/supplier/orders/[id]` | Acknowledge the PO | Acknowledged; the PO shows JobWork as buyer, not the customer | ☐ |
@@ -44,7 +44,7 @@ Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by t
 | 2.1 | Customer requester | `/enquiries/new` | Submit an enquiry with no material grade and no tolerance | Submitted | ☐ |
 | 2.2 | Engineering | `/intake/[id]` | Checklist flags both; send two questions (material, tolerance) | Status "clarification required"; approve is disabled with the reason | ☐ |
 | 2.3 | Customer requester | `/enquiries/[id]` | Answer both questions | Notice received; status back to "in review" after the last answer | ☐ |
-| 2.4 | Engineering | `/intake/[id]` | Approve | Revision 2 frozen; the answers are part of it | ☐ |
+| 2.4 | Engineering | `/intake/[id]` | Approve; then use "Revise requirement" to put the answered grade and tolerance into the item | The approved revision keeps both answers; the revised item shows the grade and tolerance; the revisions table shows the reason | ☐ |
 
 ## Scenario 3: one decline, single-source approval
 
@@ -53,8 +53,8 @@ Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by t
 | 3.1 | Sourcing | `/rfqs/new` | Round with suppliers A and B | Released | ☐ |
 | 3.2 | Supplier B | `/rfqs/[id]` | Decline with code "capacity" and a reason | Decline recorded; the bid form is gone | ☐ |
 | 3.3 | Supplier A | `/rfqs/[id]` | Bid | v1 shown | ☐ |
-| 3.4 | Sourcing | `/rfqs/[id]` | Close; propose the award | Single-source risk is flagged; the award needs a single-source justification | ☐ |
-| 3.5 | Approver | `/approvals` | Approve with the justification visible | Approved; justification kept in the audit | ☐ |
+| 3.4 | Sourcing | `/rfqs/[id]` | Close; propose the award | Single-source risk is flagged; the award is refused until a fallback note says what happens if the supplier fails | ☐ |
+| 3.5 | A second sourcing user | `/approvals` | Approve with the fallback visible | Sales cannot approve a single-source award, and nor can the proposer; once approved, the fallback note is kept with the award | ☐ |
 
 ## Scenario 4: quote revision, concurrency and expiry retry
 
@@ -88,7 +88,7 @@ Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by t
 
 | # | Who | Screen | Do | Expect | ✓ |
 |---|---|---|---|---|---|
-| 12.1 | Platform admin | `/organizations/[id]` | Suspend supplier B's estimator, with a reason | Suspended; the reason is in the audit | ☐ |
+| 12.1 | Platform admin | `/organizations/[id]` → People | Type the reason; suspend supplier B's estimator | Suspend stays disabled until a reason is given; afterwards the reason is in the audit | ☐ |
 | 12.2 | Supplier B estimator | any page | Continue working in the open session | Signed out at the next request; cannot sign in | ☐ |
 | 12.3 | Supplier A estimator | address bar | Open supplier B's bid and the customer's enquiry by URL | "Not found" both times; nothing reveals that they exist | ☐ |
 | 12.4 | Customer requester | address bar | Open a supplier bid or a PO by URL | "Not found" | ☐ |

@@ -48,6 +48,30 @@ Tests: revising after bids supersedes the open round and leaves every bid byte-i
 | `apps/api/test/pilot/scenario-0{1,2,3,4,5,9}-*.api.spec.ts`, `scenario-12-*.api.spec.ts` | new | Doc 19 §10 scenarios 1–5, 9, 12, each demonstrating versions, authority, audit/outbox, projections, notifications, failure recovery and final consistency |
 | `docs/build-plan/uat-checklist.md` | new | Human UAT script per role (customer, supplier, sourcing, engineering, sales, finance, quality, platform admin) with sign-off boxes |
 
+**Deviations (2026-10-05, F-12.1):**
+
+- The driver seeds only the cast and the props as rows: organizations, people and roles (internal accounts have no self-service path), MFA secrets, supplier eligibility (IN-04's suite proves onboarding), and the customer's scanned-clean drawing (the DMS suites prove upload and scan). Everything after that goes over HTTP. Two facts are still touched in SQL. A quote's validity is aged with its immutability trigger lifted, as the IN-07 suite does. The provider's intent id is read from its row, because it is the gateway's reference and no JobWork screen shows it.
+- The driver dispatches notifications the way the worker does: right after release, so recipients are resolved before anyone declines, and again before notices are asserted.
+- `TestClient` gained an optional `headers` option, so idempotency keys travel with ordinary requests.
+- No quality role in the checklist: Phase 1 scenarios 1–5, 9 and 12 involve no quality step. Quality joins the UAT in IN-14.
+
+**Defects the scenarios found.** Each was fixed in its own PR, with a regression test in the owning suite, before its scenario was committed:
+
+| Found by | Defect | Fix |
+|---|---|---|
+| Scenario 4 | Once a quote expired or was rejected, JobWork could not re-quote: the closed option still held its label in the reused offer set | PR #6: a fresh offer set once every option in the last one has closed without an acceptance; doc 05 states it |
+| Scenario 1 | A bid's freight to JobWork and its tooling/NRE never reached the award, the cost sheet or the PO, so margin was overstated by those charges. On a split, the second supplier's setup was dropped | PR #7: migration 0019, charges carried on the first award line citing each bid and shown on the PO; doc 10 §2 states it |
+| Scenario 2 | The approved revision, the one every round is built on, lost the clarification answers that the previous revision carried | PR #8: every snapshot includes the answered clarifications |
+| Scenario 12 | A user or membership could be suspended with no recorded reason, and the audit row was written after the transaction | PR #9: reason required and audited in the same transaction; the People card asks for it |
+
+**Observations left for UAT and the owner (not changed):**
+
+- An unselected supplier gets no notice. Only its bid's status (`rejected`) tells it the outcome, because `commercial.approval_decided.v1` is acknowledged, not notified. Doc 19 does not require a notice; decide at UAT.
+- Approval cannot edit the requirement. Structured answers (a grade, a tolerance) reach RFQ lines when engineering transcribes them with "Revise requirement" right after approval (scenario 2). Watch for friction at UAT step 2.4.
+- A bid on a superseded round keeps the status `submitted`; the round's `superseded` status carries the closure (scenario 5).
+
+**Verification (2026-10-05, F-12.1).** 45 scenario tests across seven files, each booting its own database. They run inside the API suite in CI and under `TZ=Asia/Kolkata`.
+
 ## F-12.3 Security review pass
 
 | File | Action | Contents |
