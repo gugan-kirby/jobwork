@@ -108,12 +108,23 @@ export class MoneyFlow {
     const versions = await this.commercial.listQuoteVersions(order.customerQuoteId, tx);
     const accepted = versions.find((v) => v.id === order.acceptedQuoteVersionId);
     if (!accepted) throw new Error(`accepted version missing for order ${order.number}`);
-    const part = splitSchedule({
-      totalMinor: accepted.totalMinor,
-      taxMinor: accepted.taxMinor,
-      advanceBp: accepted.advanceBp,
-      balanceTrigger: accepted.balanceTrigger,
-    }).find((p) => p.seq === installment.seq);
+    // A change installment (IN-13) is not in the quotation's schedule: its amount is the
+    // order amendment's price delta, tax-inclusive, split at the order's accepted tax rate.
+    const amendedMinor = installment.kind === 'change' ? await this.finance.changeAmendmentAmount(installment.id, tx) : null;
+    const part =
+      installment.kind === 'change'
+        ? amendedMinor === null
+          ? undefined
+          : (() => {
+              const taxMinor = Math.round((amendedMinor * accepted.taxRateBp) / (10_000 + accepted.taxRateBp));
+              return { seq: installment.seq, label: installment.label, amountMinor: amendedMinor, taxMinor, subtotalMinor: amendedMinor - taxMinor };
+            })()
+        : splitSchedule({
+            totalMinor: accepted.totalMinor,
+            taxMinor: accepted.taxMinor,
+            advanceBp: accepted.advanceBp,
+            balanceTrigger: accepted.balanceTrigger,
+          }).find((p) => p.seq === installment.seq);
     if (!part || part.amountMinor !== installment.amountMinor) {
       throw new Error(`instalment ${installment.seq} of ${order.number} does not match its schedule`);
     }
