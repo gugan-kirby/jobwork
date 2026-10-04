@@ -19,6 +19,7 @@ import type {
 } from '@jobwork/contracts';
 import { EnquiryItemNotFound } from '../domain/enquiry';
 import { DatabaseService } from '../../../platform/database/database.service';
+import { parallelReads } from '../../../platform/database/parallel-reads';
 
 type Queryable = Pool | PoolClient;
 
@@ -241,12 +242,12 @@ export class EnquiryRepository {
 
   private async hydrate(row: EnquiryRow, tx?: Queryable): Promise<Enquiry> {
     const q = this.q(tx);
-    const [items, documents, clarifications] = await Promise.all([
-      q.query<ItemRow>(
+    const [items, documents, clarifications] = await parallelReads(tx, [
+      () => q.query<ItemRow>(
         `SELECT * FROM sourcing.enquiry_item WHERE enquiry_id = $1 ORDER BY line_no`,
         [row.id],
       ),
-      q.query<DocumentRow & { item_line_no: number | null }>(
+      () => q.query<DocumentRow & { item_line_no: number | null }>(
         `SELECT d.id, d.document_version_id, d.role, d.note, i.line_no AS line_no
            FROM sourcing.enquiry_document d
            LEFT JOIN sourcing.enquiry_item i ON i.id = d.enquiry_item_id
@@ -254,7 +255,7 @@ export class EnquiryRepository {
           ORDER BY d.created_at`,
         [row.id],
       ),
-      q.query<ClarificationRow>(
+      () => q.query<ClarificationRow>(
         `SELECT c.id, c.sequence_no, c.round_no, c.topic, c.question, i.line_no,
                 c.asked_against_revision_no, c.status, c.answer, c.answer_document_version_id,
                 c.asked_at, c.answered_at

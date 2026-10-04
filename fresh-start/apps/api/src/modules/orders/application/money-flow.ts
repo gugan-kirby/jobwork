@@ -8,6 +8,7 @@ import { FinanceRepository, type InstallmentRecord, type InvoiceRecord } from '.
 import { OrdersRepository, type SalesOrderRecord } from '../infrastructure/orders.repository';
 import { canonicalJson } from '../../../platform/commands/canonical';
 import type { AuditSpec, OutboxSpec } from '../../../platform/commands/command';
+import { parallelReads } from '../../../platform/database/parallel-reads';
 
 export function sha256(value: unknown): string {
   return createHash('sha256').update(typeof value === 'string' ? value : canonicalJson(value)).digest('hex');
@@ -38,12 +39,12 @@ export class MoneyFlow {
   // ----------------------------------------------------------------- gate
 
   async gate(order: Pick<SalesOrderRecord, 'id' | 'customerOrganizationId' | 'currency' | 'totalMinor'>, tx?: PoolClient): Promise<CommercialGate> {
-    const [installments, invoices, otherOpen, credit, holds] = await Promise.all([
-      this.finance.listInstallments(order.id, tx),
-      this.finance.listInvoicesForOrder(order.id, tx),
-      this.finance.openReceivables(order.customerOrganizationId, order.id, tx),
-      this.finance.findCreditProfile(order.customerOrganizationId, tx),
-      this.finance.listActiveHolds(order.customerOrganizationId, tx),
+    const [installments, invoices, otherOpen, credit, holds] = await parallelReads(tx, [
+      () => this.finance.listInstallments(order.id, tx),
+      () => this.finance.listInvoicesForOrder(order.id, tx),
+      () => this.finance.openReceivables(order.customerOrganizationId, order.id, tx),
+      () => this.finance.findCreditProfile(order.customerOrganizationId, tx),
+      () => this.finance.listActiveHolds(order.customerOrganizationId, tx),
     ]);
     const advance = installments.find((i) => i.kind === 'advance');
     const advanceInvoice = advance?.invoiceId ? invoices.find((i) => i.id === advance.invoiceId) : undefined;

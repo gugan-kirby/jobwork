@@ -41,6 +41,7 @@ import { AuditWriter } from '../../../platform/commands/audit.writer';
 import { CommandExecutor } from '../../../platform/commands/execute';
 import { DatabaseService } from '../../../platform/database/database.service';
 import { DomainError } from '../../../platform/http/domain-error';
+import { parallelReads } from '../../../platform/database/parallel-reads';
 
 const ENGINEERING_ROLES = ['jobwork_engineering', 'jobwork_sourcing'];
 const RELEASE_ROLES = ['jobwork_sourcing', 'jobwork_engineering'];
@@ -180,12 +181,12 @@ export class ProductionCommand {
 
   /** The live gate matrix for a work package, from authoritative records only. */
   private async gatesFor(wp: WorkPackageRecord, tx?: PoolClient) {
-    const [order, po, baseline, transmittal, supplier] = await Promise.all([
-      this.orders.findSalesOrder(wp.salesOrderId, tx),
-      this.orders.findPurchaseOrder(wp.purchaseOrderId, tx),
-      this.production.releasedBaseline(wp.salesOrderId, tx),
-      this.production.liveTransmittal(wp.purchaseOrderId, tx),
-      this.production.supplierStanding(wp.supplierOrganizationId, tx),
+    const [order, po, baseline, transmittal, supplier] = await parallelReads(tx, [
+      () => this.orders.findSalesOrder(wp.salesOrderId, tx),
+      () => this.orders.findPurchaseOrder(wp.purchaseOrderId, tx),
+      () => this.production.releasedBaseline(wp.salesOrderId, tx),
+      () => this.production.liveTransmittal(wp.purchaseOrderId, tx),
+      () => this.production.supplierStanding(wp.supplierOrganizationId, tx),
     ]);
     const holds = order ? await this.finance.listActiveHolds(order.customerOrganizationId, tx) : [];
     const gates = computeReleaseGates({
