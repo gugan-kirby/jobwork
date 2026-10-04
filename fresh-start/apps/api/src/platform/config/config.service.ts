@@ -18,6 +18,8 @@ const envSchema = z.object({
   UPLOAD_GRANT_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
   DOWNLOAD_GRANT_TTL_SECONDS: z.coerce.number().int().min(30).max(900).default(120),
   PORTAL_URL: z.string().default('http://localhost:3000'),
+  /** Where JobWork staff open records; notification links for internal recipients point here. */
+  OPERATIONS_URL: z.string().default('http://localhost:3001'),
   /** `T-03`: the payment provider behind the gateway port. `dev` is the simulated gateway. */
   PAYMENT_PROVIDER: z.enum(['dev']).default('dev'),
   PAYMENT_WEBHOOK_SECRET: z.string().min(8).default('dev-payment-webhook-secret'),
