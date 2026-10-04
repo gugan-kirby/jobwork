@@ -31,6 +31,9 @@ export function retryDelayMs(attempt: number, opts: PollerOptions, random = Math
  * delivery, retry, or dead-letter state. Stuck 'processing' rows past the visibility
  * timeout are reclaimed (crash recovery).
  */
+/** What happened to one event, for metrics (F-11.3). `lagSeconds` is commit to handled. */
+export type OutcomeObserver = (eventType: string, outcome: 'delivered' | 'retry' | 'dead', seconds: number, lagSeconds: number) => void;
+
 export class OutboxPoller {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
@@ -40,6 +43,7 @@ export class OutboxPoller {
     private readonly registry: HandlerRegistry,
     private readonly log: Logger,
     private readonly opts: PollerOptions = DEFAULT_POLLER_OPTIONS,
+    private readonly observe: OutcomeObserver = () => undefined,
   ) {}
 
   async claim(): Promise<OutboxEventRow[]> {
@@ -115,7 +119,9 @@ export class OutboxPoller {
   async tick(): Promise<number> {
     const events = await this.claim();
     for (const event of events) {
-      await this.processOne(event);
+      const started = performance.now();
+      const outcome = await this.processOne(event);
+      this.observe(event.eventType, outcome, (performance.now() - started) / 1000, (Date.now() - new Date(event.occurredAt).getTime()) / 1000);
     }
     return events.length;
   }

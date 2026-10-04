@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Logger } from '@jobwork/observability';
 import type { InternalApiClient } from '../internal-api';
+import type { SweepReport } from '../metrics';
 
 /**
  * The SLA tick (F-11.1; doc 07 §11). The API owns the sweep — it holds the queue state and
@@ -8,7 +9,7 @@ import type { InternalApiClient } from '../internal-api';
  * tick delays an escalation, it never loses one: the due rows stay due until a sweep
  * records them, and the escalation key makes a repeated sweep harmless.
  */
-export function slaEscalator(api: InternalApiClient, log: Logger) {
+export function slaEscalator(api: InternalApiClient, log: Logger, report: SweepReport = () => undefined) {
   return async (): Promise<void> => {
     const correlationId = randomUUID();
     try {
@@ -16,7 +17,9 @@ export function slaEscalator(api: InternalApiClient, log: Logger) {
       if (result.opened + result.closed + result.rescheduled + result.escalated > 0) {
         log.info({ ...result, correlationId }, 'platform.sla_sweep');
       }
+      report('ok');
     } catch (cause) {
+      report('failed');
       log.warn({ correlationId, err: cause instanceof Error ? cause.message : String(cause) }, 'platform.sla_sweep_failed');
     }
   };

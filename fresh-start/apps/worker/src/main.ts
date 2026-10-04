@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { config as dotenv } from 'dotenv';
 import { Pool } from 'pg';
 import { z } from 'zod';
-import { createLogger } from '@jobwork/observability';
+import { createLogger, startMetricsServer } from '@jobwork/observability';
 import { ObjectStoreClient } from '@jobwork/object-store';
 import { SCAN_WORKER_PRINCIPAL } from '@jobwork/service-auth';
 import { InternalApiClient } from './internal-api';
@@ -16,9 +16,11 @@ import { rfqDeadlineScan } from './outbox/handlers/rfq-deadline';
 import { paymentReconcileScan } from './outbox/handlers/payment-reconcile';
 import { verificationExpiryScan } from './outbox/handlers/verification-expiry';
 import { slaEscalator } from './sla/escalator';
+import { createWorkerMetrics } from './metrics';
 import { SignatureScanner } from './scan/scanner';
 import { DEFAULT_POLLER_OPTIONS, OutboxPoller } from './outbox/poller';
 import { HandlerRegistry } from './outbox/registry';
+import { ACKNOWLEDGED_EVENT_TYPES } from './outbox/subscriptions';
 import { NOTIFIED_EVENT_TYPES } from '@jobwork/contracts';
 import { defaultChannels } from './notifications/channels';
 import { notificationHandler } from './notifications/deliver';
@@ -55,39 +57,11 @@ const envSchema = z.object({
   OUTBOX_POLL_MS: z.coerce.number().int().min(200).default(2_000),
   PAYMENT_SWEEP_MS: z.coerce.number().int().min(1000).default(5 * 60_000),
   SLA_SWEEP_MS: z.coerce.number().int().min(1000).default(60_000),
+  /** F-11.3: Prometheus metrics on their own port; 0 serves none. */
+  METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(0),
+  METRICS_HOST: z.string().default('127.0.0.1'),
 });
 
-const ACKNOWLEDGED_UNTIL_NOTIFICATIONS = [
-  'sourcing.enquiry_approved_for_sourcing',
-  'sourcing.enquiry_declined',
-  'sourcing.enquiry_cancelled',
-  'supplier.admitted.v1',
-  'supplier.availability_changed.v1',
-  'supplier.declaration_withdrawn.v1',
-  'supplier.exited.v1',
-  'supplier.onboarding_submitted.v1',
-  'commercial.approval_decided.v1',
-  'commercial.award_proposed.v1',
-  'commercial.quote_revision_requested.v1',
-  'commercial.quote_rejected.v1',
-  'commercial.quote_withdrawn.v1',
-  'commercial.quote_expired.v1',
-  'orders.sales_order_created.v1',
-  'orders.sales_order_released.v1',
-  'orders.purchase_order_acknowledged.v1',
-  'finance.payment_failed.v1',
-  'finance.payment_suspense.v1',
-  'finance.allocation_proposed.v1',
-  'finance.credit_hold_placed.v1',
-  'dms.baseline_released.v1',
-  'dms.transmittal_acknowledged.v1',
-  'orders.work_package_released.v1',
-  'orders.work_package_completed.v1',
-  'orders.containment_recorded.v1',
-  'orders.milestone_verified.v1',
-  'orders.milestone_delayed.v1',
-  'communication.message_rejected.v1',
-] as const;
 
 function buildMailer(smtpUrl: string): Mailer {
   if (smtpUrl.startsWith('log://')) return new FileMailer();
@@ -131,8 +105,6 @@ async function main(): Promise<void> {
   const registry = new HandlerRegistry()
     .register('iam.invitation.issued.v1', invitationIssuedHandler(mailer, env.PORTAL_URL))
     .register('iam.email_verification.issued.v1', emailVerificationHandler(mailer, env.PORTAL_URL))
-    .register('supplier.application_received.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.application_declined.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
     .register(
       'dms.file_finalized',
       fileFinalizedHandler({
@@ -144,51 +116,34 @@ async function main(): Promise<void> {
         scanTimeoutMs: env.SCAN_TIMEOUT_MS,
         maxAttempts: DEFAULT_POLLER_OPTIONS.maxAttempts,
       }),
-    )
-    // Published now, subscribed to later (IN-10 notification, F-10.4 transmittals).
-    .register('dms.file_cleared', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('dms.file_quarantined', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('dms.audience_granted', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('dms.audience_revoked', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.verification_submitted', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.verification_verified', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.verification_returned', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.verification_revoked', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.verification_expiring', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('sourcing.rfq_closed.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('sourcing.rfq_declined.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('sourcing.rfq_deadline_passed.v1', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.verification_expired', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.capability_published', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.machine_registered', acknowledgeHandler(logger, 'outbox event acknowledged'))
-    .register('supplier.capacity_declared', acknowledgeHandler(logger, 'outbox event acknowledged'));
-  // Published by IN-02…IN-08 commands and consumed by the notification increment (IN-10).
-  // Until then they are acknowledged rather than left to dead-letter (doc 07 §10): a
-  // dead-letter is an alarm, and an alarm that always rings is one nobody answers.
+    );
   // F-10.3: committed events that tell someone something. The API decides who and renders
   // the words; the worker delivers and reports (doc 20 §9: no business state here).
   const deliver = notificationHandler({ api: internalApi, channels: defaultChannels(mailer), log: logger.child({ module: 'communication.notifications' }) });
   for (const eventType of NOTIFIED_EVENT_TYPES) registry.register(eventType, deliver);
-  for (const eventType of ACKNOWLEDGED_UNTIL_NOTIFICATIONS) {
+  // Committed and audited, nothing for the worker to do yet (`outbox/subscriptions.ts`).
+  for (const eventType of ACKNOWLEDGED_EVENT_TYPES) {
     registry.register(eventType, acknowledgeHandler(logger, 'outbox event acknowledged'));
   }
-  const poller = new OutboxPoller(pool, registry, logger);
+  const metrics = createWorkerMetrics(process.env['BUILD_SHA'] ?? 'dev');
+  const metricsServer = env.METRICS_PORT ? await startMetricsServer(metrics.registry, { port: env.METRICS_PORT, host: env.METRICS_HOST }) : null;
+  const poller = new OutboxPoller(pool, registry, logger, DEFAULT_POLLER_OPTIONS, metrics.observeOutbox);
   poller.start(env.OUTBOX_POLL_MS);
   logger.info({ version: process.env['BUILD_SHA'] ?? 'dev' }, 'worker started');
 
   // Time-driven work: verification expiry is data-driven, the timer only decides how
   // often the question is asked (doc 06 §14).
-  const sweep = verificationExpiryScan(internalApi, logger.child({ module: 'supplier.verification' }));
+  const sweep = verificationExpiryScan(internalApi, logger.child({ module: 'supplier.verification' }), metrics.sweep('verification_expiry'));
   void sweep();
   const sweepTimer = setInterval(() => void sweep(), env.VERIFICATION_SWEEP_MS);
   // The RFQ deadline tick rides the same schedule: both are date-driven sweeps whose
   // cost is one query when there is nothing to do.
-  const deadlineSweep = rfqDeadlineScan(internalApi, logger.child({ module: 'sourcing.rfq' }));
+  const deadlineSweep = rfqDeadlineScan(internalApi, logger.child({ module: 'sourcing.rfq' }), metrics.sweep('rfq_deadline'));
   const deadlineTimer = setInterval(() => void deadlineSweep(), env.VERIFICATION_SWEEP_MS);
-  const paymentSweep = paymentReconcileScan(internalApi, logger.child({ module: 'finance.payments' }));
+  const paymentSweep = paymentReconcileScan(internalApi, logger.child({ module: 'finance.payments' }), metrics.sweep('payment_reconcile'));
   const paymentTimer = setInterval(() => void paymentSweep(), env.PAYMENT_SWEEP_MS);
   // F-11.1: queue stays, deadlines and escalations; a minute is the resolution of a deadline.
-  const slaSweep = slaEscalator(internalApi, logger.child({ module: 'platform.sla' }));
+  const slaSweep = slaEscalator(internalApi, logger.child({ module: 'platform.sla' }), metrics.sweep('sla'));
   void slaSweep();
   const slaTimer = setInterval(() => void slaSweep(), env.SLA_SWEEP_MS);
 
@@ -218,6 +173,7 @@ async function main(): Promise<void> {
     clearInterval(paymentTimer);
     clearInterval(slaTimer);
     poller.stop();
+    metricsServer?.close();
     logger.info({ signal }, 'worker stopping');
     pool
       .end()

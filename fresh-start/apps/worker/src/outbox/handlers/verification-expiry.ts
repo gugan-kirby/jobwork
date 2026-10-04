@@ -1,6 +1,7 @@
 import type { Logger } from '@jobwork/observability';
 import { randomUUID } from 'node:crypto';
 import type { InternalApiClient } from '../../internal-api';
+import type { SweepReport } from '../../metrics';
 
 /**
  * The scheduled half of doc 06 §14: ask the API to settle every verification item whose
@@ -10,7 +11,7 @@ import type { InternalApiClient } from '../../internal-api';
  * every time, so a missed run delays a notification rather than leaving an expired
  * supplier quietly matchable. Running it twice is a no-op the second time.
  */
-export function verificationExpiryScan(api: InternalApiClient, log: Logger) {
+export function verificationExpiryScan(api: InternalApiClient, log: Logger, report: SweepReport = () => undefined) {
   return async (): Promise<void> => {
     const correlationId = randomUUID();
     try {
@@ -21,7 +22,9 @@ export function verificationExpiryScan(api: InternalApiClient, log: Logger) {
       if (result.expired > 0 || result.expiring > 0) {
         log.info({ ...result, correlationId }, 'supplier.verification_sweep');
       }
+      report('ok');
     } catch (cause) {
+      report('failed');
       // A failed sweep is retried on the next tick; nothing is left half-applied
       // because the command runs in one transaction.
       log.warn(
