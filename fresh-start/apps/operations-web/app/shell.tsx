@@ -21,6 +21,7 @@ import { api } from '../lib/api';
 
 const BASE_NAVIGATION: NavItem[] = [
   { href: '/', label: 'Home' },
+  { href: '/queues', label: 'Queues' },
   { href: '/intake', label: 'Intake' },
   { href: '/rfqs', label: 'RFQs' },
   { href: '/quotes', label: 'Quotes' },
