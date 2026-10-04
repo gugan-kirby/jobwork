@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { IamModule } from '../iam';
+import { Conversations } from './application/conversation.command';
 import { LeakageGate } from './application/leakage-gate';
 import { LeakageReviews } from './application/leakage-review.command';
 import { CommunicationRepository } from './infrastructure/communication.repository';
 import { ContextResolver } from './infrastructure/context.resolver';
+import { ConversationsController } from './presentation/conversations.controller';
 import { LeakageReviewsController } from './presentation/leakage-reviews.controller';
 
 /**
@@ -13,8 +15,8 @@ import { LeakageReviewsController } from './presentation/leakage-reviews.control
  */
 @Module({
   imports: [IamModule],
-  controllers: [LeakageReviewsController],
-  providers: [CommunicationRepository, ContextResolver, LeakageGate, LeakageReviews],
+  controllers: [ConversationsController, LeakageReviewsController],
+  providers: [CommunicationRepository, ContextResolver, LeakageGate, LeakageReviews, Conversations],
   exports: [CommunicationRepository],
 })
 export class CommunicationModule {}
