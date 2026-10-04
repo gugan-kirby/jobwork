@@ -159,7 +159,7 @@ describe('Notifications (F-10.3)', () => {
     const rows = await pg.query<{ template_key: string; channels: string[] }>(
       `SELECT template_key, array_agg(channel ORDER BY channel) AS channels FROM communication.template_version GROUP BY template_key`,
     );
-    expect(rows.rows.length).toBe(24); // 18 from F-10.3, 3 from F-11.1 (SLA due, escalated, handed over), 1 from F-12.5 (round superseded), 2 from F-13.2 (change decision, interim decision)
+    expect(rows.rows.length).toBe(26); // 18 from F-10.3, 3 from F-11.1 (SLA due, escalated, handed over), 1 from F-12.5 (round superseded), 2 from F-13.2 (change decision, interim decision), 2 from F-14.1 (inspection planned, decided)
     for (const row of rows.rows) expect(row.channels, row.template_key).toEqual(['email', 'in_app']);
   });
 
