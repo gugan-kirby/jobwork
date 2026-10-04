@@ -249,6 +249,22 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
        WHERE m.status = 'evidence_submitted'`,
   },
   {
+    // IN-14: results submitted, waiting for an independent JobWork quality decision.
+    key: 'inspections_awaiting_review',
+    label: 'Inspections awaiting review',
+    detail: 'Results are in. Submitted is not passed: an independent reviewer decides.',
+    href: '/quality',
+    roles: ['jobwork_quality'],
+    subjectType: 'inspection',
+    membership: `
+      SELECT i.id AS subject_id, i.number AS reference, w.number || ' · ' || i.stage AS title,
+             '/quality/inspections/' || i.id AS href,
+             coalesce(i.submitted_at, i.planned_at) AS waiting_since
+        FROM quality.inspection i
+        JOIN orders.work_package w ON w.id = i.work_package_id
+       WHERE i.status IN ('results_submitted', 'under_review')`,
+  },
+  {
     // Messages held by the contact-leakage gate, invisible to their readers until decided (F-10.4).
     key: 'leakage_reviews_open',
     label: 'Messages held for review',
