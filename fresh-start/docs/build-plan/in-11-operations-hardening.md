@@ -98,6 +98,24 @@ Covers: doc 12 §§1, 6–8; `ES-35`; doc 19 §9 SoD row; doc 03 §§2, 4.
 
 Tests: metrics carry no id-shaped label values; every alert/dashboard expression names a registered metric; every `page` alert links an existing runbook; HTTP histogram labels use the route template; conflicting invitation refused, non-conflicting accepted; panel role filtering.
 
+**Deviations (2026-10-04, F-11.3):**
+
+- `prom-client` in `@jobwork/observability`; `safeLabel` turns any id-shaped value (UUID, e-mail, long number, hash) into `other`, and `idShapedLabelValues` is the test-side check. API and worker serve `/metrics` on `METRICS_PORT` (0 = none; 9464/9465 locally), bound to `METRICS_HOST` (127.0.0.1); the API listener answers 404.
+- The HTTP histogram is fed by a Fastify `onResponse` hook that `MetricsService` registers at module init, so guard refusals (401/403) and rate-limit refusals (429) are measured too; `route` is the template (`/api/v1/enquiries/:enquiryId`) or `unmatched`.
+- Domain gauges are read at scrape time from one 10-second cached snapshot (`ControlsRepository`) that the controls panel also reads — fresh, for a person who asked — so an alert and the screen that answers it show the same numbers.
+- Dashboards are Grafana JSON, alerts Prometheus rule files: 22 rules (platform 12, operations 4, security 6), valid under `promtool check rules` and held by `alerts-dashboards.spec.ts` to the metric and label names the code registers (mutation-checked). `pnpm stack:observability` runs Prometheus (:9090) and Grafana (:3030 — 3000 is taken here) from Homebrew with the repository's rules and dashboards provisioned.
+- The panel is `GET /operations/controls` + `/ops-health` ("Health" in the nav). Separation of duties: three rules (sales with finance, finance with quality, auditor with anything); quality with sourcing was considered and left out pending the pilot's staffing (`A-04`). Acceptance never merges roles into an existing membership, so the invitation is the one gate.
+
+**Found by the new signals (2026-10-04):**
+
+| Finding | Fix |
+|---|---|
+| The dead-letter alert went pending on its first evaluation: every supplier onboarding decision (`supplier.{approved,returned,rejected,suspended,reinstated}.v1`) had dead-lettered since F-SO, because the worker had no handler — the IN-08 rule "every new event type needs a handler" was a convention | `apps/worker/src/outbox/subscriptions.ts` lists every handled and acknowledged type; `subscriptions.spec.ts` reads every type the API's commands commit and fails on an orphan or a stale entry. The 13 historical dead letters in the dev database are left for the F-11.4 replay drill |
+| Availability and error-budget panels said "No data" whenever there had been no server error at all — the healthy case | `or vector(0)` on the error series (panels and the error-rate alert) |
+| A full parallel test run failed once: budget windows align to epoch hours, which fall at :30 past in IST, and the run straddled one. Behind the flake, a real bug: right after a window boundary the old window still weighs on the sliding estimate, so `Retry-After` understated the wait | `rate-limit/window.ts` computes the true wait (unit-tested by replaying the estimate at the promised instant); wording tests accept seconds or minutes |
+
+**Browser verification (2026-10-04, F-11.3).** Prometheus scraped both targets (`up`), loaded all 22 rules, and served live queue gauges; Grafana showed the three dashboards in folder "JobWork" with live data — after two fixes: vertical bar gauges truncated queue names (now horizontal), and table panels rendered a time series per row (now instant queries in table format). The operations health page showed the platform admin their queues with targets in working days, the outbox's 13 dead letters, and no separation-of-duties conflicts in the dev data.
+
 ## F-11.4 Runbooks
 
 Covers: doc 12 §12 list; doc 11 §15 runbook contents.
