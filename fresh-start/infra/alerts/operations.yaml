@@ -1,0 +1,45 @@
+# Operations alerts (doc 12 §§7–8; F-11.3). Slow business queues are tickets, not pages:
+# the SLA sweep already tells the owner and the team in the app; these tell the
+# operations lead that a whole queue, not one item, is falling behind.
+groups:
+  - name: jobwork-operations
+    rules:
+      - alert: QueueFallingBehind
+        expr: max by (queue) (jobwork_queue_overdue) >= 5
+        for: 30m
+        labels: { severity: ticket, owner: operations }
+        annotations:
+          summary: Five or more items in one work queue are past their service target.
+          impact: Customers or suppliers wait longer than JobWork promised (R-05).
+          runbook_url: docs/runbooks/README.md#business-queues
+          recovery: Fewer than two overdue items in the queue for an hour.
+
+      - alert: ReceiptsInSuspenseAging
+        expr: max(jobwork_queue_oldest_age_seconds{queue="payments_unmatched"}) > 86400
+        for: 30m
+        labels: { severity: ticket, owner: finance }
+        annotations:
+          summary: Money received a day ago is still not tied to an invoice.
+          impact: An order may be held for an advance the customer already paid.
+          runbook_url: docs/runbooks/payment-callback-mismatch.md
+          recovery: No receipt in suspense older than four hours.
+
+      - alert: PaymentCallbacksRejected
+        expr: sum(rate(http_server_request_duration_seconds_count{route="/api/v1/webhooks/payments/:provider",status_code=~"4.."}[10m])) > 0.05
+        for: 10m
+        labels: { severity: page, owner: finance }
+        annotations:
+          summary: The payment provider's callbacks are being rejected.
+          impact: Payments may be captured by the provider and not recorded by JobWork.
+          runbook_url: docs/runbooks/payment-callback-mismatch.md
+          recovery: No rejected callback for 30 minutes and the reconcile sweep succeeding.
+
+      - alert: HeldMessagesWaiting
+        expr: max(jobwork_queue_oldest_age_seconds{queue="leakage_reviews_open"}) > 7200
+        for: 15m
+        labels: { severity: ticket, owner: support }
+        annotations:
+          summary: A message held for review has waited more than two hours.
+          impact: A customer or supplier is waiting on an answer they cannot see.
+          runbook_url: docs/runbooks/cross-tenant-or-contact-exposure.md
+          recovery: No held message older than 30 minutes.

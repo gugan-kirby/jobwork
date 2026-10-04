@@ -1,0 +1,17 @@
+# Local Prometheus for the F-11.3 dashboards and alert rules (doc 12 §7).
+# The API and worker serve metrics on their own ports (METRICS_PORT), never on the
+# API listener; start them with METRICS_PORT=9464 and METRICS_PORT=9465.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 30s
+
+rule_files:
+  - ../alerts/*.yaml
+
+scrape_configs:
+  - job_name: jobwork-api
+    static_configs:
+      - targets: ['127.0.0.1:9464']
+  - job_name: jobwork-worker
+    static_configs:
+      - targets: ['127.0.0.1:9465']

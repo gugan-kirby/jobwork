@@ -15,7 +15,9 @@
     "seed": "pnpm --filter @jobwork/database seed:dev",
     "stack:up": "bash infra/stack.sh up",
     "stack:down": "bash infra/stack.sh down",
-    "stack:status": "bash infra/stack.sh status"
+    "stack:status": "bash infra/stack.sh status",
+    "stack:observability": "bash infra/stack.sh observability",
+    "stack:observability:down": "bash infra/stack.sh observability-down"
   },
   "devDependencies": {
     "@jobwork/config": "workspace:*",

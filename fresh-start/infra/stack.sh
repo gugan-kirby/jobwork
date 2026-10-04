@@ -66,9 +66,47 @@ status() {
   if have brew; then brew services list | grep -E 'postgresql|redis|minio' || true; fi
 }
 
+# Prometheus + Grafana with the repository's alert rules and dashboards (F-11.3).
+# Grafana listens on 3030 because 3000 is taken on this machine (see README).
+OBS_DIR="$(cd "$(dirname "$0")" && pwd)/observability"
+VAR_DIR="$(cd "$(dirname "$0")/.." && pwd)/var/observability"
+
+observability() {
+  have prometheus || { echo "prometheus not installed (brew install prometheus)" >&2; exit 1; }
+  have grafana || { echo "grafana not installed (brew install grafana)" >&2; exit 1; }
+  mkdir -p "$VAR_DIR/prometheus" "$VAR_DIR/grafana"
+  observability_down >/dev/null 2>&1 || true
+  nohup prometheus --config.file="$OBS_DIR/prometheus.yml" --storage.tsdb.path="$VAR_DIR/prometheus" \
+    --web.listen-address=127.0.0.1:9090 >"$VAR_DIR/prometheus.log" 2>&1 &
+  echo $! >"$VAR_DIR/prometheus.pid"
+  JOBWORK_PROMETHEUS_URL=http://127.0.0.1:9090 \
+  JOBWORK_DASHBOARDS="$(cd "$OBS_DIR/../dashboards" && pwd)" \
+  GF_PATHS_PROVISIONING="$OBS_DIR/grafana/provisioning" \
+  GF_PATHS_DATA="$VAR_DIR/grafana" \
+  GF_PATHS_LOGS="$VAR_DIR/grafana" \
+  GF_SERVER_HTTP_ADDR=127.0.0.1 \
+  GF_SERVER_HTTP_PORT=3030 \
+  GF_AUTH_ANONYMOUS_ENABLED=true \
+  GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer \
+  GF_ANALYTICS_REPORTING_ENABLED=false \
+  GF_ANALYTICS_CHECK_FOR_UPDATES=false \
+  nohup grafana server --homepath "$(brew --prefix grafana)/share/grafana" >"$VAR_DIR/grafana.log" 2>&1 &
+  echo $! >"$VAR_DIR/grafana.pid"
+  echo "prometheus http://127.0.0.1:9090  grafana http://127.0.0.1:3030 (dashboards in folder JobWork)"
+}
+
+observability_down() {
+  for name in prometheus grafana; do
+    if [ -f "$VAR_DIR/$name.pid" ]; then kill "$(cat "$VAR_DIR/$name.pid")" 2>/dev/null || true; rm -f "$VAR_DIR/$name.pid"; fi
+  done
+  echo "observability down"
+}
+
 case "${1:-}" in
   up) up ;;
   down) down ;;
   status) status ;;
-  *) echo "usage: stack.sh {up|down|status}" >&2; exit 2 ;;
+  observability) observability ;;
+  observability-down) observability_down ;;
+  *) echo "usage: stack.sh {up|down|status|observability|observability-down}" >&2; exit 2 ;;
 esac

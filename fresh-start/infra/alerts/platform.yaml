@@ -1,0 +1,131 @@
+# Platform alerts (doc 12 §§1, 7–8; F-11.3). Prometheus rule format, provider-neutral
+# until T-01. Every rule carries: owner, severity (page = active material impact,
+# ticket = slow degradation), impact, a recovery signal, and — for every page — a runbook.
+# Labels and annotations name routes, queues and states only: an alert payload never
+# carries a customer, supplier, file, person or amount (doc 12 §8).
+groups:
+  - name: jobwork-platform
+    rules:
+      - alert: ApiDown
+        expr: up{job="jobwork-api"} == 0
+        for: 2m
+        labels: { severity: page, owner: platform }
+        annotations:
+          summary: The API is not answering its metrics scrape.
+          impact: Every portal and operations screen fails; no command can run.
+          runbook_url: docs/runbooks/api-latency-error-spike.md
+          recovery: up{job="jobwork-api"} == 1 for 5 minutes.
+
+      - alert: ApiErrorRateHigh
+        expr: |
+          (sum(rate(http_server_request_duration_seconds_count{status_code=~"5.."}[5m])) or vector(0))
+            / clamp_min(sum(rate(http_server_request_duration_seconds_count[5m])), 0.001) > 0.02
+        for: 10m
+        labels: { severity: page, owner: platform }
+        annotations:
+          summary: More than 2% of API requests fail with a server error.
+          impact: Core workflow commands fail for users (doc 12 §1 transactional availability 99.9%).
+          runbook_url: docs/runbooks/api-latency-error-spike.md
+          recovery: 5xx ratio below 0.5% for 15 minutes.
+
+      - alert: ApiLatencyHigh
+        # NFR p95 under 500 ms, excluding documented file/export work (doc 12 §1).
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{route!~".*(uploads|download|document|grants).*"}[5m]))) > 0.5
+        for: 15m
+        labels: { severity: page, owner: platform }
+        annotations:
+          summary: API p95 latency is above 500 ms.
+          impact: Screens are slow enough that people retry commands.
+          runbook_url: docs/runbooks/api-latency-error-spike.md
+          recovery: p95 below 400 ms for 15 minutes.
+
+      - alert: DatabasePoolSaturated
+        expr: max(jobwork_db_pool_connections{state="waiting"}) > 0
+        for: 5m
+        labels: { severity: page, owner: platform }
+        annotations:
+          summary: Requests are queueing for a database connection.
+          impact: Latency climbs for every request; commands time out.
+          runbook_url: docs/runbooks/database-pressure.md
+          recovery: No waiting clients for 10 minutes.
+
+      - alert: OutboxBacklogAging
+        # Critical event enqueue objective: p95 under 30 s (doc 12 §1); five minutes is an outage.
+        expr: max(jobwork_outbox_oldest_pending_age_seconds) > 300
+        for: 5m
+        labels: { severity: page, owner: platform }
+        annotations:
+          summary: Committed events have waited more than five minutes for the worker.
+          impact: Notifications, scans and follow-on steps are not happening; the screens are still true.
+          runbook_url: docs/runbooks/outbox-backlog-poison-message.md
+          recovery: Oldest pending event younger than 60 seconds for 10 minutes.
+
+      - alert: WorkerDown
+        expr: up{job="jobwork-worker"} == 0
+        for: 5m
+        labels: { severity: page, owner: platform }
+        annotations:
+          summary: The worker is not answering its metrics scrape.
+          impact: No outbox processing, scans, notifications or timed sweeps.
+          runbook_url: docs/runbooks/outbox-backlog-poison-message.md
+          recovery: up{job="jobwork-worker"} == 1 and the outbox backlog draining.
+
+      - alert: OutboxDeadLetters
+        expr: max(jobwork_outbox_events{status="dead"}) > 0
+        for: 1m
+        labels: { severity: ticket, owner: platform }
+        annotations:
+          summary: An outbox event was given up on and waits for a person.
+          impact: One follow-on step (a notification, a scan) did not happen.
+          runbook_url: docs/runbooks/outbox-backlog-poison-message.md
+          recovery: Dead-letter count back to zero after replay or a recorded decision.
+
+      - alert: OutboxLagObjectiveMissed
+        expr: histogram_quantile(0.95, sum by (le) (rate(jobwork_outbox_lag_seconds_bucket[15m]))) > 30
+        for: 15m
+        labels: { severity: ticket, owner: platform }
+        annotations:
+          summary: p95 commit-to-handled time for events is above 30 seconds.
+          impact: Notifications and follow-on steps arrive late.
+          runbook_url: docs/runbooks/outbox-backlog-poison-message.md
+          recovery: p95 below 20 seconds for 30 minutes.
+
+      - alert: WorkerSweepFailing
+        expr: sum by (sweep) (increase(jobwork_worker_sweeps_total{outcome="failed"}[30m])) > 3
+        labels: { severity: ticket, owner: platform }
+        annotations:
+          summary: A timed sweep (expiry, deadlines, payments, SLA) keeps failing.
+          impact: Deadlines and escalations are late; nothing is lost — the next good sweep catches up.
+          runbook_url: docs/runbooks/outbox-backlog-poison-message.md
+          recovery: A successful run of the sweep.
+
+      - alert: FileScanBacklogAging
+        expr: max(jobwork_scan_oldest_age_seconds) > 900
+        for: 10m
+        labels: { severity: page, owner: platform }
+        annotations:
+          summary: A file has waited more than 15 minutes for a scan verdict.
+          impact: Uploads stay quarantined; releases and evidence that need them are blocked (by design).
+          runbook_url: docs/runbooks/file-scan-backlog.md
+          recovery: Oldest waiting file younger than 2 minutes for 15 minutes.
+
+      - alert: NotificationDeliveryFailing
+        expr: max(jobwork_notification_deliveries{state="failed_last_hour"}) > 10 or max(jobwork_notification_deliveries{state="stuck_sending"}) > 0
+        for: 15m
+        labels: { severity: ticket, owner: platform }
+        annotations:
+          summary: Notification e-mails are failing or stuck.
+          impact: People are not told about work; the in-app feed is still correct (D-18).
+          runbook_url: docs/runbooks/notification-provider-failure.md
+          recovery: No failed delivery in the last hour.
+
+      - alert: RateLimitStoreDegraded
+        expr: max(jobwork_rate_limit_store_degraded) == 1
+        for: 10m
+        labels: { severity: ticket, owner: platform }
+        annotations:
+          summary: An API instance counts rate limits in memory because Redis is unreachable.
+          impact: Limits are per instance, so looser across the fleet; nothing else depends on Redis.
+          runbook_url: docs/runbooks/api-latency-error-spike.md
+          recovery: Degraded gauge back to 0 on every instance.

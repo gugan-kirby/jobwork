@@ -1,0 +1,65 @@
+# Security alerts (doc 12 §§7–8, doc 11 §15; F-11.3). Paged when an attack may be
+# under way; ticketed when the signal needs a look in working hours.
+groups:
+  - name: jobwork-security
+    rules:
+      - alert: SignInFailureSpike
+        # Credential stuffing or password spraying (doc 20 threat table).
+        expr: sum(rate(jobwork_auth_events_total{event="login_failed"}[5m])) > 1
+        for: 10m
+        labels: { severity: page, owner: security }
+        annotations:
+          summary: More than 300 failed sign-ins in five minutes, sustained.
+          impact: Accounts may be under a guessing attack; lockouts will start hitting real people.
+          runbook_url: docs/runbooks/compromised-account-or-secret.md
+          recovery: Failed sign-ins back under 0.2 per second for 30 minutes.
+
+      - alert: LockoutSpike
+        expr: sum(increase(jobwork_auth_events_total{event="lockout"}[15m])) > 10
+        labels: { severity: ticket, owner: security }
+        annotations:
+          summary: More than ten accounts locked in fifteen minutes.
+          impact: People cannot sign in; it may be an attack or a broken client.
+          runbook_url: docs/runbooks/compromised-account-or-secret.md
+          recovery: Under two lockouts in an hour.
+
+      - alert: ExternalDenialSpike
+        # Enumeration of other tenants' ids answers 404; a role overreach answers 403 (doc 13 §5).
+        expr: sum(rate(http_server_request_duration_seconds_count{caller=~"customer|supplier",status_code=~"403|404"}[5m])) > 2
+        for: 10m
+        labels: { severity: page, owner: security }
+        annotations:
+          summary: Customers or suppliers are being refused unusually often.
+          impact: Possible enumeration of other organizations' records.
+          runbook_url: docs/runbooks/cross-tenant-or-contact-exposure.md
+          recovery: External refusals back under 0.2 per second for 30 minutes.
+
+      - alert: DocumentExportSpike
+        expr: sum(rate(http_server_request_duration_seconds_count{route=~".*(download|document|grants).*",status_code=~"2.."}[10m])) > 2
+        for: 10m
+        labels: { severity: ticket, owner: security }
+        annotations:
+          summary: Documents are leaving the platform far faster than usual.
+          impact: Possible mass download by a compromised account (doc 11 §15).
+          runbook_url: docs/runbooks/compromised-account-or-secret.md
+          recovery: Export rate back to its normal band.
+
+      - alert: RateLimitingSustained
+        expr: sum(rate(jobwork_rate_limited_total[5m])) > 5
+        for: 10m
+        labels: { severity: ticket, owner: security }
+        annotations:
+          summary: Requests are being refused by rate limits, sustained.
+          impact: An abusive client, or budgets too tight for a legitimate integration.
+          runbook_url: docs/runbooks/api-latency-error-spike.md
+          recovery: Refusals under 0.5 per second for 30 minutes.
+
+      - alert: HeldMessageSurge
+        expr: max(jobwork_queue_items{queue="leakage_reviews_open"}) > 20
+        for: 15m
+        labels: { severity: ticket, owner: security }
+        annotations:
+          summary: More than twenty messages are held for possible contact or identity leakage.
+          impact: A party may be trying to take a deal around JobWork.
+          runbook_url: docs/runbooks/cross-tenant-or-contact-exposure.md
+          recovery: Held messages back under five.
