@@ -106,6 +106,7 @@ describe('commercial schema constraints (F-07.1)', () => {
       { kind: 'award', n: 1 },
       { kind: 'change', n: 1 },
       { kind: 'cost_sheet', n: 1 },
+      { kind: 'deviation', n: 1 },
       { kind: 'quote', n: 1 },
     ]);
     const terms = await pg.query<{ content_hash: string; body: string }>(
