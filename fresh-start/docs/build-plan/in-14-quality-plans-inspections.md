@@ -184,6 +184,37 @@ Tests: `apps/api/test/quality.api.spec.ts` covers:
 - the supplier unable to review, and each supplier seeing only its own inspections and instruments;
 - every illegal transition refused.
 
+**Deviations (2026-10-05, F-14.3):**
+
+- **Migration `0023_quality_unknown_units.sql`.** The quality API test found that `inspection_result.original_unit` was a foreign key to the known units, so a reading in an undefined unit (microinch) could not be stored. Doc 07 §14 and doc 19 §6 require it to be kept as entered and judged "cannot evaluate". It is now a shape check; the normalized unit stays a foreign key.
+- **Compliance gate.** "Quality plan present" is derived in the work-package query: an approved plan whose baseline is released. The planning request no longer takes `qualityPlanPresent`, and the operations checkbox is gone. The old column `orders.work_package.quality_plan_present` is left unused rather than dropped mid-increment.
+- **Submission is all at once.** Every sample against every characteristic of the stage in one command, so results are complete before review. A variable characteristic must name its instrument (FR-702); an attribute may not need one (`not_required`). A calibration found out of tolerance counts as "uncalibrated" for the results that used it.
+- **A draft follows the baseline in force** each time it is saved. Approval refuses a draft bound to a superseded baseline (`PLAN_BASELINE_STALE`), and so does inspection planning against such a plan.
+- **Routes.**
+  - `GET /quality-templates` was added.
+  - Instruments use one controller on `/instruments` and `/supplier/instruments`, scoped by the actor: JobWork quality manages JobWork's and reads everyone's; a supplier manages its own.
+  - Inspections are numbered `QI-YYYY-NNNN`.
+- **Notifications** go to the supplier only for inspections it carries out (planned; passed or failed). JobWork's own `jobwork_incoming` inspection notifies nobody outside.
+- **`quality.inspection_failed.v1`** carries the failed characteristics with criticality, mandatory flag, drawing reference and sample numbers, for IN-15.
+
+**Verification (2026-10-05, F-14.3).** `quality.api.spec.ts` (8) covers:
+
+- instruments kept to their owner;
+- an FAI with inch input, an inclusive boundary, an expired caliper and a 32/3.2 µm transcription corrected by JobWork quality with the original kept;
+- a pass refused until the caliper is dispositioned;
+- a cannot-evaluate (microinch) and a failed critical bore, with the event payload checked;
+- reinspection rules;
+- JobWork's own inspection reviewed only by a second quality user;
+- every state shortcut refused.
+
+In addition:
+
+- `change.api.spec.ts`: a released change makes the plan stale (gate red, planning refused) until it is revised and approved.
+- `production.api.spec.ts`: compliance is red until a real plan is approved.
+- The pilot driver approves a launch-template plan in `intoProduction`.
+
+747 tests green.
+
 ## F-14.4 Quality UX
 
 | File | Action | Contents |
