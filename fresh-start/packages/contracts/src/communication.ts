@@ -256,5 +256,6 @@ export const NOTIFIED_EVENT_TYPES = [
   'communication.message_held.v1',
   'platform.sla_escalated.v1',
   'platform.queue_item_reassigned.v1',
+  'sourcing.rfq_superseded.v1',
 ] as const;
 export type NotifiedEventType = (typeof NOTIFIED_EVENT_TYPES)[number];

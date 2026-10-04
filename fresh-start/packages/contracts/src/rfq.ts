@@ -20,6 +20,8 @@ export const rfqStatusSchema = z.enum([
   'no_bid',
   'expired',
   'cancelled',
+  // F-12.5: the requirement was revised while the round was live; its bids stand as history.
+  'superseded',
 ]);
 
 export const invitationStatusSchema = z.enum([

@@ -262,7 +262,41 @@ export const requirementRevisionSchema = z.object({
   contentHash: z.string(),
   frozenAt: z.string(),
   snapshot: z.unknown(),
+  /** Why engineering revised a requirement already in sourcing (F-12.5); null otherwise. */
+  revisionReason: z.string().nullable().optional(),
 });
+
+/**
+ * Engineering revises a requirement after suppliers have bid on it (F-12.5; doc 19 §10
+ * scenario 5). Only what a supplier prices can change: specification, quantities, the
+ * governing drawing. Rounds still live on the old revision are superseded; bids on them
+ * are kept as submitted and never awarded.
+ */
+export const reviseRequirementItemSchema = z.object({
+  enquiryItemId: z.uuid(),
+  description: z.string().trim().max(4000).optional(),
+  materialGrade: z.string().trim().max(120).optional(),
+  quantityBreakpoints: z.array(quantityBreakpointSchema).min(1).max(6).optional(),
+  toleranceClass: z.string().trim().max(40).optional(),
+  criticalTolerance: measurementSchema.nullable().optional(),
+  surfaceFinish: z.string().trim().max(120).optional(),
+  heatTreatment: z.string().trim().max(120).optional(),
+  coating: z.string().trim().max(120).optional(),
+  inspectionLevel: inspectionLevelSchema.optional(),
+  qualityNote: z.string().trim().max(2000).optional(),
+});
+
+export const reviseRequirementRequestSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    reason: z.string().trim().min(3, 'Say why the requirement changed').max(1000),
+    items: z.array(reviseRequirementItemSchema).max(50).default([]),
+    governingDocumentVersionId: z.uuid().optional(),
+  })
+  .refine((r) => r.items.length > 0 || r.governingDocumentVersionId !== undefined, {
+    message: 'Change at least one item or the governing document',
+    path: ['items'],
+  });
 
 /**
  * The customer projection (doc 06 §13). Deliberately a *different shape*, not a
@@ -348,6 +382,8 @@ export type EnquiryItem = z.infer<typeof enquiryItemSchema>;
 export type EnquiryDocument = z.infer<typeof enquiryDocumentSchema>;
 export type Enquiry = z.infer<typeof enquirySchema>;
 export type RequirementRevision = z.infer<typeof requirementRevisionSchema>;
+export type ReviseRequirementItem = z.infer<typeof reviseRequirementItemSchema>;
+export type ReviseRequirementRequest = z.infer<typeof reviseRequirementRequestSchema>;
 export type CustomerEnquiryStatus = z.infer<typeof customerEnquiryStatusSchema>;
 export type CustomerEnquiry = z.infer<typeof customerEnquirySchema>;
 export type CompletenessFlag = z.infer<typeof completenessFlagSchema>;
