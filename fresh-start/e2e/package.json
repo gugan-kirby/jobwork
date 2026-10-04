@@ -1,0 +1,19 @@
+{
+  "name": "@jobwork/e2e",
+  "version": "0.0.1",
+  "private": true,
+  "description": "IN-12 F-12.4: launch journeys in both apps on a booted stack, with axe and keyboard-only paths (doc 21 §9).",
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.15.0",
+    "otpauth": "^9.3.0",
+    "pg": "^8.16.0",
+    "typescript": "^5.9.2"
+  }
+}
