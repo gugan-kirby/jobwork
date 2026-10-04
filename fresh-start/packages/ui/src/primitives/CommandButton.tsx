@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { Button, type ButtonProps } from './Button';
+import { announceCommandSucceeded } from './command-events';
 
 /**
  * The doc 21 §6 idempotent action button, used for every money, approval, release and
@@ -62,6 +63,7 @@ export function CommandButton({
     setProblem(null);
     try {
       await onCommand();
+      announceCommandSucceeded();
       setPhase('done');
       window.setTimeout(() => setPhase('idle'), 2500);
     } catch (error) {
