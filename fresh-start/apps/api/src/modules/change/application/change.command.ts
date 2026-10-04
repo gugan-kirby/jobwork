@@ -132,6 +132,14 @@ export class ChangeCommand implements OnModuleInit {
           const order = await this.orders.findSalesOrder(cmd.salesOrderId, tx);
           if (!order) throw new DomainError('ORDER_NOT_FOUND', 404, 'Order not found');
           if (order.status === 'closed' || order.status === 'cancelled') throw new ChangeRefused('ORDER_NOT_OPEN', 'This order is no longer open for change', `It is ${order.status}.`);
+          // Context documents become baseline candidates for a drawing pack sent to suppliers: a
+          // customer may only point at its own documents; JobWork at documents that exist.
+          const owners = await this.repo.versionOwners(cmd.contextDocumentVersionIds, tx);
+          const unusable = cmd.contextDocumentVersionIds.filter((id) => {
+            const owner = owners.find((o) => o.versionId === id);
+            return !owner || (!actor.isInternal && owner.organizationId !== order.customerOrganizationId);
+          });
+          if (unusable.length > 0) throw new ChangeRefused('CONTEXT_DOCUMENT_UNAVAILABLE', 'A referenced document is not available to this change', `${unusable.length} document version(s) are unknown or not yours.`, 422);
           const number = await this.repo.allocateNumber(new Date(), tx);
           const id = await this.repo.create({ number, salesOrderId: order.id, origin, urgency: cmd.urgency, title: cmd.title, reason: cmd.reason, contextDocumentVersionIds: cmd.contextDocumentVersionIds, proposedBy: actor.userId }, tx);
           const change = (await this.repo.find(id, tx))!;

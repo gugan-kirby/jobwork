@@ -91,6 +91,16 @@ export class ChangeRepository {
     return tx ?? this.db.pool;
   }
 
+  /** Who owns each document version a proposal points at; unknown ids are simply absent. */
+  async versionOwners(versionIds: readonly string[], tx: Queryable): Promise<Array<{ versionId: string; organizationId: string }>> {
+    if (versionIds.length === 0) return [];
+    const res = await tx.query<{ id: string; owning_organization_id: string }>(
+      `SELECT v.id, d.owning_organization_id FROM dms.document_version v JOIN dms.document d ON d.id = v.document_id WHERE v.id = ANY($1::uuid[])`,
+      [versionIds],
+    );
+    return res.rows.map((r) => ({ versionId: r.id, organizationId: r.owning_organization_id }));
+  }
+
   async allocateNumber(now: Date, tx: Queryable): Promise<string> {
     const year = now.getUTCFullYear();
     await tx.query(`SELECT pg_advisory_xact_lock(hashtext('change.change_request.number'))`);
