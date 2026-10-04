@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
+    match /users/{userId} {
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow read: if signedIn() && (request.auth.uid == userId || resource.data.role == 'vendor' || isAdmin());
+      allow update: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    match /enquiries/{id} {
+      allow create: if signedIn() && request.resource.data.customerId == request.auth.uid;
+      allow read: if isAdmin() || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.status == 'OPEN'));
+      allow update: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /quotes/{id} {
+      allow create: if signedIn() && request.resource.data.vendorId == request.auth.uid;
+      allow read: if isAdmin() || (signedIn() && (resource.data.vendorId == request.auth.uid || resource.data.customerId == request.auth.uid));
+      allow update: if isAdmin() || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.vendorId == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+    match /orders/{id} {
+      allow read: if isAdmin() || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.vendorId == request.auth.uid));
+      allow create: if signedIn() && (request.resource.data.customerId == request.auth.uid || request.resource.data.vendorId == request.auth.uid);
+      allow update: if isAdmin() || (signedIn() && (resource.data.vendorId == request.auth.uid || resource.data.customerId == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+  }
+}
