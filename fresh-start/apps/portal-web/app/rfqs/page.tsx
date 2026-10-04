@@ -77,6 +77,8 @@ export default function SupplierRfqsPage(): React.JSX.Element {
       key: 'deadline',
       header: 'Time left',
       render: (row) => {
+        // F-12.5: a round closed for a revision has no time left, whatever its deadline says.
+        if (row.status === 'superseded') return <StatusChip tone="neutral">Closed: requirements updated</StatusChip>;
         const left = remaining(row.deadlineAt);
         return <StatusChip tone={left.tone}>{left.text}</StatusChip>;
       },

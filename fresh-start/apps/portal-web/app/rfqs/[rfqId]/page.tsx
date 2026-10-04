@@ -220,7 +220,9 @@ export default function SupplierRfqPage(): React.JSX.Element {
       width="wide"
       actions={
         <Inline gap={2}>
-          <StatusChip tone={closed ? 'neutral' : 'progress'}>{countdown(rfq.deadlineAt)}</StatusChip>
+          <StatusChip tone={closed ? 'neutral' : 'progress'}>
+            {rfq.status === 'superseded' ? 'Closed: requirements updated' : countdown(rfq.deadlineAt)}
+          </StatusChip>
           <StatusChip tone={live ? 'positive' : 'attention'}>
             {live ? `your bid v${live.versionNo}` : 'not quoted yet'}
           </StatusChip>
@@ -229,6 +231,12 @@ export default function SupplierRfqPage(): React.JSX.Element {
     >
       <Stack gap={4}>
         {notice ? <LiveRegion message={notice} /> : null}
+        {rfq.status === 'superseded' ? (
+          <Callout tone="neutral" title="This round closed because the requirement changed">
+            Your bid is kept exactly as you submitted it, but it priced the earlier requirement and will not be awarded. If your
+            capabilities still match, JobWork will invite you to the new round.
+          </Callout>
+        ) : null}
         {error ? (
           <Callout tone="blocked" assertive title={error.problem.title}>
             {error.problem.detail ?? 'That did not go through.'} ({error.problem.code})
