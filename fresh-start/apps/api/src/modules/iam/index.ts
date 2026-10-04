@@ -7,3 +7,4 @@ export {
   requireRole,
   requireTransactionalStrength,
 } from './application/actor';
+export { conflictsOf, SOD_RULES, type SodRule } from './domain/separation-of-duties';

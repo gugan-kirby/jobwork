@@ -17,6 +17,7 @@ import { LOCKOUT_MS, LOCKOUT_THRESHOLD, sessionLifetimes } from '../domain/sessi
 import { generateToken, hashToken } from '../domain/tokens';
 import { verifyTotp } from '../domain/totp';
 import { IamRepository, type UserRow } from '../infrastructure/iam.repository';
+import { MetricsService } from '../../../platform/metrics/metrics.service';
 
 export interface IssuedSession {
   token: string;
@@ -34,7 +35,10 @@ export interface RequestMeta {
 export class AuthService {
   private readonly log: Logger = createLogger({ service: 'api' }).child({ module: 'iam.auth' });
 
-  constructor(private readonly repo: IamRepository) {}
+  constructor(
+    private readonly repo: IamRepository,
+    private readonly metrics: MetricsService,
+  ) {}
 
   async login(email: string, password: string, meta: RequestMeta): Promise<IssuedSession> {
     const user = await this.repo.findUserByEmail(email);
@@ -42,10 +46,12 @@ export class AuthService {
     if (!user || !user.passwordHash || user.status !== 'active') {
       await burnVerification(); // uniform timing for unknown/inactive accounts (AUTH-11)
       this.log.info({ outcome: 'failed' }, 'auth.login_failed');
+      this.metrics.authEvents.inc({ event: 'login_failed' });
       throw new InvalidCredentials();
     }
     if (user.lockoutUntil && user.lockoutUntil.getTime() > Date.now()) {
       this.log.info({ userId: user.id, outcome: 'locked' }, 'auth.login_failed');
+      this.metrics.authEvents.inc({ event: 'login_failed' });
       throw new AccountLocked();
     }
 
@@ -57,13 +63,16 @@ export class AuthService {
       await this.repo.recordLoginFailure(user.id, lockoutUntil);
       if (lockoutUntil) {
         this.log.warn({ userId: user.id, outcome: 'lockout' }, 'auth.lockout_applied');
+        this.metrics.authEvents.inc({ event: 'lockout' });
       } else {
         this.log.info({ userId: user.id, outcome: 'failed' }, 'auth.login_failed');
+        this.metrics.authEvents.inc({ event: 'login_failed' });
       }
       throw new InvalidCredentials();
     }
 
     await this.repo.recordLoginSuccess(user.id);
+    this.metrics.authEvents.inc({ event: 'login_succeeded' });
     const session = await this.issueSession(user, meta);
     this.log.info(
       { userId: user.id, outcome: 'success', mfaRequired: session.mfaRequired },
@@ -121,6 +130,7 @@ export class AuthService {
     }
     if (!verified) {
       this.log.info({ userId: user.id, outcome: 'failed' }, 'auth.step_up_failed');
+      this.metrics.authEvents.inc({ event: 'mfa_failed' });
       throw new InvalidMfaCode();
     }
 

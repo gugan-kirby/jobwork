@@ -319,6 +319,37 @@ export class IamRepository {
     return row;
   }
 
+  /** Roles the person with this e-mail already holds in the organization, if a member. */
+  async roleKeysOfEmailInOrganization(organizationId: string, email: string): Promise<string[]> {
+    const res = await this.q().query<{ key: string }>(
+      `SELECT DISTINCT r.key
+         FROM iam.user_account u
+         JOIN iam.membership m ON m.user_id = u.id AND m.organization_id = $1 AND m.status = 'active'
+         JOIN iam.membership_role mr ON mr.membership_id = m.id
+         JOIN iam.role r ON r.id = mr.role_id
+        WHERE lower(u.email) = lower($2)`,
+      [organizationId, email],
+    );
+    return res.rows.map((r) => r.key);
+  }
+
+  /** Every active JobWork person and the roles they hold, for the separation-of-duties check. */
+  async internalRoleHolders(): Promise<Array<{ userId: string; displayName: string; email: string; roles: string[] }>> {
+    const res = await this.q().query<{ userId: string; displayName: string; email: string; roles: string[] }>(
+      `SELECT u.id AS "userId", coalesce(nullif(u.display_name, ''), u.email) AS "displayName", u.email,
+              array_agg(DISTINCT r.key ORDER BY r.key) AS roles
+         FROM iam.user_account u
+         JOIN iam.membership m ON m.user_id = u.id AND m.status = 'active'
+         JOIN iam.organization o ON o.id = m.organization_id AND o.type = 'internal'
+         JOIN iam.membership_role mr ON mr.membership_id = m.id
+         JOIN iam.role r ON r.id = mr.role_id
+        WHERE u.status = 'active'
+        GROUP BY u.id
+        ORDER BY 2`,
+    );
+    return res.rows;
+  }
+
   async findOrganization(
     id: string,
     client?: Queryable,

@@ -9,6 +9,19 @@ export class InvalidCredentials extends DomainError {
   }
 }
 
+/** Doc 03 §1 `no_separation_of_duties_conflict`, applied to a standing grant of roles (F-11.3). */
+export class RoleConflict extends DomainError {
+  constructor(rules: ReadonlyArray<{ key: string; reason: string }>) {
+    super(
+      'ROLE_CONFLICT',
+      422,
+      'One person may not hold these roles together',
+      rules.map((r) => r.reason).join(' '),
+      rules.map((r) => ({ path: 'roleKeys', message: r.key })),
+    );
+  }
+}
+
 export class AccountLocked extends DomainError {
   constructor() {
     super('ACCOUNT_LOCKED', 423, 'Too many failed attempts', 'Try again later.');

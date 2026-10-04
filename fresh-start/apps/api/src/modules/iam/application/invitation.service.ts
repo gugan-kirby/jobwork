@@ -5,7 +5,9 @@ import {
   AccountExists,
   InvitationInvalid,
   NotAuthorized,
+  RoleConflict,
 } from '../domain/errors';
+import { conflictsOf } from '../domain/separation-of-duties';
 import { ValidationFailed } from '../../../platform/http/domain-error';
 import {
   PASSWORD_PARAMS_VERSION,
@@ -82,6 +84,13 @@ export class InvitationService {
       throw new ValidationFailed(
         invalid.map((k) => ({ path: 'roleKeys', message: `role ${k} not valid for ${targetOrg.type} organization` })),
       );
+    }
+
+    // A standing grant that would let one person make and check the same decision (F-11.3).
+    if (targetOrg.type === 'internal') {
+      const existing = await this.repo.roleKeysOfEmailInOrganization(targetOrganizationId, input.email);
+      const conflicts = conflictsOf([...new Set([...existing, ...input.roleKeys])]);
+      if (conflicts.length > 0) throw new RoleConflict(conflicts);
     }
 
     const token = generateToken();
