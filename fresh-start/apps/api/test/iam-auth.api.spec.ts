@@ -345,7 +345,7 @@ describe('IAM authentication and authorization (doc 20 §13)', () => {
        WHERE u.email = 'buyer@acme.example' AND m.organization_id = $1`,
       [customerOrgId],
     );
-    const res = await admin().post(`/api/v1/admin/memberships/${membership.rows[0]?.id}/suspend`);
+    const res = await admin().post(`/api/v1/admin/memberships/${membership.rows[0]?.id}/suspend`, { reason: 'Revocation test' });
     expect(res.status).toBe(201);
 
     const afterSuspend = await memberClient.get('/api/v1/auth/me');
