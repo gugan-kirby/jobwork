@@ -44,6 +44,8 @@ export type Actor =
   | 'sales2'
   | 'finance'
   | 'finance2'
+  | 'quality'
+  | 'quality2'
   | 'admin';
 
 const PEOPLE: Record<Actor, { email: string; org: 'customer' | 'outsider' | 'supplierA' | 'supplierB' | 'internal'; roles: string[]; mfa: boolean }> = {
@@ -59,6 +61,8 @@ const PEOPLE: Record<Actor, { email: string; org: 'customer' | 'outsider' | 'sup
   sales2: { email: 'sales2@jobwork.test', org: 'internal', roles: ['jobwork_sales'], mfa: true },
   finance: { email: 'finance@jobwork.test', org: 'internal', roles: ['jobwork_finance'], mfa: true },
   finance2: { email: 'finance2@jobwork.test', org: 'internal', roles: ['jobwork_finance'], mfa: true },
+  quality: { email: 'quality@jobwork.test', org: 'internal', roles: ['jobwork_quality'], mfa: true },
+  quality2: { email: 'quality2@jobwork.test', org: 'internal', roles: ['jobwork_quality'], mfa: true },
   admin: { email: 'admin@jobwork.test', org: 'internal', roles: ['platform_admin', 'security_admin'], mfa: true },
 };
 
@@ -553,7 +557,7 @@ export class Pilot {
    * and acknowledged, the work package planned and released, the first milestone started
    * with evidence submitted.
    */
-  async intoProduction(deal: SourcedDeal): Promise<{ baselineId: string; workPackageId: string; milestoneId: string; evidenceVersionId: string }> {
+  async intoProduction(deal: SourcedDeal): Promise<{ baselineId: string; workPackageId: string; milestoneId: string; evidenceVersionId: string; qualityPlanId: string }> {
     await this.payAdvance(deal);
     const assembled = ok(await this.as.engineering.post(`/api/v1/sales-orders/${deal.orderId}/baselines`, { items: [{ documentVersionId: this.drawingVersionId, purpose: 'governing' }] }), 201, 'assemble baseline');
     const draft = (assembled['baselines'] as Body[]).find((b) => b['status'] === 'draft')!;
@@ -562,15 +566,36 @@ export class Pilot {
     const sv = await this.supplierProduction('supplierA', deal.purchaseOrderId);
     const transmittal = sv['transmittal'] as Body;
     ok(await this.as.supplierA.post(`/api/v1/supplier/transmittals/${transmittal['transmittalId']}/acknowledge`, { expectedVersion: transmittal['aggregateVersion'], note: 'Drawing pack received.' }), 201, 'acknowledge transmittal');
-    ok(await this.as.sourcing.post(`/api/v1/purchase-orders/${deal.purchaseOrderId}/work-package`, { plannedStart: daysFromNow(1), plannedFinish: daysFromNow(21), qualityPlanPresent: true }), 201, 'plan work package');
-    const wp = ((await this.productionView(deal.orderId))['workPackages'] as Body[]).find((w) => w['purchaseOrderId'] === deal.purchaseOrderId)!;
+    ok(await this.as.sourcing.post(`/api/v1/purchase-orders/${deal.purchaseOrderId}/work-package`, { plannedStart: daysFromNow(1), plannedFinish: daysFromNow(21) }), 201, 'plan work package');
+    let wp = ((await this.productionView(deal.orderId))['workPackages'] as Body[]).find((w) => w['purchaseOrderId'] === deal.purchaseOrderId)!;
+    const qualityPlanId = await this.approvedQualityPlan(wp['workPackageId'] as string);
+    wp = ((await this.productionView(deal.orderId))['workPackages'] as Body[]).find((w) => w['purchaseOrderId'] === deal.purchaseOrderId)!;
     ok(await this.as.sourcing.post(`/api/v1/work-packages/${wp['workPackageId']}/release`, { expectedVersion: wp['aggregateVersion'] }), 201, 'release work package');
     const first = ((await this.supplierProduction('supplierA', deal.purchaseOrderId))['workPackage'] as Body)['milestones'] as Body[];
     ok(await this.as.supplierA.post(`/api/v1/supplier/milestones/${first[0]!['milestoneId']}/start`, { expectedVersion: first[0]!['aggregateVersion'] }), 201, 'start milestone');
     const evidenceVersionId = await this.cleanDrawing(this.orgs.supplierA);
     const started = ((await this.supplierProduction('supplierA', deal.purchaseOrderId))['workPackage'] as Body)['milestones'] as Body[];
     ok(await this.as.supplierA.post(`/api/v1/supplier/milestones/${started[0]!['milestoneId']}/evidence`, { expectedVersion: started[0]!['aggregateVersion'], items: [{ documentVersionId: evidenceVersionId }] }), 201, 'submit evidence');
-    return { baselineId: draft['baselineId'] as string, workPackageId: wp['workPackageId'] as string, milestoneId: started[0]!['milestoneId'] as string, evidenceVersionId };
+    return { baselineId: draft['baselineId'] as string, workPackageId: wp['workPackageId'] as string, milestoneId: started[0]!['milestoneId'] as string, evidenceVersionId, qualityPlanId };
+  }
+
+  /**
+   * IN-14: JobWork quality writes the work package's plan from the launch template, with two
+   * drawing characteristics (a critical bore and a major length), and approves it.
+   */
+  async approvedQualityPlan(workPackageId: string): Promise<string> {
+    const draft = ok(await this.as.quality.post('/api/v1/quality-plans', { workPackageId, templateCode: 'cnc_machined_part' }), 201, 'create quality plan');
+    const drawing = [
+      { kind: 'variable', drawingReference: '7', name: 'Bore diameter', criticality: 'critical', unit: 'mm', nominal: '12', lower: { value: '11.98', inclusive: true }, upper: { value: '12.02', inclusive: true }, stages: ['fai', 'final'], method: 'Bore gauge', instrumentKind: 'bore_gauge' },
+      { kind: 'variable', drawingReference: '12', name: 'Overall length', criticality: 'major', unit: 'mm', nominal: '80', lower: { value: '79.9', inclusive: true }, upper: { value: '80.1', inclusive: true }, stages: ['fai'], method: 'Vernier caliper', instrumentKind: 'caliper' },
+    ];
+    const saved = ok(
+      await this.as.quality.post(`/api/v1/quality-plans/${draft['planId']}/draft`, { expectedVersion: draft['aggregateVersion'], stages: draft['stages'], characteristics: [...(draft['characteristics'] as Body[]), ...drawing] }),
+      201,
+      'save quality plan',
+    );
+    ok(await this.as.quality.post(`/api/v1/quality-plans/${draft['planId']}/approve`, { expectedVersion: saved['aggregateVersion'] }), 201, 'approve quality plan');
+    return draft['planId'] as string;
   }
 
   /**

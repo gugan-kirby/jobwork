@@ -15,7 +15,7 @@ const answered = (skip: string[] = []): Record<string, Body> =>
 describe('Engineering change control (F-13.2)', () => {
   let p: Pilot;
   let deal: SourcedDeal;
-  let prod: { baselineId: string; workPackageId: string; milestoneId: string; evidenceVersionId: string };
+  let prod: { baselineId: string; workPackageId: string; milestoneId: string; evidenceVersionId: string; qualityPlanId: string };
   let drawingDocumentId: string;
   let revisionB: { documentVersionId: string; versionNo: number };
   let changeId: string;
@@ -178,6 +178,19 @@ describe('Engineering change control (F-13.2)', () => {
     ok(await p.as.engineering.post(`/api/v1/changes/${changeId}/verify`, { expectedVersion: await version(), note: 'First-off part from revision B measured IT7 at the bore.' }), 201, 'verify');
     const closed = ok(await p.as.engineering.post(`/api/v1/changes/${changeId}/close`, { expectedVersion: await version() }), 201, 'close');
     expect(closed['status']).toBe('closed');
+  });
+
+  it('needs the quality plan revised against the new baseline before the next inspection (IN-14)', async () => {
+    const wp = ((await p.productionView(deal.orderId))['workPackages'] as Body[])[0]!;
+    expect(wp['qualityPlanPresent']).toBe(false);
+    expect((await p.as.quality.post('/api/v1/inspections', { workPackageId: prod.workPackageId, stage: 'final' })).body['code']).toBe('PLAN_BASELINE_STALE');
+    const plan = ok(await p.as.quality.get(`/api/v1/quality-plans/${prod.qualityPlanId}`), 200, 'plan');
+    expect(plan).toMatchObject({ status: 'approved', baselineCurrent: false });
+    const draft = ok(await p.as.quality.post(`/api/v1/quality-plans/${prod.qualityPlanId}/revise`, { expectedVersion: plan['aggregateVersion'] }), 201, 'revise plan');
+    expect(draft).toMatchObject({ status: 'draft', versionNo: 2, baselineId: candidateId, baselineCurrent: true });
+    ok(await p.as.quality.post(`/api/v1/quality-plans/${draft['planId']}/approve`, { expectedVersion: draft['aggregateVersion'] }), 201, 'approve revised plan');
+    expect(((await p.productionView(deal.orderId))['workPackages'] as Body[])[0]!['qualityPlanPresent']).toBe(true);
+    ok(await p.as.quality.post('/api/v1/inspections', { workPackageId: prod.workPackageId, stage: 'final' }), 201, 'plan final inspection');
   });
 
   it('audits every step of the change with its actor, in order', async () => {

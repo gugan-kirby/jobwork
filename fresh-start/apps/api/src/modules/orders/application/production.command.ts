@@ -420,11 +420,11 @@ export class ProductionCommand {
             evidencePolicy: m.evidencePolicy,
             minEvidence: m.minEvidence,
           }));
-          await this.production.updatePlan({ workPackageId: wpId, plannedStart: cmd.plannedStart, plannedFinish: cmd.plannedFinish, qualityPlanPresent: cmd.qualityPlanPresent, planningNote: cmd.planningNote }, tx);
+          await this.production.updatePlan({ workPackageId: wpId, plannedStart: cmd.plannedStart, plannedFinish: cmd.plannedFinish, planningNote: cmd.planningNote }, tx);
           await this.production.replaceMilestones(wpId, milestones, tx);
           return {
             result: po.salesOrderId,
-            audit: [{ action: 'orders.work_package_planned', subjectType: 'work_package', subjectId: wpId, data: { purchaseOrderId, plannedStart: cmd.plannedStart, plannedFinish: cmd.plannedFinish, milestones: milestones.length, qualityPlanPresent: cmd.qualityPlanPresent } }],
+            audit: [{ action: 'orders.work_package_planned', subjectType: 'work_package', subjectId: wpId, data: { purchaseOrderId, plannedStart: cmd.plannedStart, plannedFinish: cmd.plannedFinish, milestones: milestones.length } }],
           };
         },
       },

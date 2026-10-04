@@ -466,7 +466,10 @@ export class ProductionRepository {
     const res = await this.q(tx).query(
       `SELECT w.id, w.number, w.sales_order_id AS "salesOrderId", so.number AS "salesOrderNumber", w.purchase_order_id AS "purchaseOrderId",
               p.number AS "purchaseOrderNumber", w.supplier_organization_id AS "supplierOrganizationId", o.display_name AS "supplierDisplayName",
-              w.status, w.planned_start AS "plannedStart", w.planned_finish AS "plannedFinish", w.quality_plan_present AS "qualityPlanPresent",
+              w.status, w.planned_start AS "plannedStart", w.planned_finish AS "plannedFinish",
+              -- IN-14: an approved quality plan written against the order's released baseline.
+              EXISTS (SELECT 1 FROM quality.quality_plan qp JOIN dms.baseline qb ON qb.id = qp.baseline_id
+                       WHERE qp.work_package_id = w.id AND qp.status = 'approved' AND qb.status = 'released') AS "qualityPlanPresent",
               w.planning_note AS "planningNote", w.release_snapshot AS "releaseSnapshot", w.released_at AS "releasedAt",
               w.completed_at AS "completedAt", w.aggregate_version AS "aggregateVersion"
          FROM orders.work_package w
@@ -492,14 +495,14 @@ export class ProductionRepository {
   }
 
   async updatePlan(
-    input: { workPackageId: string; plannedStart: string; plannedFinish: string; qualityPlanPresent: boolean; planningNote: string },
+    input: { workPackageId: string; plannedStart: string; plannedFinish: string; planningNote: string },
     tx: Queryable,
   ): Promise<void> {
     await tx.query(
-      `UPDATE orders.work_package SET planned_start = $2, planned_finish = $3, quality_plan_present = $4, planning_note = $5,
+      `UPDATE orders.work_package SET planned_start = $2, planned_finish = $3, planning_note = $4,
               aggregate_version = aggregate_version + 1, updated_at = now()
         WHERE id = $1`,
-      [input.workPackageId, input.plannedStart, input.plannedFinish, input.qualityPlanPresent, input.planningNote],
+      [input.workPackageId, input.plannedStart, input.plannedFinish, input.planningNote],
     );
   }
 

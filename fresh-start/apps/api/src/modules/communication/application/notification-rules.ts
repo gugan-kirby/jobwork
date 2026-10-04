@@ -67,6 +67,20 @@ async function messageRule(event: OutboxEvent, { contexts }: RuleLookups): Promi
   return [{ templateKey: 'internal.message_received', audience: internal(roles), variables, link: context.links.internal }];
 }
 
+
+/** The supplier's own inspection, decided by JobWork quality. JobWork's own inspections notify nobody outside. */
+function inspectionDecided(e: OutboxEvent, outcome: 'passed' | 'failed') {
+  if (e.data['inspectedBySupplier'] !== true) return [];
+  return [
+    {
+      templateKey: 'supplier.inspection_decided',
+      audience: suppliers([str(e.data['supplierOrganizationId'])]),
+      variables: { inspectionNumber: str(e.data['number']), purchaseOrderNumber: str(e.data['purchaseOrderNumber']), outcomeLabel: outcome === 'passed' ? 'passed' : 'failed — see the reviewer’s note' },
+      link: `/supplier/inspections/${e.aggregateId}`,
+    },
+  ];
+}
+
 export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
   // ------------------------------------------------------------- customer
   'sourcing.clarification_requested': async (e, { repo }) => {
@@ -132,6 +146,20 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
       link: `/supplier/orders/${str(e.data['purchaseOrderId'])}`,
     },
   ],
+  // IN-14: a supplier is told when JobWork plans an inspection it must carry out, and how it was decided.
+  'quality.inspection_planned.v1': async (e) =>
+    e.data['inspectedBySupplier'] === true
+      ? [
+          {
+            templateKey: 'supplier.inspection_planned',
+            audience: suppliers([str(e.data['supplierOrganizationId'])]),
+            variables: { purchaseOrderNumber: str(e.data['purchaseOrderNumber']), stageLabel: str(e.data['stageLabel']), sampleSize: String(e.data['sampleSize'] ?? '') },
+            link: `/supplier/inspections/${e.aggregateId}`,
+          },
+        ]
+      : [],
+  'quality.inspection_passed.v1': async (e) => inspectionDecided(e, 'passed'),
+  'quality.inspection_failed.v1': async (e) => inspectionDecided(e, 'failed'),
   'orders.purchase_order_issued.v1': async (e) => [
     {
       templateKey: 'supplier.purchase_order_issued',

@@ -123,7 +123,6 @@ export const milestoneInputSchema = z.object({
 export const planWorkPackageRequestSchema = z.object({
   plannedStart: z.iso.date(),
   plannedFinish: z.iso.date(),
-  qualityPlanPresent: z.boolean().default(false),
   planningNote: z.string().trim().max(1000).default(''),
   milestones: z.array(milestoneInputSchema).min(1).max(20).optional(),
 });

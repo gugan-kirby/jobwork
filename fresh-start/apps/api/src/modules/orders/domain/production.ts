@@ -132,7 +132,7 @@ export function computeReleaseGates(input: GateInput): ReleaseGate[] {
   const compliance: string[] = [];
   if (input.supplier.profileStatus !== 'active') compliance.push(`The supplier is not active in the network (${input.supplier.profileStatus ?? 'no profile'}).`);
   if (input.supplier.acceptingWork === false) compliance.push('The supplier has paused new work.');
-  if (!input.qualityPlanPresent) compliance.push('No quality plan is recorded for this work package.');
+  if (!input.qualityPlanPresent) compliance.push('No approved quality plan for the current baseline. JobWork quality approves one under Quality.');
 
   const gate = (key: GateKey, reasons: string[], evidence: Record<string, string | null>): ReleaseGate => ({ key, label: GATE_LABEL[key], pass: reasons.length === 0, reasons, evidence });
   return [
@@ -145,7 +145,7 @@ export function computeReleaseGates(input: GateInput): ReleaseGate[] {
       purchaseOrderHash: input.purchaseOrder.contentHash,
     }),
     gate('planning', planning, { plannedStart: input.plan.plannedStart, plannedFinish: input.plan.plannedFinish, milestones: String(input.plan.milestoneCount) }),
-    gate('compliance', compliance, { supplierStatus: input.supplier.profileStatus, qualityPlan: input.qualityPlanPresent ? 'recorded' : null }),
+    gate('compliance', compliance, { supplierStatus: input.supplier.profileStatus, qualityPlan: input.qualityPlanPresent ? 'approved' : null }),
   ];
 }
 

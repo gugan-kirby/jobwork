@@ -54,7 +54,7 @@ export default function OrderProductionPage(): React.JSX.Element {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState<ApiError | null>(null);
-  const [plan, setPlan] = useState<Record<string, { start: string; finish: string; quality: boolean }>>({});
+  const [plan, setPlan] = useState<Record<string, { start: string; finish: string }>>({});
   const [reason, setReason] = useState<Record<string, string>>({});
   const [changes, setChanges] = useState<ChangeRequest[]>([]);
   const [proposal, setProposal] = useState({ title: '', reason: '', urgent: false });
@@ -180,7 +180,7 @@ export default function OrderProductionPage(): React.JSX.Element {
   const workPackageCard = (poId: string): React.JSX.Element => {
     const po = view.purchaseOrders.find((p) => p.purchaseOrderId === poId)!;
     const wp: WorkPackage | undefined = view.workPackages.find((w) => w.purchaseOrderId === poId);
-    const draftPlan = plan[poId] ?? { start: wp?.plannedStart ?? new Date().toISOString().slice(0, 10), finish: wp?.plannedFinish ?? new Date(Date.now() + order.deliveryLeadDays * 86_400_000).toISOString().slice(0, 10), quality: wp?.qualityPlanPresent ?? false };
+    const draftPlan = plan[poId] ?? { start: wp?.plannedStart ?? new Date().toISOString().slice(0, 10), finish: wp?.plannedFinish ?? new Date(Date.now() + order.deliveryLeadDays * 86_400_000).toISOString().slice(0, 10) };
     return (
       <Card key={poId} title={`${wp?.number ?? 'Not planned'} · ${po.supplierDisplayName}`} description={`${po.number} · ${po.status} · ${po.leadTimeDays} days`} actions={wp ? <StatusChip tone={wp.status === 'completed' ? 'positive' : wp.status === 'planned' ? 'attention' : 'progress'}>{wp.status.replace(/_/g, ' ')}</StatusChip> : undefined}>
         <Stack gap={3}>
@@ -189,8 +189,7 @@ export default function OrderProductionPage(): React.JSX.Element {
               <Inline gap={2}>
                 <TextInput label="Planned start" type="date" value={draftPlan.start} onChange={(e) => setPlan({ ...plan, [poId]: { ...draftPlan, start: e.target.value } })} />
                 <TextInput label="Planned finish" type="date" value={draftPlan.finish} onChange={(e) => setPlan({ ...plan, [poId]: { ...draftPlan, finish: e.target.value } })} />
-                <Checkbox label="Quality plan recorded" checked={draftPlan.quality} onChange={(e) => setPlan({ ...plan, [poId]: { ...draftPlan, quality: e.target.checked } })} />
-                <CommandButton variant="secondary" receiptLabel="Planned" onCommand={() => run(`/purchase-orders/${poId}/work-package`, { plannedStart: draftPlan.start, plannedFinish: draftPlan.finish, qualityPlanPresent: draftPlan.quality })}>
+                <CommandButton variant="secondary" receiptLabel="Planned" onCommand={() => run(`/purchase-orders/${poId}/work-package`, { plannedStart: draftPlan.start, plannedFinish: draftPlan.finish })}>
                   {wp ? 'Replan' : 'Plan with standard checkpoints'}
                 </CommandButton>
               </Inline>
