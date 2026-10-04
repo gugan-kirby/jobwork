@@ -28,6 +28,7 @@ import {
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
 import { ThreadPanel } from '../../thread-panel';
+import { RevisePanel } from './revise-panel';
 
 const TOPICS: ClarificationTopic[] = [
   'material',
@@ -122,6 +123,7 @@ export default function IntakeDetailPage() {
       render: (r) => r.frozenAt.slice(0, 19).replace('T', ' ') + ' UTC',
     },
     { key: 'hash', header: 'Hash', render: (r) => <CopyableId value={r.contentHash} label="Content hash" /> },
+    { key: 'why', header: 'Why', render: (r) => r.revisionReason ?? '—' },
   ];
 
   return (
@@ -447,9 +449,12 @@ export default function IntakeDetailPage() {
                 ) : null}
 
                 {enquiry.status === 'approved_for_sourcing' ? (
-                  <p style={{ color: 'var(--status-positive-fg)' }}>
-                    Approved. Revision {enquiry.currentRevisionNo} is what sourcing quotes against.
-                  </p>
+                  <Stack gap={4}>
+                    <p style={{ color: 'var(--status-positive-fg)' }}>
+                      Approved. Revision {enquiry.currentRevisionNo} is what sourcing quotes against.
+                    </p>
+                    <RevisePanel key={enquiry.aggregateVersion} enquiry={enquiry} onRevised={load} />
+                  </Stack>
                 ) : null}
 
                 {enquiry.status === 'closed' ? <p>Declined: {enquiry.decisionReason}</p> : null}

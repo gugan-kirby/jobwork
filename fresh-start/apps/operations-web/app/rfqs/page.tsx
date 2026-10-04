@@ -36,6 +36,8 @@ const STATUS_TONE: Record<string, Tone> = {
   no_bid: 'blocked',
   expired: 'blocked',
   cancelled: 'neutral',
+  // F-12.5: the requirement was revised; its bids stand as history.
+  superseded: 'neutral',
 };
 
 const FILTERS = [
