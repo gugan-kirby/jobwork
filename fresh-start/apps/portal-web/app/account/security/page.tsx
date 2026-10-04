@@ -17,6 +17,7 @@ import {
   TextInput,
   type Column,
 } from '@jobwork/ui';
+import { purgeOfflineCaches } from '@jobwork/web-kit';
 import { api, ApiError } from '../../../lib/api';
 
 interface SessionInfo {
@@ -202,6 +203,7 @@ export default function SecurityPage() {
               receiptLabel="Signed out"
               onCommand={async () => {
                 await api('/auth/logout-all', { method: 'POST' });
+                await purgeOfflineCaches().catch(() => undefined);
                 router.push('/login');
               }}
             >

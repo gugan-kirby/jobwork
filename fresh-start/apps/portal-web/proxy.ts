@@ -39,7 +39,7 @@ export const config = {
   matcher: [
     {
       // Pages only: the API proxy, build assets and icons carry no scripts to vouch for.
-      source: '/((?!api|_next/static|_next/image|favicon.ico|icon.svg).*)',
+      source: '/((?!api|_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|icons/|manifest.webmanifest|sw.js).*)',
       // Router prefetches fetch payloads, not documents.
       missing: [
         { type: 'header', key: 'next-router-prefetch' },

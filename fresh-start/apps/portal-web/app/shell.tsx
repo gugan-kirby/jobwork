@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import type { PortalSummary } from '@jobwork/contracts';
 import { AppShell, LinkProvider, type NavItem, type TabItem, type TabPrimaryAction } from '@jobwork/ui';
 import { api, ApiError } from '../lib/api';
+import { purgeOfflineCaches, registerServiceWorker, UNAUTHENTICATED_EVENT } from '@jobwork/web-kit';
 
 /**
  * The portal's navigation, in one place. `AppShell` needs the current path to mark the
@@ -121,6 +122,16 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
   const [audience, setAudience] = useState<Audience>('loading');
   const [summary, setSummary] = useState<PortalSummary | null>(null);
   const [unread, setUnread] = useState(0);
+
+  // F-11.6: the installed portal's service worker (production builds only — under
+  // `next dev` it would cache the hot-reloading bundles), and every cache purged the
+  // moment the API says the session is over: signed out elsewhere, or suspended.
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') registerServiceWorker();
+    const onUnauthenticated = (): void => void purgeOfflineCaches();
+    window.addEventListener(UNAUTHENTICATED_EVENT, onUnauthenticated);
+    return () => window.removeEventListener(UNAUTHENTICATED_EVENT, onUnauthenticated);
+  }, []);
 
   // Login, logout and invitation pages are unshelled: passing through one forgets who
   // this was, so the next signed-in page asks again.

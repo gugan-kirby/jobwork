@@ -14,6 +14,7 @@ import {
   Stack,
   type IconName,
 } from '@jobwork/ui';
+import { purgeOfflineCaches } from '@jobwork/web-kit';
 import { api, ApiError } from '../../lib/api';
 
 /**
@@ -66,6 +67,8 @@ export default function ProfilePage() {
     try {
       await api('/auth/logout', { method: 'POST', body: {} });
     } finally {
+      // BR-AUTH-05: nothing of this session stays on a shared phone.
+      await purgeOfflineCaches().catch(() => undefined);
       router.push('/welcome');
     }
   }

@@ -8,7 +8,11 @@ const nextConfig: NextConfig = {
   async headers() {
     // Headers that never vary (doc 11 §10, F-FE.6). The per-response nonce policy and
     // HSTS are set in proxy.ts.
-    return [{ source: '/(.*)', headers: staticSecurityHeaders() }];
+    return [
+      { source: '/(.*)', headers: staticSecurityHeaders() },
+      // F-11.6: the service worker is always revalidated, so a fix reaches every device.
+      { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' }] },
+    ];
   },
   async rewrites() {
     // Same-origin proxy to the API keeps session cookies first-party (doc 20 §6).
