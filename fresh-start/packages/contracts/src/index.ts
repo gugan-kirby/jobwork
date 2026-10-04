@@ -318,3 +318,6 @@ export * from './commercial';
 export * from './customer-quote';
 export * from './orders';
 export * from './production';
+
+// ------------------------------------------------------------------ communication (IN-10)
+export * from './communication';
