@@ -13,6 +13,7 @@ import { ObjectStore } from '../infrastructure/object-store';
 import { AuditWriter } from '../../../platform/commands/audit.writer';
 import { contextFromActor } from '../../../platform/commands/command';
 import { CommandExecutor } from '../../../platform/commands/execute';
+import { DatabaseService } from '../../../platform/database/database.service';
 
 type FinalizeInput = FinalizeUploadRequest & {
   title?: string | undefined;
@@ -47,6 +48,7 @@ export class FinalizeUploadCommand {
     private readonly store: ObjectStore,
     private readonly executor: CommandExecutor,
     private readonly audit: AuditWriter,
+    private readonly db: DatabaseService,
   ) {}
 
   async execute(
@@ -284,12 +286,9 @@ export class FinalizeUploadCommand {
     storageKey: string,
     reason: string,
   ): Promise<void> {
-    await this.repo.markSessionStatus(sessionId, 'aborted');
-    await this.audit.write(null, ctx, {
-      action: 'dms.upload_rejected',
-      subjectType: 'upload_session',
-      subjectId: sessionId,
-      reason,
+    await this.db.withTransaction(async (tx) => {
+      await this.repo.markSessionStatus(sessionId, 'aborted', tx);
+      await this.audit.write(tx, ctx, { action: 'dms.upload_rejected', subjectType: 'upload_session', subjectId: sessionId, reason });
     });
     await this.store.remove('quarantine', storageKey).catch(() => undefined);
     this.log.warn({ uploadSessionId: sessionId, reason }, 'dms.upload_rejected');

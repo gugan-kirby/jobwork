@@ -33,7 +33,7 @@ describe('command execution spine (BR-SYS-01..04, doc 02 §8)', () => {
       {} as HttpAdapterHost,
       dbService,
     );
-    executor = new CommandExecutor(dbService, new AuditWriter(dbService), new OutboxWriter(), metrics);
+    executor = new CommandExecutor(dbService, new AuditWriter(), new OutboxWriter(), metrics);
     pg = new Client({ connectionString: db.url });
     await pg.connect();
   }, 60_000);

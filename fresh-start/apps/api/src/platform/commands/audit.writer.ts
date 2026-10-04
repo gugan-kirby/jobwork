@@ -1,22 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import type { Pool, PoolClient } from 'pg';
-import { DatabaseService } from '../database/database.service';
+import type { PoolClient } from 'pg';
 import type { AuditSpec, CommandContext } from './command';
 
 /**
- * Appends audit events. Inside a command this runs on the command's transaction (BR-SYS-02);
- * security telemetry that has no aggregate mutation may write directly on the pool.
+ * Appends audit events, always on the transaction of the change they record (BR-SYS-02).
+ * The client is required: an audit row written after a commit can be lost while the
+ * change stands, and the IN-12 review found nine places that did exactly that.
  */
 @Injectable()
 export class AuditWriter {
-  constructor(private readonly db: DatabaseService) {}
-
-  async write(
-    client: Pool | PoolClient | null,
-    ctx: CommandContext,
-    spec: AuditSpec,
-  ): Promise<void> {
-    await (client ?? this.db.pool).query(
+  /**
+   * Always inside the caller's transaction (`BR-SYS-02`): the audit row commits with the
+   * change it records, or neither does. There is deliberately no pool fallback.
+   */
+  async write(client: PoolClient, ctx: CommandContext, spec: AuditSpec): Promise<void> {
+    await client.query(
       `INSERT INTO platform.audit_event
          (actor_type, actor_id, organization_id, action, subject_type, subject_id,
           subject_version, reason, correlation_id, data)

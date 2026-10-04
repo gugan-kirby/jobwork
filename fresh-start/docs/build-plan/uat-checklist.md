@@ -93,7 +93,7 @@ Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by t
 | 12.3 | Supplier A estimator | address bar | Open supplier B's bid and the customer's enquiry by URL | "Not found" both times; nothing reveals that they exist | ☐ |
 | 12.4 | Customer requester | address bar | Open a supplier bid or a PO by URL | "Not found" | ☐ |
 | 12.5 | Platform admin | `/audit` | Look up supplier B's estimator | The suspension and the reinstatement, each with the admin who did it and the reason given | ☐ |
-| 12.6 | Platform admin | `/ops-health` | Look for the refused attempts from 12.3–12.4 | Counted as authorization denials, by route (doc 12 §7; added by F-12.3) | ☐ |
+| 12.6 | Platform admin | Grafana → JobWork security → "External refusals (403/404)" | Look for the refused attempts from 12.3–12.4 | They appear as supplier and customer refusals; a sustained burst would raise `ExternalDenialSpike` (doc 12 §7) | ☐ |
 
 ## Findings
 

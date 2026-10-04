@@ -63,3 +63,5 @@ export function verifyServiceToken(secret: string, token: string): ServicePrinci
 
   return SERVICE_PRINCIPALS.find((p) => p.name === principalName) ?? null;
 }
+
+export { MIN_PRODUCTION_SECRET_LENGTH, PUBLIC_DEV_VALUES, productionConfigProblems, type ProductionConfigRules } from './production-config';

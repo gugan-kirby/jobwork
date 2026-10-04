@@ -184,13 +184,15 @@ export class InvitationService {
     } else {
       throw new NotAuthorized();
     }
-    const revoked = await this.repo.revokeInvitation(invitationId, organizationId);
-    if (!revoked) throw new InvitationInvalid();
-    await this.audit.write(null, contextFromActor(actor), {
-      action: 'iam.invitation_revoked',
-      subjectType: 'invitation',
-      subjectId: invitationId,
-      data: { organizationId },
+    await this.db.withTransaction(async (client) => {
+      const revoked = await this.repo.revokeInvitation(invitationId, organizationId, client);
+      if (!revoked) throw new InvitationInvalid();
+      await this.audit.write(client, contextFromActor(actor), {
+        action: 'iam.invitation_revoked',
+        subjectType: 'invitation',
+        subjectId: invitationId,
+        data: { organizationId },
+      });
     });
     this.log.info({ invitationId }, 'auth.invitation_revoked');
   }

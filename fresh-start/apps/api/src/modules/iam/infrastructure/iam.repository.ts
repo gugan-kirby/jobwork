@@ -674,8 +674,8 @@ export class IamRepository {
     return res.rows.map(mapSite);
   }
 
-  async findSite(siteId: string, organizationId: string): Promise<OrganizationSite | null> {
-    const res = await this.q().query(
+  async findSite(siteId: string, organizationId: string, client?: Queryable): Promise<OrganizationSite | null> {
+    const res = await this.q(client).query(
       `SELECT id, label, kind, address_line1, address_line2, city, state, postal_code,
               country_code, gstin, contact_name, contact_phone, status
          FROM iam.organization_site WHERE id = $1 AND organization_id = $2`,
@@ -699,7 +699,7 @@ export class IamRepository {
     contactName: string;
     contactPhone: string;
     createdBy: string;
-  }): Promise<OrganizationSite> {
+  }, client?: Queryable): Promise<OrganizationSite> {
     const params = [
       input.organizationId,
       input.label,
@@ -715,7 +715,7 @@ export class IamRepository {
       input.createdBy,
     ];
     const res = input.siteId
-      ? await this.q().query<{ id: string }>(
+      ? await this.q(client).query<{ id: string }>(
           `UPDATE iam.organization_site
               SET label = $2, kind = $3, address_line1 = $4, address_line2 = $5, city = $6,
                   state = $7, postal_code = $8, gstin = $9, contact_name = $10,
@@ -725,7 +725,7 @@ export class IamRepository {
           // `created_by` is not part of an update: the row keeps whoever added it.
           [...params.slice(0, 11), input.siteId],
         )
-      : await this.q().query<{ id: string }>(
+      : await this.q(client).query<{ id: string }>(
           `INSERT INTO iam.organization_site
              (organization_id, label, kind, address_line1, address_line2, city, state,
               postal_code, gstin, contact_name, contact_phone, created_by)
@@ -741,14 +741,14 @@ export class IamRepository {
         );
     const id = res.rows[0]?.id;
     if (!id) throw new Error('organization site could not be written');
-    const site = await this.findSite(id, input.organizationId);
+    const site = await this.findSite(id, input.organizationId, client);
     if (!site) throw new Error('organization site vanished after write');
     return site;
   }
 
   /** Archived, never deleted: an old enquiry still has to say where it was going. */
-  async archiveSite(siteId: string, organizationId: string): Promise<boolean> {
-    const res = await this.q().query(
+  async archiveSite(siteId: string, organizationId: string, client?: Queryable): Promise<boolean> {
+    const res = await this.q(client).query(
       `UPDATE iam.organization_site SET status = 'archived', updated_at = now()
         WHERE id = $1 AND organization_id = $2 AND status = 'active'`,
       [siteId, organizationId],
@@ -970,8 +970,8 @@ export class IamRepository {
     return (res.rowCount ?? 0) > 0;
   }
 
-  async revokeInvitation(id: string, organizationId: string): Promise<boolean> {
-    const res = await this.db.pool.query(
+  async revokeInvitation(id: string, organizationId: string, client?: Queryable): Promise<boolean> {
+    const res = await this.q(client).query(
       `UPDATE iam.invitation SET revoked_at = now()
        WHERE id = $1 AND organization_id = $2 AND consumed_at IS NULL AND revoked_at IS NULL`,
       [id, organizationId],

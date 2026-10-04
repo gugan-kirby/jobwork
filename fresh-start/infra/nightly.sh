@@ -30,7 +30,9 @@ run "suite (UTC)" env TZ=UTC pnpm test
 step "2/4 security suites"
 run "security suites" env TZ=Asia/Kolkata pnpm --filter @jobwork/api exec vitest run \
   test/cross-tenant-matrix.api.spec.ts test/dms-scan.api.spec.ts test/dms-negative.api.spec.ts \
-  test/sourcing-negative.api.spec.ts test/rate-limit.api.spec.ts
+  test/sourcing-negative.api.spec.ts test/rate-limit.api.spec.ts \
+  test/pilot/scenario-12-suspension-cross-party.api.spec.ts test/audit-coverage.spec.ts \
+  test/production-config.spec.ts
 
 step "3/4 performance smoke"
 mkdir -p var
