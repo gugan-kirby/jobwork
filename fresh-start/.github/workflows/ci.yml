@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jobwork
+          POSTGRES_PASSWORD: jobwork
+          POSTGRES_DB: jobwork_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jobwork"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      minio:
+        # edge-cicd starts `server /data` on its own, which service containers need.
+        image: minio/minio:edge-cicd
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://jobwork:jobwork@localhost:5432/jobwork_dev
+      SESSION_SECRET: ci-only-secret
+      SERVICE_TOKEN_SECRET: ci-only-service-secret
+      OBJECT_STORE_ENDPOINT: http://localhost:9000
+      OBJECT_STORE_ACCESS_KEY: minioadmin
+      OBJECT_STORE_SECRET_KEY: minioadmin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm migrate
+      - run: pnpm test
