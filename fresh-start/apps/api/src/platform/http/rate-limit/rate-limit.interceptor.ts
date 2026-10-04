@@ -138,6 +138,8 @@ export class RateLimitInterceptor implements NestInterceptor, OnModuleInit, OnMo
     if (!spent) return;
     const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
     this.log.warn({ operationClass, dimension: spent, retryAfterSeconds, enforced: this.mode === 'enforce' }, 'http.rate_limited');
-    if (this.mode === 'enforce') throw new RateLimited(retryAfterSeconds);
+    if (this.mode !== 'enforce') return;
+    const kind = operationClass === 'login' ? 'sign_in' : operationClass === 'read' || operationClass === 'search' ? 'read' : 'command';
+    throw new RateLimited(retryAfterSeconds, kind);
   }
 }

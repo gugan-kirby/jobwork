@@ -95,6 +95,8 @@ describe('Rate limits and abuse controls (F-11.2)', () => {
     }
     // Three wrong passwords are answered as wrong passwords; the fourth is refused unread.
     expect(statuses).toEqual([401, 401, 401, 429]);
+    const refused = await login(baseUrl, '203.0.113.6', 'target@kovai.test');
+    expect(refused.body['detail']).toMatch(/^Too many sign-in attempts\. Try again in \d+ seconds?\.$/);
     // Case and spacing do not make a new account.
     expect((await login(baseUrl, '203.0.113.5', ' target@kovai.test ')).status).toBe(429);
   });
@@ -119,7 +121,8 @@ describe('Rate limits and abuse controls (F-11.2)', () => {
     const refused = await apply(3);
     expect(refused.status).toBe(429);
     expect(refused.body).toMatchObject({ code: 'RATE_LIMITED', status: 429, title: 'Too many requests' });
-    expect(refused.body['detail']).toMatch(/^Nothing was changed by this request\. Try again in \d+ seconds?\.$/);
+    // The window is an hour, so the wait is said in minutes; the header keeps the seconds.
+    expect(refused.body['detail']).toMatch(/^Nothing was changed by this request\. Try again in \d+ minutes?\.$/);
     const retryAfter = Number(refused.headers.get('retry-after'));
     expect(retryAfter).toBeGreaterThanOrEqual(1);
     expect(retryAfter).toBeLessThanOrEqual(3600);
