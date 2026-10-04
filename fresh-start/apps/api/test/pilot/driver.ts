@@ -416,12 +416,13 @@ export class Pilot {
     ok(await this.decide(approver, award['approvalRequestId'] as string), 201, 'approve award');
     const sheet = await this.approvedCostSheet(award['awardId'] as string);
     const quoteId = await this.sentQuote(sheet.costSheetVersionId);
-    const accepted = ok(await this.accept(quoteId), 201, 'accept quote');
+    const accept = { key: `accept-${randomUUID()}`, body: await this.acceptanceBody(quoteId) };
+    const accepted = ok(await this.accept(quoteId, accept.key, accept.body), 201, 'accept quote');
     const orderId = accepted['orderId'] as string;
     const pos = await this.issuePurchaseOrders(orderId);
     const purchaseOrderId = pos[0]!['purchaseOrderId'] as string;
     await this.acknowledgePurchaseOrder('supplierA', purchaseOrderId);
-    return { ...round, evaluationRows: rows, awardId: award['awardId'] as string, award, costSheet: sheet, quoteId, order: accepted, orderId, purchaseOrders: pos, purchaseOrderId };
+    return { ...round, evaluationRows: rows, awardId: award['awardId'] as string, award, costSheet: sheet, quoteId, accept, order: accepted, orderId, purchaseOrders: pos, purchaseOrderId };
   }
 
   // ------------------------------------------------------------------ evidence
@@ -503,6 +504,8 @@ export interface SourcedDeal {
   award: Body;
   costSheet: { costSheetId: string; costSheetVersionId: string; version: Body };
   quoteId: string;
+  /** The exact acceptance request, so a scenario can replay it. */
+  accept: { key: string; body: Body };
   order: Body;
   orderId: string;
   purchaseOrders: Body[];
