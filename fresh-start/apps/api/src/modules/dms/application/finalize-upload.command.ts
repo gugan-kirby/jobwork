@@ -14,6 +14,7 @@ import { AuditWriter } from '../../../platform/commands/audit.writer';
 import { contextFromActor } from '../../../platform/commands/command';
 import { CommandExecutor } from '../../../platform/commands/execute';
 import { DatabaseService } from '../../../platform/database/database.service';
+import { DocumentRevisionHooks } from './document-revision-hooks';
 
 type FinalizeInput = FinalizeUploadRequest & {
   title?: string | undefined;
@@ -49,6 +50,7 @@ export class FinalizeUploadCommand {
     private readonly executor: CommandExecutor,
     private readonly audit: AuditWriter,
     private readonly db: DatabaseService,
+    private readonly revisions: DocumentRevisionHooks,
   ) {}
 
   async execute(
@@ -145,6 +147,7 @@ export class FinalizeUploadCommand {
           let documentId = locked.documentId;
           let supersedes: string | null = null;
           let nextVersionNo = 1;
+          let revisedTitle: string | null = null;
           if (documentId) {
             const document = await this.repo.lockDocument(documentId, organizationId, tx);
             if (!document) throw new UploadSessionInvalid('Document is no longer available');
@@ -156,6 +159,7 @@ export class FinalizeUploadCommand {
             }
             nextVersionNo = document.currentVersionNo + 1;
             supersedes = await this.repo.latestVersionId(documentId, tx);
+            revisedTitle = document.title;
           } else {
             const created = await this.repo.createDocument(
               {
@@ -191,6 +195,11 @@ export class FinalizeUploadCommand {
             documentVersionId: version.id,
           });
 
+          // A new revision of a document someone already depends on is their business too.
+          const consequences = revisedTitle !== null
+            ? await this.revisions.run({ documentId, documentVersionId: version.id, versionNo: version.versionNo, title: revisedTitle, uploadedBy: actor.userId }, tx)
+            : { audit: [], outbox: [] };
+
           const result: FinalizeUploadResult = {
             documentId,
             documentVersionId: version.id,
@@ -216,9 +225,12 @@ export class FinalizeUploadCommand {
                   deduplicated: existing !== null,
                 },
               },
+              ...consequences.audit,
             ],
             // Only newly stored bytes need scanning; reused ones already carry a verdict.
-            outbox: existing
+            outbox: [
+              ...consequences.outbox,
+              ...(existing
               ? []
               : [
                   {
@@ -236,7 +248,8 @@ export class FinalizeUploadCommand {
                       extension: extensionOf(locked.declaredFilename),
                     },
                   },
-                ],
+                ]),
+            ],
           };
         },
       },
