@@ -241,4 +241,10 @@ INSERT INTO communication.template_version (template_key, version, channel, audi
    'A change to order {{orderNumber}} is ready for your decision: its effect on price and delivery is set out for you to approve or reject.', ARRAY['changeNumber', 'orderNumber', 'link']),
   ('customer.change_decision_needed', 1, 'email', 'customer',
    '{{changeNumber}} needs your decision',
-   E'A change to order {{orderNumber}} is ready for your decision. Its effect on price and delivery is set out for you to approve or reject:\n{{link}}', ARRAY['changeNumber', 'orderNumber', 'link']);
+   E'A change to order {{orderNumber}} is ready for your decision. Its effect on price and delivery is set out for you to approve or reject:\n{{link}}', ARRAY['changeNumber', 'orderNumber', 'link']),
+  ('supplier.change_interim_decision', 1, 'in_app', 'supplier',
+   '{{purchaseOrderNumber}}: {{decisionLabel}}',
+   'JobWork has issued an interim decision on {{purchaseOrderNumber}} while an engineering change is decided: {{decisionLabel}}.', ARRAY['purchaseOrderNumber', 'decisionLabel', 'link']),
+  ('supplier.change_interim_decision', 1, 'email', 'supplier',
+   '{{purchaseOrderNumber}}: {{decisionLabel}}',
+   E'JobWork has issued an interim decision on {{purchaseOrderNumber}} while an engineering change is decided: {{decisionLabel}}. The details and its expiry are on the purchase order:\n{{link}}', ARRAY['purchaseOrderNumber', 'decisionLabel', 'link']);
