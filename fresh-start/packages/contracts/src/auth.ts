@@ -189,6 +189,7 @@ export const workQueueSchema = z.object({
     'baselines_to_release',
     'work_packages_to_release',
     'milestones_to_verify',
+    'inspections_awaiting_review',
     'leakage_reviews_open',
   ]),
   label: z.string(),

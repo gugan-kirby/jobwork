@@ -331,3 +331,6 @@ export * from './operations';
 
 // ------------------------------------------------------------------ engineering change (IN-13)
 export * from './change';
+
+// ------------------------------------------------------------------ quality (IN-14)
+export * from './quality';
