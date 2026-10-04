@@ -70,6 +70,8 @@ export interface PurchaseOrderLineRecord {
   unit: string;
   unitPriceMinor: number;
   setupAmountMinor: number;
+  freightAmountMinor: number;
+  nreAmountMinor: number;
   amountMinor: number;
 }
 
@@ -382,6 +384,7 @@ export class OrdersRepository {
               sp.id AS "supplierProfileId", l.rfq_item_id AS "rfqItemId", l.bid_version_id AS "bidVersionId",
               i.part_name AS "partName", i.description AS "itemDescription", l.quantity, l.unit,
               l.unit_price_minor AS "unitPriceMinor", l.setup_amount_minor AS "setupAmountMinor",
+              l.freight_amount_minor AS "freightAmountMinor", l.nre_amount_minor AS "nreAmountMinor",
               l.line_total_minor AS "lineTotalMinor", bv.lead_time_days AS "leadTimeDays", bv.payment_terms AS "paymentTerms",
               i.line_no AS "itemLineNo"
          FROM commercial.award_line l
@@ -416,6 +419,8 @@ export class OrdersRepository {
         unit: raw['unit'] as string,
         unitPriceMinor: num(raw['unitPriceMinor']),
         setupAmountMinor: num(raw['setupAmountMinor']),
+        freightAmountMinor: num(raw['freightAmountMinor']),
+        nreAmountMinor: num(raw['nreAmountMinor']),
         amountMinor: num(raw['lineTotalMinor']),
       });
       groups.set(key, group);
@@ -455,9 +460,10 @@ export class OrdersRepository {
     for (const line of input.lines) {
       await tx.query(
         `INSERT INTO orders.purchase_order_line
-           (purchase_order_id, line_no, rfq_item_id, bid_version_id, description, quantity, unit, unit_price_minor, setup_amount_minor, amount_minor)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [id, line.lineNo, line.rfqItemId, line.bidVersionId, line.description, line.quantity, line.unit, line.unitPriceMinor, line.setupAmountMinor, line.amountMinor],
+           (purchase_order_id, line_no, rfq_item_id, bid_version_id, description, quantity, unit, unit_price_minor, setup_amount_minor,
+            freight_amount_minor, nre_amount_minor, amount_minor)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [id, line.lineNo, line.rfqItemId, line.bidVersionId, line.description, line.quantity, line.unit, line.unitPriceMinor, line.setupAmountMinor, line.freightAmountMinor, line.nreAmountMinor, line.amountMinor],
       );
     }
     return id;
@@ -483,7 +489,8 @@ export class OrdersRepository {
     if (!head) return null;
     const lines = await this.q(tx).query(
       `SELECT line_no AS "lineNo", rfq_item_id AS "rfqItemId", bid_version_id AS "bidVersionId", description, quantity, unit,
-              unit_price_minor AS "unitPriceMinor", setup_amount_minor AS "setupAmountMinor", amount_minor AS "amountMinor"
+              unit_price_minor AS "unitPriceMinor", setup_amount_minor AS "setupAmountMinor",
+              freight_amount_minor AS "freightAmountMinor", nre_amount_minor AS "nreAmountMinor", amount_minor AS "amountMinor"
          FROM orders.purchase_order_line WHERE purchase_order_id = $1 ORDER BY line_no`,
       [id],
     );
@@ -495,6 +502,8 @@ export class OrdersRepository {
         quantity: num(row['quantity']),
         unitPriceMinor: num(row['unitPriceMinor']),
         setupAmountMinor: num(row['setupAmountMinor']),
+        freightAmountMinor: num(row['freightAmountMinor']),
+        nreAmountMinor: num(row['nreAmountMinor']),
         amountMinor: num(row['amountMinor']),
       })),
     };

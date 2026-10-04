@@ -99,6 +99,8 @@ export interface AwardLineRecord {
   unit: string;
   unitPriceMinor: number;
   setupAmountMinor: number;
+  freightAmountMinor: number;
+  nreAmountMinor: number;
   lineTotalMinor: number;
 }
 
@@ -473,9 +475,9 @@ export class CommercialRepository {
       await tx.query(
         `INSERT INTO commercial.award_line
            (award_id, rfq_item_id, bid_version_id, supplier_organization_id, bid_quantity, quantity,
-            unit, unit_price_minor, setup_amount_minor, line_total_minor)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [id, line.rfqItemId, line.bidVersionId, line.supplierOrganizationId, line.bidQuantity, line.quantity, line.unit, line.unitPriceMinor, line.setupAmountMinor, line.lineTotalMinor],
+            unit, unit_price_minor, setup_amount_minor, freight_amount_minor, nre_amount_minor, line_total_minor)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [id, line.rfqItemId, line.bidVersionId, line.supplierOrganizationId, line.bidQuantity, line.quantity, line.unit, line.unitPriceMinor, line.setupAmountMinor, line.freightAmountMinor, line.nreAmountMinor, line.lineTotalMinor],
       );
     }
     return id;
@@ -515,7 +517,8 @@ export class CommercialRepository {
       `SELECT l.id, l.rfq_item_id AS "rfqItemId", i.line_no AS "lineNo", l.bid_version_id AS "bidVersionId",
               l.supplier_organization_id AS "supplierOrganizationId", o.display_name AS "supplierDisplayName",
               l.bid_quantity AS "bidQuantity", l.quantity, l.unit, l.unit_price_minor AS "unitPriceMinor",
-              l.setup_amount_minor AS "setupAmountMinor", l.line_total_minor AS "lineTotalMinor"
+              l.setup_amount_minor AS "setupAmountMinor", l.freight_amount_minor AS "freightAmountMinor",
+              l.nre_amount_minor AS "nreAmountMinor", l.line_total_minor AS "lineTotalMinor"
          FROM commercial.award_line l
          JOIN sourcing.rfq_item i ON i.id = l.rfq_item_id
          JOIN iam.organization o ON o.id = l.supplier_organization_id
@@ -531,6 +534,8 @@ export class CommercialRepository {
         quantity: num(row['quantity']),
         unitPriceMinor: num(row['unitPriceMinor']),
         setupAmountMinor: num(row['setupAmountMinor']),
+        freightAmountMinor: num(row['freightAmountMinor']),
+        nreAmountMinor: num(row['nreAmountMinor']),
         lineTotalMinor: num(row['lineTotalMinor']),
       })),
     };

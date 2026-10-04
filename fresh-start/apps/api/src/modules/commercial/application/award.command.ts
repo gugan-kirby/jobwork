@@ -91,8 +91,12 @@ export class ProposeAwardCommand {
       unit: string;
       unitPriceMinor: number;
       setupAmountMinor: number;
+      freightAmountMinor: number;
+      nreAmountMinor: number;
       lineTotalMinor: number;
     }> = [];
+    // Bid versions whose own charges are already on an award line.
+    const charged = new Set<string>();
     for (const item of input.items) {
       const rfqItem = items.find((i) => i.id === item.rfqItemId);
       if (!rfqItem) {
@@ -133,8 +137,15 @@ export class ProposeAwardCommand {
             'items',
           );
         }
-        const first = item.lines[0] === line;
-        const lineTotalMinor = lineAmount(bidLine.unitPriceMinor, line.quantity) + (first ? bidLine.setupAmountMinor : 0);
+        // Every line carries its own bid line's setup (each line of a split is another
+        // supplier's bid). A bid's freight to JobWork and tooling/NRE were priced once, for
+        // the whole bid: they ride in full on the first award line citing it (doc 10 §2;
+        // doc 07 direct attribution), so the cost sheet and the PO pay what was quoted.
+        const chargesHere = !charged.has(line.bidVersionId);
+        charged.add(line.bidVersionId);
+        const freightAmountMinor = chargesHere ? cited.version.freightAmountMinor : 0;
+        const nreAmountMinor = chargesHere ? cited.version.nreAmountMinor : 0;
+        const lineTotalMinor = lineAmount(bidLine.unitPriceMinor, line.quantity) + bidLine.setupAmountMinor + freightAmountMinor + nreAmountMinor;
         lines.push({
           rfqItemId: item.rfqItemId,
           bidVersionId: line.bidVersionId,
@@ -143,7 +154,9 @@ export class ProposeAwardCommand {
           quantity: line.quantity,
           unit: bidLine.unit,
           unitPriceMinor: bidLine.unitPriceMinor,
-          setupAmountMinor: first ? bidLine.setupAmountMinor : 0,
+          setupAmountMinor: bidLine.setupAmountMinor,
+          freightAmountMinor,
+          nreAmountMinor,
           lineTotalMinor,
         });
       }
