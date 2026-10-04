@@ -68,6 +68,20 @@ What `0022_quality.sql` creates:
   - Queue `inspections_awaiting_review` with an SLA policy version.
   - Templates `supplier.inspection_planned` and `supplier.inspection_decided`, each in_app + email.
 
+**Verification (2026-10-05, F-14.1).** `quality.db.spec.ts` (6) covers:
+
+- the six seeded conversions, exact and cited;
+- hardness has no conversion and cannot gain one;
+- conversions and template versions are never rewritten, only retired;
+- characteristic shape: limits each with an inclusivity, or accepted values;
+- an approved plan and its characteristics are frozen, with one approved and one draft plan per work package;
+- the inspection machine refuses shortcuts and keeps what it was planned against;
+- the reviewer is never the submitter;
+- results are immutable and superseded once, with a reason;
+- calibrations are facts; instruments only retire.
+
+Database suite 85 green.
+
 ## F-14.2 Measurement engine
 
 | File | Action | Contents |
