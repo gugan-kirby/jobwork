@@ -35,9 +35,9 @@ export class TestClient {
     method: string,
     path: string,
     body?: unknown,
-    opts: { csrf?: boolean; origin?: string } = {},
+    opts: { csrf?: boolean; origin?: string; headers?: Record<string, string> } = {},
   ): Promise<{ status: number; body: Record<string, unknown> }> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...opts.headers };
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (this.cookies.size > 0) {
       headers['cookie'] = [...this.cookies.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
@@ -66,7 +66,7 @@ export class TestClient {
   post(
     path: string,
     body?: unknown,
-    opts?: { csrf?: boolean; origin?: string },
+    opts?: { csrf?: boolean; origin?: string; headers?: Record<string, string> },
   ): Promise<{ status: number; body: Record<string, unknown> }> {
     return this.request('POST', path, body, opts ?? {});
   }
