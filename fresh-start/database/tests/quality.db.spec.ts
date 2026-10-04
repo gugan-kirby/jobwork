@@ -224,6 +224,19 @@ describe('quality schema (F-14.1)', () => {
     await pg.query(`INSERT INTO quality.result_disposition (result_id, decision, reason, decided_by) VALUES ($1, 'accept', 'Re-checked on a calibrated gauge block', gen_random_uuid())`, [expired.id]);
     await expect(pg.query(`INSERT INTO quality.result_disposition (result_id, decision, reason, decided_by) VALUES ($1, 'reinspect', 'Second thoughts', gen_random_uuid())`, [expired.id])).rejects.toThrow(/result_disposition_result_id_key/);
     expect(corrected.id).toBeTruthy();
+    // 0023: a unit nobody defined is kept as entered (judged cannot-evaluate), but only in the shape of a unit code.
+    await pg.query(
+      `INSERT INTO quality.inspection_result (inspection_id, sample_id, characteristic_id, original_value, original_unit, declared_precision, outcome, rule_version, calibration_status, recorded_by)
+       VALUES ($1, $2, $3, '125', 'microinch', 0, 'cannot_evaluate', 'MEAS-1', 'not_required', gen_random_uuid())`,
+      [insp.id, sample.id, characteristicId.id],
+    );
+    await expect(
+      pg.query(
+        `INSERT INTO quality.inspection_result (inspection_id, sample_id, characteristic_id, original_value, original_unit, declared_precision, outcome, rule_version, calibration_status, recorded_by)
+         VALUES ($1, $2, $3, '125', 'µ in!', 0, 'cannot_evaluate', 'MEAS-1', 'not_required', gen_random_uuid())`,
+        [insp.id, sample.id, characteristicId.id],
+      ),
+    ).rejects.toThrow(/chk_result_original_unit/);
 
     await pg.query(`UPDATE quality.inspection SET status = 'under_review', review_started_at = now() WHERE id = $1`, [insp.id]);
     // BR-QLT-03: the submitter never reviews.
