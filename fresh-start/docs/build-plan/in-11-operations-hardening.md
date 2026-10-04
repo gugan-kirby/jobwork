@@ -72,6 +72,17 @@ Covers: doc 08 §§11, 14; doc 11 §10; `AUTH-12` per-IP half; doc 12 §3 Redis 
 | `.github/workflows/ci.yml`, `infra/docker-compose.yml` | edit | Redis service for tests |
 | `apps/api/test/rate-limit.api.spec.ts` | new | Budget exhaustion per class; webhook capacity isolated from public limits; per-account login budget independent of IP; Redis unreachable → in-memory budgets still limit; problem body and header |
 
+**Deviations (2026-10-04, F-11.2):**
+
+- An interceptor (`rate-limit/rate-limit.interceptor.ts`), not a guard: it runs after the session and service-principal guards, so budgets count per person and per organization, not only per address — everyone behind one office NAT shares an address. The cost: a flood of forged session cookies reaches the session guard's lookup before any limit; that belongs to the edge (WAF) in front of the API.
+- Counters are a sliding-window estimate over two fixed windows, keyed by a SHA-256 of the identity: the store never holds an address or an e-mail in clear.
+- `RATE_LIMIT_MODE` (`enforce` default, `observe` logs without refusing, `off`). The API suites run with `off` (vitest `env`) because they sign in hundreds of times from one address; `rate-limit.api.spec.ts` turns limits on for itself.
+- The refusal is worded by class: sign-in "Too many sign-in attempts", reads "Too many requests in a short time", commands "Nothing was changed by this request" — each with the wait in seconds or minutes, and `Retry-After` plus `retryAfterSeconds` for software.
+- **Deployment requirement (recorded for `T-01`):** Next's rewrite proxy sets `X-Forwarded-For` only when the header is absent, so it passes a client-supplied value through. Deployed, the edge must set the header and `TRUST_PROXY` must name the edge and web-app hops; otherwise per-address budgets can be dodged by rotating a forged header. Per-account, per-person and per-organization budgets do not depend on it.
+- The module waits up to one second for Redis at start: without the wait, the first requests after a deploy raced the handshake and put every instance into degraded mode for 30 seconds (found by the suite's "counters are in Redis" assertion).
+
+**Browser verification (2026-10-04, F-11.2).** Through the operations app's proxy: five wrong passwords met the existing per-account lockout, the eleventh attempt the account budget (429, `Retry-After: 527`); the budget survived an API restart (Redis). The login screen showed "Try again in 9 minutes" — after first showing "527 seconds" and "Nothing was changed by this request", both reworded as above.
+
 ## F-11.3 Metrics, dashboards, alerts, business-control panel, SoD
 
 Covers: doc 12 §§1, 6–8; `ES-35`; doc 19 §9 SoD row; doc 03 §§2, 4.
