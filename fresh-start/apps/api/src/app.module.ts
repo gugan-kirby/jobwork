@@ -8,6 +8,7 @@ import { CommercialModule } from './modules/commercial';
 import { CommunicationModule } from './modules/communication';
 import { OrdersModule } from './modules/orders';
 import { ChangeModule } from './modules/change';
+import { QualityModule } from './modules/quality';
 import { SupplierModule } from './modules/supplier';
 import { PlatformModule } from './platform/platform.module';
 
@@ -21,6 +22,7 @@ import { PlatformModule } from './platform/platform.module';
     CommercialModule,
     OrdersModule,
     ChangeModule,
+    QualityModule,
     CommunicationModule,
     OperationsModule,
     HealthModule,
