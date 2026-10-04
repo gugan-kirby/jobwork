@@ -61,6 +61,6 @@ import {
     // `T-03`: the provider is chosen by configuration; `dev` is the only adapter until the decision lands.
     { provide: PaymentGateway, useExisting: DevGateway },
   ],
-  exports: [OrdersRepository, FinanceRepository],
+  exports: [OrdersRepository, FinanceRepository, ProductionRepository],
 })
 export class OrdersModule {}

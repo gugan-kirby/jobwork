@@ -84,6 +84,8 @@ export interface GateInput {
   plan: { plannedStart: string | null; plannedFinish: string | null; milestoneCount: number };
   supplier: { profileStatus: string | null; acceptingWork: boolean | null };
   qualityPlanPresent: boolean;
+  /** An unexpired, unlifted interim stop on this purchase order (IN-13). */
+  interimStop?: { changeNumber: string; reason: string; expiresAt: string } | null;
 }
 
 const GATE_LABEL: Record<GateKey, string> = {
@@ -117,6 +119,10 @@ export function computeReleaseGates(input: GateInput): ReleaseGate[] {
     if (input.transmittal.status !== 'acknowledged') {
       technical.push(`The supplier has not acknowledged transmittal ${input.transmittal.number} (BR-ENG-07) — downloading the files is not acknowledgment.`);
     }
+  }
+
+  if (input.interimStop) {
+    technical.push(`Interim stop under change ${input.interimStop.changeNumber} until ${input.interimStop.expiresAt.slice(0, 16).replace('T', ' ')} UTC: ${input.interimStop.reason}`);
   }
 
   const planning: string[] = [];
