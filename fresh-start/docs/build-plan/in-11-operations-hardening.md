@@ -149,6 +149,17 @@ Covers: doc 23 §4 nightly stage; doc 13 §§5, 10.
 | `apps/api/test/cross-tenant-matrix.api.spec.ts` + `test/helpers/world.ts` | new | One world through the real API (two customers, two suppliers, internal roles); a declared grid of actor × resource × action with expected allow/deny; denial for another tenant's id is indistinguishable from a missing id; suspension denies detail and download immediately |
 | `infra/perf/smoke.mjs` | new | Dependency-free load smoke: login, summary, lists, detail; p50/p95/p99 against `NFR-02` |
 
+**Deviations (2026-10-04, F-11.5):**
+
+- `ci.yml` moved to `/.github/workflows/` with `working-directory: fresh-start`; `nightly.yml` beside it (02:00 IST, and on demand). Both pass `actionlint`. CI now also runs Redis and `TZ=Asia/Kolkata`; the nightly runs the whole suite again in UTC (it passes: no test depends on India time).
+- The nightly's steps live in `infra/nightly.sh` (`pnpm nightly`), so a red night replays on a laptop: suite in UTC, the security suites by name (matrix, file corpus, negatives, rate limits), a 60-second paced performance smoke against a booted API, and `pnpm audit --audit-level=high`.
+- The matrix (`cross-tenant-matrix.api.spec.ts`, world in `test/helpers/world.ts`) probes 26 reads across 4 external parties, 5 internal roles and anonymous; checks that a refused party's answer for another tenant's real id equals the answer for a missing id; sends 8 forbidden commands with valid bodies (so authorization, not validation, refuses them) and checks nothing was audited; and suspends a membership to show detail, download and thread access end at once. It is fast enough to run in every CI build, not only nightly. It passed first time: the per-increment negative suites had already closed these paths.
+- Not in the nightly, and recorded: container rescans (no images until `T-01`), restore verification (IN-12 F-12.2).
+
+**Found by the dependency audit (2026-10-04), fixed:** 1 critical and 9 high advisories. Next.js 16.3.4 → 16.3.8 (remote code execution in `next/og`); Fastify → 5.12.5, including the copy `@nestjs/platform-fastify` 11.2.7 pins at 5.11.3 (header and request-validation bypasses, authentication bypass via malformed URLs, `X-Forwarded-*` spoofing under `trustProxy`) through a pnpm override; `@nestjs/platform-fastify` → 11.2.7 (middleware bypass); `brace-expansion` and `fast-uri` overrides. Every override is explained in `package.json`'s `//` note with a review date (2026-11-04, `ES-30`). Fastify 5.12 also removed hop-count `trustProxy` as unsafe, so `TRUST_PROXY` now refuses a number or `true` at start. **Deferred, tracked:** `vitest` < 4.1.11 (moderate, test runner only) needs the vitest 4 major — review by 2026-11-04.
+
+**Nightly, run locally (2026-10-04):** green end to end — suite in UTC 590 tests, security suites 32, smoke normal-API p95 28 ms and supplier-search p95 27 ms at 8 requests/s with no errors or refusals, audit no high or critical. The first GitHub run happens on the next push; the repository reported no workflows before this change.
+
 ## F-11.6 Installable portal and offline shell
 
 Covers: doc 21 §8, `DS-14`, `BR-AUTH-05`, ADR-0005. F-DS assigned this work to IN-11; this section carries it (added 2026-10-04 by F-FE.7).
