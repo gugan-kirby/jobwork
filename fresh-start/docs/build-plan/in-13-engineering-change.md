@@ -107,6 +107,18 @@ No horizontal scroll at 390 px. Defects found and fixed in the walk:
 | `apps/api/test/pilot/scenario-06-change-after-production-start.api.spec.ts` | new | A deal in production with evidence submitted. The customer requests a change and engineering stops the affected work. Impact records scrap of 20 pieces and a supplier and customer price delta. Internal approval, then customer approval. A new baseline is released and acknowledged, and the change is verified and closed. Old evidence keeps naming the old baseline. Money adds up: amendment = installment; the scrap journal balances |
 | `docs/build-plan/uat-checklist.md` | edit | Scenario 6 steps per role |
 
+**Verification (2026-10-05, F-13.4).** `scenario-06-change-after-production-start.api.spec.ts` (7) takes the customer's request with its own marking specification, then:
+
+- a stop (gate red, start refused);
+- scope classification, with a supplier brief free of the customer's words;
+- the supplier's estimate and an eight-area impact with 20 pieces scrapped and the marking spec in the candidate;
+- sales approval, then a customer decision on price and date alone;
+- release in the change's name (direct release refused with `BASELINE_CHANGE_REQUIRED`);
+- supplier acknowledgment (old evidence keeps its baseline; the supplier gets the new document);
+- verify and close.
+
+Money: amendment = installment = invoice total (subtotal + tax), the PO amendment matches the supplier delta, and the scrap journal balances against the order. Scenario 5 is still green. UAT steps 6.1–6.12 are in `uat-checklist.md`. Preparing the scenario found #21: change context documents were not checked for ownership.
+
 ## Decisions taken on the owner's behalf
 
 Taken as safe defaults so the build can proceed; each is reversible and recorded here for review.
@@ -122,6 +134,8 @@ Taken as safe defaults so the build can proceed; each is reversible and recorded
 
 ## Increment exit
 
-- [ ] Pilot scenario 6 green end to end; scenario 5 still green.
-- [ ] No path releases a superseding baseline outside an approved change.
-- [ ] Old baseline evidence untouched; every work package shows which baselines it actually used.
+- [x] Pilot scenario 6 green end to end; scenario 5 still green.
+- [x] No path releases a superseding baseline outside an approved change. The API refuses with `BASELINE_CHANGE_REQUIRED` (F-13.1; scenario 6), and the database refuses through `chk_baseline_supersedes_by_change` (`change-control.db.spec.ts`).
+- [x] Old baseline evidence untouched; every work package shows which baselines it actually used: `baselinesUsed` from `orders.work_package_baseline` (`change.api.spec.ts`, scenario 6).
+
+**IN-13 build closed 2026-10-05** (PRs #17–#22). Owner items carried: the decisions above, for review; UAT scenario 6 runs with Phase 1 UAT on staging.
