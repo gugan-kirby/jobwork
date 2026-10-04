@@ -167,6 +167,24 @@ export const operationsControlsSchema = z.object({
   separationOfDuties: z.object({ rules: z.array(sodRuleSchema), conflicts: z.array(roleConflictSchema) }).nullable(),
 });
 
+// ------------------------------------------------------------------ dead letters (F-11.4)
+
+/** An outbox event the worker gave up on. Never its payload: type, age and error only. */
+export const deadLetterSchema = z.object({
+  eventId: z.uuid(),
+  eventType: z.string(),
+  aggregateType: z.string(),
+  occurredAt: z.string(),
+  attempts: z.number().int().nonnegative(),
+  /** The worker's last error, with e-mail addresses and long numbers masked. */
+  lastError: z.string().nullable(),
+  correlationId: z.string(),
+});
+
+export const resolveDeadLetterRequestSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+});
+
 // ------------------------------------------------------------------ internal sweep
 
 export const slaSweepResultSchema = z.object({
@@ -196,3 +214,5 @@ export type PlatformControls = z.infer<typeof platformControlsSchema>;
 export type SodRuleView = z.infer<typeof sodRuleSchema>;
 export type RoleConflictView = z.infer<typeof roleConflictSchema>;
 export type OperationsControls = z.infer<typeof operationsControlsSchema>;
+export type DeadLetter = z.infer<typeof deadLetterSchema>;
+export type ResolveDeadLetterRequest = z.infer<typeof resolveDeadLetterRequestSchema>;

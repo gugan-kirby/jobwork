@@ -162,4 +162,39 @@ describe('Metrics, controls panel and separation of duties (F-11.3)', () => {
       ['both@jobwork.test', ['sales_with_finance']],
     ]);
   });
+
+  it('replays or dismisses a dead letter with a reason, audited, and never shows its payload (F-11.4)', async () => {
+    const dead = async (type: string, error: string): Promise<string> =>
+      (await one<{ id: string }>(
+        `INSERT INTO platform.outbox_event (event_type, aggregate_type, aggregate_id, correlation_id, data, status, attempts, last_error)
+         VALUES ($1, 'supplier_profile', gen_random_uuid()::text, 'corr-dead', '{"contactEmail":"owner@anand.test"}', 'dead', 8, $2) RETURNING id`,
+        [type, error],
+      )).id;
+    const first = await dead('supplier.approved.v1', 'no handler registered for supplier.approved.v1');
+    const second = await dead('iam.invitation.issued.v1', 'smtp rejected recipient new.person@kovai.test after 98400 11122 retries');
+
+    expect((await sourcing.get('/api/v1/operations/dead-letters')).status).toBe(403);
+    const listed = await admin.get('/api/v1/operations/dead-letters');
+    const letters = listed.body['deadLetters'] as Body[];
+    expect(letters.map((l) => l['eventType'])).toEqual(['supplier.approved.v1', 'iam.invitation.issued.v1']);
+    expect(JSON.stringify(letters)).not.toMatch(/anand\.test|kovai\.test|contactEmail/);
+    expect(letters[1]!['lastError']).toBe('smtp rejected recipient [e-mail] after [number] retries');
+
+    expect((await admin.post(`/api/v1/operations/dead-letters/${first}/replay`, {})).status).toBe(400);
+    const replayed = await admin.post(`/api/v1/operations/dead-letters/${first}/replay`, { reason: 'Handler registered in F-11.3' });
+    expect(replayed.body).toEqual({ eventId: first, status: 'pending' });
+    expect(await one(`SELECT status, attempts FROM platform.outbox_event WHERE id = $1`, [first])).toEqual({ status: 'pending', attempts: 0 });
+    expect((await admin.post(`/api/v1/operations/dead-letters/${first}/replay`, { reason: 'Again' })).body['code']).toBe('DEAD_LETTER_NOT_FOUND');
+
+    expect((await sourcing.post(`/api/v1/operations/dead-letters/${second}/dismiss`, { reason: 'Not mine' })).status).toBe(403);
+    expect((await admin.post(`/api/v1/operations/dead-letters/${second}/dismiss`, { reason: 'Invitation re-sent by hand' })).body['status']).toBe('dismissed');
+    const audit = await pg.query<{ action: string; reason: string }>(
+      `SELECT action, reason FROM platform.audit_event WHERE subject_type = 'outbox_event' ORDER BY occurred_at`,
+    );
+    expect(audit.rows).toEqual([
+      { action: 'platform.outbox_replayed', reason: 'Handler registered in F-11.3' },
+      { action: 'platform.outbox_dismissed', reason: 'Invitation re-sent by hand' },
+    ]);
+    expect(((await admin.get('/api/v1/operations/dead-letters')).body['deadLetters'] as Body[])).toEqual([]);
+  });
 });

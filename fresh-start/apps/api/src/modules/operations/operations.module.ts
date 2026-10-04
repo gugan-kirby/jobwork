@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DeadLetters } from './application/dead-letter.command';
 import { QueueService } from './application/queue.command';
 import { SlaConfigService } from './application/sla-config.command';
 import { SlaSweep } from './application/sla-sweep.command';
@@ -9,6 +10,7 @@ import { QueueRepository } from './infrastructure/queue.repository';
 import { PortalSummaryRepository } from './infrastructure/summary.repository';
 import { InternalSlaController, QueuesController, SlaController } from './presentation/queues.controller';
 import { OperationsControlsController } from './presentation/controls.controller';
+import { DeadLettersController } from './presentation/dead-letters.controller';
 import { OperationsSummaryController } from './presentation/summary.controller';
 import { PortalSummaryController } from './presentation/portal-summary.controller';
 
@@ -19,7 +21,7 @@ import { PortalSummaryController } from './presentation/portal-summary.controlle
  */
 @Module({
   imports: [IamModule],
-  controllers: [OperationsSummaryController, OperationsControlsController, PortalSummaryController, QueuesController, SlaController, InternalSlaController],
-  providers: [PortalSummaryRepository, QueueRepository, QueueService, SlaConfigService, SlaSweep, ControlsRepository, OperationsMetrics],
+  controllers: [OperationsSummaryController, OperationsControlsController, DeadLettersController, PortalSummaryController, QueuesController, SlaController, InternalSlaController],
+  providers: [PortalSummaryRepository, QueueRepository, QueueService, SlaConfigService, SlaSweep, ControlsRepository, OperationsMetrics, DeadLetters],
 })
 export class OperationsModule {}
