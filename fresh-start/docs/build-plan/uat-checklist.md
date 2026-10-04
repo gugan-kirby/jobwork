@@ -92,7 +92,8 @@ Human acceptance of the Phase 1 pilot scenarios (doc 19 §10: 1–5, 9, 12) by t
 | 12.2 | Supplier B estimator | any page | Continue working in the open session | Signed out at the next request; cannot sign in | ☐ |
 | 12.3 | Supplier A estimator | address bar | Open supplier B's bid and the customer's enquiry by URL | "Not found" both times; nothing reveals that they exist | ☐ |
 | 12.4 | Customer requester | address bar | Open a supplier bid or a PO by URL | "Not found" | ☐ |
-| 12.5 | Platform admin | `/audit` | Look for the refused attempts | Each attempt logged with actor and target | ☐ |
+| 12.5 | Platform admin | `/audit` | Look up supplier B's estimator | The suspension and the reinstatement, each with the admin who did it and the reason given | ☐ |
+| 12.6 | Platform admin | `/ops-health` | Look for the refused attempts from 12.3–12.4 | Counted as authorization denials, by route (doc 12 §7; added by F-12.3) | ☐ |
 
 ## Findings
 

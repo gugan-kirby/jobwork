@@ -69,6 +69,7 @@ Tests: revising after bids supersedes the open round and leaves every bid byte-i
 - An unselected supplier gets no notice. Only its bid's status (`rejected`) tells it the outcome, because `commercial.approval_decided.v1` is acknowledged, not notified. Doc 19 does not require a notice; decide at UAT.
 - Approval cannot edit the requirement. Structured answers (a grade, a tolerance) reach RFQ lines when engineering transcribes them with "Revise requirement" right after approval (scenario 2). Watch for friction at UAT step 2.4.
 - A bid on a superseded round keeps the status `submitted`; the round's `superseded` status carries the closure (scenario 5).
+- Refused cross-party requests leave no trace: no metric, log line or alert. Doc 12 §7 lists "cross-tenant authorization denials and suspicious enumeration" as a security signal (scenario 12). This is carried into F-12.3 as a finding to fix, and UAT step 12.6 checks it.
 
 **Verification (2026-10-05, F-12.1).** 45 scenario tests across seven files, each booting its own database. They run inside the API suite in CI and under `TZ=Asia/Kolkata`.
 
