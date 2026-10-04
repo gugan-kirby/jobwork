@@ -19,6 +19,7 @@ import { OrdersRepository } from '../infrastructure/orders.repository';
 import { renderInvoiceDocument } from './invoice-document';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -91,12 +92,14 @@ export class CustomerInvoicesController {
     return this.payments.customerInvoice(actor, invoiceId);
   }
 
+  @RateLimit('export')
   @Get(':invoiceId/document')
   async document(@CurrentActor() actor: Actor, @Param('invoiceId') invoiceId: string): Promise<{ html: string; contentHash: string }> {
     const invoice = await this.payments.ownedInvoice(actor, invoiceId);
     return { html: renderInvoiceDocument(invoice), contentHash: invoice.contentHash };
   }
 
+  @RateLimit('payment')
   @Post(':invoiceId/pay')
   async pay(@CurrentActor() actor: Actor, @Param('invoiceId') invoiceId: string, @Req() request: FastifyRequest): Promise<CustomerPaymentIntent> {
     return this.payments.createIntent(actor, invoiceId, { idempotencyKey: idempotencyKey(request) });
@@ -118,6 +121,7 @@ export class CustomerPaymentsController {
     return this.payments.customerIntent(actor, intentId);
   }
 
+  @RateLimit('payment')
   @Post('intents/:intentId/simulate')
   async simulate(@CurrentActor() actor: Actor, @Param('intentId') intentId: string, @Req() request: FastifyRequest): Promise<CustomerPaymentIntent> {
     const body = parseBody(simulatePaymentRequestSchema, request.body);

@@ -20,6 +20,7 @@ import { RfqNotFound, singleSourceRisk } from '../domain/rfq';
 import { RfqRepository } from '../infrastructure/rfq.repository';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 const listQuerySchema = z.object({ status: rfqStatusSchema.optional() });
 
@@ -46,6 +47,7 @@ export class RfqsController {
     if (!actor.isInternal) throw new NotAuthorized('Internal audience only');
   }
 
+  @RateLimit('search')
   @Get('match')
   async match(
     @CurrentActor() actor: Actor,

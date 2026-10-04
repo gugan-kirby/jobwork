@@ -24,6 +24,18 @@ const envSchema = z.object({
   PAYMENT_PROVIDER: z.enum(['dev']).default('dev'),
   PAYMENT_WEBHOOK_SECRET: z.string().min(8).default('dev-payment-webhook-secret'),
   PAYMENT_INTENT_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
+  /** F-11.2: rate-limit counters. Empty keeps them in this process only. */
+  REDIS_URL: z.string().default('redis://localhost:6379'),
+  RATE_LIMIT_MODE: z.enum(['enforce', 'observe', 'off']).default('enforce'),
+  /** JSON document replacing the budgets of named operation classes (`policies.ts`). */
+  RATE_LIMIT_POLICIES: z.string().optional(),
+  RATE_LIMIT_PREFIX: z.string().regex(/^[a-z0-9:_-]{1,40}$/).default('rl'),
+  /**
+   * Which proxy hops may name the client address in `X-Forwarded-For` (Fastify
+   * `trustProxy`: `loopback`, a CIDR list, or a hop count). The web apps' rewrite proxy
+   * is a loopback hop locally; deployed, the edge must set the header and be named here.
+   */
+  TRUST_PROXY: z.string().default('loopback'),
 });
 
 export type Env = z.infer<typeof envSchema>;

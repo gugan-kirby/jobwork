@@ -3,8 +3,10 @@ import type { HealthResponse } from '@jobwork/contracts';
 import { ConfigService } from '../platform/config/config.service';
 import { DatabaseService } from '../platform/database/database.service';
 import { Public } from '../platform/http/public.decorator';
+import { SkipRateLimit } from '../platform/http/rate-limit/rate-limit.decorator';
 
 @Public()
+@SkipRateLimit()
 @Controller('health')
 export class HealthController {
   constructor(

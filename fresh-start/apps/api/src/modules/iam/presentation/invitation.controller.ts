@@ -10,6 +10,7 @@ import { IamRepository } from '../infrastructure/iam.repository';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { Public } from '../../../platform/http/public.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 const previewQuerySchema = z.object({ token: z.string().min(16).max(256) });
 
@@ -78,6 +79,7 @@ export class InvitationController {
   }
 
   @Public()
+  @RateLimit('login')
   @Get('invitations/preview')
   async preview(@Query() query: unknown): Promise<{
     organizationName: string;
@@ -90,6 +92,7 @@ export class InvitationController {
   }
 
   @Public()
+  @RateLimit('login')
   @Post('invitations/accept')
   async accept(
     @Req() request: FastifyRequest & { actor?: Actor },

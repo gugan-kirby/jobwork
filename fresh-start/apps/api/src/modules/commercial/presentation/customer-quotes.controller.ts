@@ -14,6 +14,7 @@ import { projectCustomerQuote, projectCustomerQuoteListItem, visibleVersion } fr
 import { renderQuoteDocument } from './quote-document';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -67,6 +68,7 @@ export class CustomerQuotesController {
     return projected;
   }
 
+  @RateLimit('export')
   @Get(':quotationId/document')
   async document(@CurrentActor() actor: Actor, @Param('quotationId') quotationId: string): Promise<{ html: string; contentHash: string }> {
     const quote = await this.owned(actor, quotationId);

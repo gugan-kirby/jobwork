@@ -34,6 +34,7 @@ import { renderQuoteDocument } from './quote-document';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { ServiceOnly } from '../../../platform/http/service-principal.guard';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -235,6 +236,7 @@ export class QuotesController {
   }
 
   /** Internal preview of the document for any version. */
+  @RateLimit('export')
   @Get(':quoteId/versions/:versionNo/document')
   async document(
     @CurrentActor() actor: Actor,

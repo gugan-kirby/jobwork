@@ -9,7 +9,9 @@ import { ProblemFilter } from '../../src/platform/http/problem.filter';
 
 /** Boots the real application wiring (mirrors main.ts) against whatever env is set. */
 export async function createTestApp(): Promise<{ app: NestFastifyApplication; baseUrl: string }> {
-  const adapter = new FastifyAdapter();
+  // Mirrors main.ts's TRUST_PROXY default, so a test can play a client address through
+  // X-Forwarded-For the way the web apps' rewrite proxy does.
+  const adapter = new FastifyAdapter({ trustProxy: 'loopback' });
   adapter.getInstance().addHook('onRequest', (request, _reply, done) => {
     const correlationId = uuidv7();
     request.headers['x-correlation-id'] = correlationId;

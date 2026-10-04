@@ -12,9 +12,20 @@ import { AppModule } from './app.module';
 import { ConfigService } from './platform/config/config.service';
 import { ProblemFilter } from './platform/http/problem.filter';
 
+/**
+ * F-11.2: which hops may name the client in `X-Forwarded-For`. Per-address rate limits
+ * are only as true as this: trusting too little makes every browser the web app's proxy;
+ * trusting everyone lets a client pick its own address.
+ */
+function trustProxy(value: string): boolean | number | string {
+  if (value === 'true' || value === 'false') return value === 'true';
+  if (/^\d+$/.test(value)) return Number(value);
+  return value;
+}
+
 async function bootstrap(): Promise<void> {
   const logger = createLogger({ service: 'api' });
-  const adapter = new FastifyAdapter();
+  const adapter = new FastifyAdapter({ trustProxy: trustProxy(process.env['TRUST_PROXY'] ?? 'loopback') });
 
   adapter.getInstance().addHook('onRequest', (request, _reply, done) => {
     const incoming = request.headers['x-correlation-id'];

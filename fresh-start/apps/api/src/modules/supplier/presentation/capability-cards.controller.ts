@@ -7,6 +7,7 @@ import { NotAuthorized } from '../../iam/domain/errors';
 import { EligibilityProjection } from '../infrastructure/eligibility.projection';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 const cardQuerySchema = z.object({
   capabilityCodes: z
@@ -54,6 +55,7 @@ export class CapabilityCardsController {
   }
 
   /** Internal view: the same rows, plus why anyone missed the filter. */
+  @RateLimit('search')
   @Get('eligibility')
   async eligibility(
     @CurrentActor() actor: Actor,

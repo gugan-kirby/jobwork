@@ -17,6 +17,7 @@ import { ObjectStore } from '../infrastructure/object-store';
 import { ConfigService } from '../../../platform/config/config.service';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 const revokeBodySchema = z.object({
   reason: z.string().trim().min(1).max(200).optional(),
@@ -46,6 +47,7 @@ export class DownloadController {
     private readonly revoke: RevokeGrantCommand,
   ) {}
 
+  @RateLimit('export')
   @Post(':versionId/grants')
   async grant(
     @CurrentActor() actor: Actor,
@@ -93,6 +95,7 @@ export class DownloadController {
     };
   }
 
+  @RateLimit('export')
   @Get(':versionId/download')
   async download(
     @CurrentActor() actor: Actor,

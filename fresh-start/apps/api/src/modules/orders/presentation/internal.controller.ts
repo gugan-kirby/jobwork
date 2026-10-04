@@ -32,6 +32,7 @@ import { ServiceOnly } from '../../../platform/http/service-principal.guard';
 import { SCAN_WORKER_PRINCIPAL } from '@jobwork/service-auth';
 import { ValidationFailed } from '../../../platform/http/domain-error';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -203,6 +204,7 @@ export class InternalPaymentsController {
  * Provider callbacks (doc 08 §11). No session, no CSRF token — the signature over the
  * raw bytes is the only credential, and the ingestion command decides what is true.
  */
+@RateLimit('webhook')
 @Public()
 @Controller('webhooks/payments')
 export class PaymentWebhookController {

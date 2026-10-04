@@ -1,7 +1,7 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Logger } from '@jobwork/observability';
-import { DomainError } from './domain-error';
+import { DomainError, RateLimited } from './domain-error';
 
 interface ProblemBody {
   type: string;
@@ -11,6 +11,7 @@ interface ProblemBody {
   detail?: string;
   correlationId?: string;
   errors?: Array<{ path: string; message: string }>;
+  retryAfterSeconds?: number;
 }
 
 /**
@@ -40,7 +41,9 @@ export class ProblemFilter implements ExceptionFilter {
         ...(exception.detail !== undefined ? { detail: exception.detail } : {}),
         ...(correlationId !== undefined ? { correlationId } : {}),
         ...(exception.errors !== undefined ? { errors: exception.errors } : {}),
+        ...(exception instanceof RateLimited ? { retryAfterSeconds: exception.retryAfterSeconds } : {}),
       };
+      if (exception instanceof RateLimited) void reply.header('retry-after', String(exception.retryAfterSeconds));
     } else if (exception instanceof HttpException) {
       const status = exception.getStatus();
       body = {

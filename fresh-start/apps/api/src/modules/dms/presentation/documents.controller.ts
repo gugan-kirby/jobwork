@@ -17,6 +17,7 @@ import { DocumentNotFound } from '../domain/errors';
 import { DmsRepository } from '../infrastructure/dms.repository';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -41,6 +42,7 @@ export class DocumentsController {
     private readonly repo: DmsRepository,
   ) {}
 
+  @RateLimit('upload')
   @Post('uploads')
   async initiateUpload(
     @CurrentActor() actor: Actor,
@@ -50,6 +52,7 @@ export class DocumentsController {
     return this.initiate.execute(actor, body, { idempotencyKey: idempotencyKey(request) });
   }
 
+  @RateLimit('upload')
   @Post('uploads/:uploadSessionId/finalize')
   async finalizeUpload(
     @CurrentActor() actor: Actor,

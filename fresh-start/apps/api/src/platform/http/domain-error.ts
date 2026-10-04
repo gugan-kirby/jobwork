@@ -27,3 +27,18 @@ export class VersionConflict extends DomainError {
     super('VERSION_CONFLICT', 409, 'The record changed since you loaded it', 'Refresh and retry.');
   }
 }
+
+/**
+ * A budget is spent (doc 08 §14). Raised before the handler runs, so the guidance can
+ * promise what matters to a person retrying a payment or an approval: nothing changed.
+ */
+export class RateLimited extends DomainError {
+  constructor(readonly retryAfterSeconds: number) {
+    super(
+      'RATE_LIMITED',
+      429,
+      'Too many requests',
+      `Nothing was changed by this request. Try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+    );
+  }
+}

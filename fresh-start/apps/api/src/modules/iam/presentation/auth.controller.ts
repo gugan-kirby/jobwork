@@ -16,6 +16,7 @@ import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { clearSessionCookies, setSessionCookies } from '../../../platform/http/cookies';
 import { AllowMfaPending, Public } from '../../../platform/http/public.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -28,6 +29,7 @@ export class AuthController {
 
   /** Customer self-registration (F-MX.4). Nothing is signed in: the email comes first. */
   @Public()
+  @RateLimit('login')
   @Post('register')
   async register(
     @Req() request: FastifyRequest,
@@ -37,6 +39,7 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit('login')
   @Post('verify-email')
   async verifyEmail(@Req() request: FastifyRequest): Promise<{ ok: true }> {
     const body = parseBody(verifyEmailRequestSchema, request.body);
@@ -45,6 +48,7 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit('login')
   @Post('login')
   async login(
     @Req() request: FastifyRequest,
@@ -60,6 +64,7 @@ export class AuthController {
   }
 
   @AllowMfaPending()
+  @RateLimit('login')
   @Post('mfa')
   async verifyMfa(
     @CurrentActor() actor: Actor,

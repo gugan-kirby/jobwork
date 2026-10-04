@@ -4,6 +4,7 @@ import { CurrentActor } from '../http/actor.decorator';
 import { DomainError } from '../http/domain-error';
 import { parseBody } from '../http/validation';
 import { DatabaseService } from '../database/database.service';
+import { RateLimit } from '../http/rate-limit/rate-limit.decorator';
 
 /** Platform sees only the actor shape the guard attaches — no dependency on the iam module. */
 interface ActorLike {
@@ -50,6 +51,7 @@ interface AuditRow {
 export class AuditController {
   constructor(private readonly db: DatabaseService) {}
 
+  @RateLimit('search')
   @Get()
   async list(
     @CurrentActor() actor: ActorLike,

@@ -11,6 +11,7 @@ import { NetworkApplicationCommand } from '../application/network-application.co
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { Public } from '../../../platform/http/public.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 
 const listQuerySchema = z.object({
   status: z.enum(['received', 'admitted', 'declined']).optional(),
@@ -28,6 +29,7 @@ export class PublicApplicationsController {
   constructor(private readonly command: NetworkApplicationCommand) {}
 
   @Public()
+  @RateLimit('public_form')
   @Post('supplier-applications')
   async apply(@Req() request: FastifyRequest): Promise<{ applicationId: string }> {
     const body = parseBody(supplierApplicationRequestSchema, request.body);
