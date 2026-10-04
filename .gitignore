@@ -1,0 +1,11 @@
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+.idea/
+
+# Local data and machine-specific files
+*.db
+app/google-services.json
+.DS_Store
