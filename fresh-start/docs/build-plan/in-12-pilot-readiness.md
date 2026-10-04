@@ -80,6 +80,13 @@ Tests: revising after bids supersedes the open round and leaves every bid byte-i
 | `apps/api/test/audit-coverage.spec.ts` | new | Every command operation in the API declares audit; the inventory is generated from source and checked, so a new command without audit fails the build |
 | `docs/build-plan/security-review-phase1.md` | new | Doc 11 §16 item by item: evidence (test files, runs), status, owner; threat model per Phase 1 workflow; open findings |
 
+**Deviations (2026-10-05, F-12.3):**
+
+- The coverage check is structural, not a runtime guard. Several commands legitimately return `audit: []` on a no-op path (a duplicate callback, an unchanged state), so the rule is that every command's working path returns a non-empty audit. Direct audit writes are held to their transaction by type: `AuditWriter.write` no longer accepts `null` or the pool. The inventory is a committed snapshot, so a new command shows up in review.
+- Two high findings were fixed inside this functionality rather than in separate PRs, because the review is where they surfaced: production start on repository-published secrets (new `productionConfigProblems` in `@jobwork/service-auth`, used by the API and worker), and nine audit rows written after their transaction committed.
+- The nightly security step now also runs pilot scenario 12, the audit-coverage check and the production-configuration check by name.
+- Findings are numbered within the review document rather than given a new stable ID family. Those that need the owner are carried to **Waiting for the owner** below.
+
 ## F-12.2 Restore and outage drills
 
 | File | Action | Contents |
@@ -112,3 +119,6 @@ Recorded here as they are found; each keeps the exit gate open until the owner a
 | Human UAT sign-off per role | Needs real users from a pilot customer and supplier | Product owner |
 | External penetration test | Booked with an outside firm "before material transaction volume" (doc 11 §16) | Product owner |
 | Legal, tax, invoice and payment responsibilities | Doc 15 §12 last item; professional sign-off (`D-*` decisions) | Product owner with advisers |
+| Secret scanning and push protection on the GitHub repository | Repository settings; the build token cannot read them (security review finding 6) | Product owner |
+| Just-in-time staff access, or a recorded risk acceptance for the pilot | Doc 11 §4 insider-export control not built; mass-download alert is the compensating control (finding 7) | Product owner |
+| Named incident contacts and an on-call roster | Runbooks exist and are tested; nobody is named to run them (finding 12) | Product owner |
