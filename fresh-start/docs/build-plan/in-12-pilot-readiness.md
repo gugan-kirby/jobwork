@@ -95,6 +95,15 @@ Tests: revising after bids supersedes the open round and leaves every bid byte-i
 | `infra/drills/provider-outage.sh` + `provider-outage.md` | new | Worker down, object store down, Redis down, payment callbacks withheld: each against doc 12 §3's required behaviour, then recovery |
 | `docs/build-plan/evidence/drills-<date>.md` | new | Timed report: RPO/RTO as measured, behaviours observed |
 
+**Deviations (2026-10-05, F-12.2):**
+
+- The API calls the drills make go through two small Node helpers beside the scripts: `client.mjs` (session, CSRF, TOTP), with `journey.mjs` for the critical journey and `outage.mjs` for the per-case probes. Like `infra/perf/smoke.mjs`, they need nothing but Node. The scripts themselves stay bash, because they stop and start services and read the database.
+- Case D ages the payment intent past its expiry in SQL rather than waiting `PAYMENT_INTENT_TTL_MINUTES`. It needs an open invoice, so a second run on the same data skips it; the evidence records the first run.
+- The restore drill revokes every restored session, which doc 12 §9 step 6 leaves to policy. A restored session is a credential from before the incident.
+- `pnpm drill:restore` and `pnpm drill:outage` run the drills.
+
+**Verification (2026-10-05, F-12.2).** Evidence: `evidence/drills-2026-10-05.md`. The restore drill measured 2.2 s to a green journey, and failed honestly on one development file with a clean verdict and no bytes (action item recorded). The outage drill passed all four cases.
+
 ## F-12.4 Accessibility and performance pass
 
 | File | Action | Contents |
