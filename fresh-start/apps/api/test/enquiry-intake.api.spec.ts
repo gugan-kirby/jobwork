@@ -711,6 +711,16 @@ describe('Enquiry intake and triage (IN-05)', () => {
     expect(approved.status).toBe(201);
     expect(approved.body['status']).toBe('approved_for_sourcing');
 
+    // ---- the approved revision, which every round is built on, keeps every answer
+    const approvedRevision = await pg.query<{ kind: string; snapshot: { clarifications: Array<{ topic: string; answer: string }> } }>(
+      `SELECT kind, snapshot FROM sourcing.requirement WHERE enquiry_id = $1 ORDER BY revision_no DESC LIMIT 1`,
+      [enquiryId],
+    );
+    expect(approvedRevision.rows[0]!.kind).toBe('reviewed');
+    const answeredCount = await pg.query<{ n: string }>(`SELECT count(*) AS n FROM sourcing.clarification WHERE enquiry_id = $1 AND status = 'answered'`, [enquiryId]);
+    expect(approvedRevision.rows[0]!.snapshot.clarifications).toHaveLength(Number(answeredCount.rows[0]!.n));
+    expect(approvedRevision.rows[0]!.snapshot.clarifications.every((c) => c.answer.length > 0)).toBe(true);
+
     // ---- the whole run left an audit trail and an outbox event per business step
     const audit = await pg.query<{ action: string }>(
       `SELECT action FROM platform.audit_event WHERE subject_id = $1 ORDER BY occurred_at`,

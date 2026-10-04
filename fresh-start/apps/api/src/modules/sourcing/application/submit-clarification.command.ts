@@ -68,24 +68,7 @@ export class SubmitClarificationCommand {
           // requirement they qualify.
           const answeredEnquiry = (await this.repo.find(enquiryId, tx))!;
           const revision = await this.repo.freezeRequirement(
-            {
-              enquiryId,
-              kind: 'reviewed',
-              frozenBy: actor.userId,
-              snapshot: {
-                ...requirementSnapshot(answeredEnquiry),
-                clarifications: answeredEnquiry.clarifications
-                  .filter((c) => c.status === 'answered')
-                  .map((c) => ({
-                    sequenceNo: c.sequenceNo,
-                    roundNo: c.roundNo,
-                    topic: c.topic,
-                    question: c.question,
-                    answer: c.answer,
-                    askedAgainstRevisionNo: c.askedAgainstRevisionNo,
-                  })),
-              },
-            },
+            { enquiryId, kind: 'reviewed', frozenBy: actor.userId, snapshot: requirementSnapshot(answeredEnquiry) },
             tx,
           );
           await this.repo.transition(
