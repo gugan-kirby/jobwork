@@ -698,10 +698,17 @@ export class CommercialRepository {
     input: { enquiryId: string; rfqId: string | null; customerOrganizationId: string; createdBy: string },
     tx: Queryable,
   ): Promise<string> {
+    // The latest set is reused while any option in it can still be decided, or has been
+    // accepted. Once every option is closed without an acceptance (expired, rejected,
+    // withdrawn), a re-quote is a new offer: a fresh set, so its options do not collide
+    // with the closed ones (doc 06 §6: closed quotes stay closed; later records are new).
     const existing = await tx.query<{ id: string }>(
-      `SELECT id FROM commercial.quote_offer_set
-        WHERE enquiry_id = $1 AND rfq_id IS NOT DISTINCT FROM $2
-        ORDER BY created_at DESC LIMIT 1`,
+      `SELECT s.id FROM commercial.quote_offer_set s
+        WHERE s.enquiry_id = $1 AND s.rfq_id IS NOT DISTINCT FROM $2
+          AND (NOT EXISTS (SELECT 1 FROM commercial.customer_quote q WHERE q.offer_set_id = s.id)
+               OR EXISTS (SELECT 1 FROM commercial.customer_quote q
+                           WHERE q.offer_set_id = s.id AND q.status NOT IN ('expired', 'rejected', 'withdrawn')))
+        ORDER BY s.created_at DESC LIMIT 1`,
       [input.enquiryId, input.rfqId],
     );
     if (existing.rows[0]) return existing.rows[0].id;
