@@ -22,6 +22,16 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+      redis:
+        # F-11.2: rate-limit counters; the rate-limit suite asserts they land here.
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
       minio:
         # edge-cicd starts `server /data` on its own, which service containers need.
         image: minio/minio:edge-cicd
@@ -42,6 +52,7 @@ jobs:
       OBJECT_STORE_ENDPOINT: http://localhost:9000
       OBJECT_STORE_ACCESS_KEY: minioadmin
       OBJECT_STORE_SECRET_KEY: minioadmin
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
