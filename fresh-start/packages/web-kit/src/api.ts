@@ -17,6 +17,8 @@ export interface Problem {
   detail?: string;
   correlationId?: string;
   errors?: Array<{ path: string; message: string }>;
+  /** F-11.2: on a 429, how long until the budget allows the request again. */
+  retryAfterSeconds?: number;
 }
 
 export class ApiError extends Error {

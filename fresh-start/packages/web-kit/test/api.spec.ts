@@ -51,6 +51,13 @@ describe('api()', () => {
     expect(error.message).toBe('Someone else changed this.');
   });
 
+  it('carries rate-limit retry guidance, so a screen can say when to try again', async () => {
+    respond(429, JSON.stringify({ status: 429, code: 'RATE_LIMITED', title: 'Too many requests', detail: 'Nothing was changed by this request. Try again in 42 seconds.', retryAfterSeconds: 42 }));
+    const error = await failure(api('/conversations/enquiry/e-1/messages', { method: 'POST', body: { body: 'hi' } }));
+    expect(error.problem).toMatchObject({ status: 429, code: 'RATE_LIMITED', retryAfterSeconds: 42 });
+    expect(error.message).toBe('Nothing was changed by this request. Try again in 42 seconds.');
+  });
+
   it('turns the proxy’s plain-text 500 (API down) into UNEXPECTED_RESPONSE', async () => {
     respond(500, 'Internal Server Error', 'text/plain');
     const error = await failure(api('/orders'));
