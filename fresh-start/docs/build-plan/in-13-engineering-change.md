@@ -73,6 +73,33 @@ Tests:
 | `apps/portal-web/app/orders/[orderId]` | edit | Customer: "Request a change"; the decision card shows the impact summary with price and date effect only (no supplier cost), and approve or reject with authority (doc 14 §4) |
 | `apps/portal-web/app/supplier/orders/[purchaseOrderId]` | edit | Supplier: the change impact input for its PO, acknowledgment of the new transmittal and PO amendment |
 
+**Deviations (2026-10-05, F-13.3):**
+
+- The order's production page gains an "Engineering changes" card: the order's changes, and "Propose a change" for engineering and sourcing. Its draft-baseline release is disabled once a baseline is released, because that path is now the change's release.
+- The baseline diff marks documents added and removed. After release it compares against the baseline the change replaced, not the one now in force (which is the change's own).
+- Customers request a change in words only. A new drawing revision is uploaded to the drawing itself, where it opens a change on its own (F-13.2 hook). Request and decision need `customer_requester`/`customer_approver`/`org_admin` and `customer_approver` respectively, as the API enforces. Others see the change and its effect but no decision buttons.
+- An interim decision runs to the end of the chosen day in India time, and every date on these screens is shown in India time.
+- Both supplier panels on the PO page refresh after any command (`useCommandTick`), since acknowledging a change also acknowledges its transmittal.
+
+**Verification (2026-10-05, F-13.3).** Browser walk on the dev stack, CR-2026-0001 on SO-2026-0002:
+
+1. Engineering proposes a change from the production page.
+2. Triage; an interim stop on PO-2026-0001; classification with a supplier brief.
+3. Eight-area impact, two versions, with a draft BL-2026-0002 named as the candidate (its direct release disabled).
+4. Sales approves in `/approvals`.
+5. The buyer sees only "+₹11,800.00 (tax included) · 5 days later" and approves after confirming the effect.
+6. Engineering releases: the interim stop is lifted and both POs are amended.
+7. Each supplier sees only JobWork's brief and its own PO, and acknowledges.
+8. Verify and close.
+
+No horizontal scroll at 390 px. Defects found and fixed in the walk:
+
+- the expiry instant (18:30 IST) and UTC labels;
+- the customer note field labelled "internal record";
+- the "decision needed" chip after deciding;
+- a post-release diff comparing the new baseline with itself;
+- the stale drawing-pack panel after a change acknowledgment.
+
 ## F-13.4 Pilot scenario 6
 
 | File | Action | Contents |
