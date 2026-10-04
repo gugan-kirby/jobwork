@@ -3,6 +3,7 @@ import { DmsModule } from '../dms';
 import { IamModule } from '../iam';
 import { SupplierModule } from '../supplier';
 import { ApproveForSourcingCommand } from './application/approve-for-sourcing.command';
+import { ReviseRequirementCommand } from './application/revise-requirement.command';
 import { CancelEnquiryCommand } from './application/cancel-enquiry.command';
 import { CopyEnquiryCommand } from './application/copy-enquiry.command';
 import { DeclineEnquiryCommand } from './application/decline-enquiry.command';
@@ -51,6 +52,7 @@ import { IntakeController } from './presentation/intake.controller';
     RequestClarificationCommand,
     SubmitClarificationCommand,
     ApproveForSourcingCommand,
+    ReviseRequirementCommand,
     DeclineEnquiryCommand,
   ],
   exports: [EnquiryRepository, RfqRepository],

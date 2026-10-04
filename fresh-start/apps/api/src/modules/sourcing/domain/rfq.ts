@@ -7,6 +7,7 @@ import { DomainError } from '../../../platform/http/domain-error';
  *
  *   rfq:        draft -> internal_review -> open -> responses_received -> evaluation
  *                     -> awarded | no_bid | expired | cancelled
+ *               any live state -> superseded (the requirement was revised, F-12.5)
  *   invitation: prepared -> invited -> acknowledged -> clarifying -> responded
  *                                  \-> declined | no_response | revoked
  *
@@ -16,16 +17,20 @@ import { DomainError } from '../../../platform/http/domain-error';
  */
 
 const RFQ_TRANSITIONS: Record<RfqStatus, readonly RfqStatus[]> = {
-  draft: ['internal_review', 'open', 'cancelled'],
-  internal_review: ['open', 'draft', 'cancelled'],
-  open: ['responses_received', 'evaluation', 'no_bid', 'expired', 'cancelled'],
-  responses_received: ['evaluation', 'expired', 'cancelled'],
-  evaluation: ['awarded', 'no_bid', 'cancelled'],
+  draft: ['internal_review', 'open', 'cancelled', 'superseded'],
+  internal_review: ['open', 'draft', 'cancelled', 'superseded'],
+  open: ['responses_received', 'evaluation', 'no_bid', 'expired', 'cancelled', 'superseded'],
+  responses_received: ['evaluation', 'expired', 'cancelled', 'superseded'],
+  evaluation: ['awarded', 'no_bid', 'cancelled', 'superseded'],
   awarded: [],
   no_bid: [],
   expired: [],
   cancelled: [],
+  superseded: [],
 };
+
+/** Rounds a requirement revision supersedes: everything not yet history. */
+export const LIVE_RFQ_STATUSES: readonly RfqStatus[] = ['draft', 'internal_review', 'open', 'responses_received', 'evaluation'];
 
 const INVITATION_TRANSITIONS: Record<InvitationStatus, readonly InvitationStatus[]> = {
   prepared: ['invited', 'revoked'],

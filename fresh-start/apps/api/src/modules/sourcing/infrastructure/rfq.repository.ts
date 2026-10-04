@@ -233,6 +233,59 @@ export class RfqRepository {
     return this.findRfq(input.rfqId, tx);
   }
 
+  /** Rounds of an enquiry still live, locked for a revision to supersede (F-12.5). */
+  async lockLiveRounds(enquiryId: string, statuses: readonly RfqStatus[], tx: PoolClient): Promise<RfqRow[]> {
+    const res = await tx.query(
+      `SELECT r.*, e.customer_organization_id
+         FROM sourcing.rfq r
+         JOIN sourcing.enquiry e ON e.id = r.enquiry_id
+        WHERE r.enquiry_id = $1 AND r.status = ANY($2::text[])
+        ORDER BY r.round_no
+        FOR UPDATE OF r`,
+      [enquiryId, statuses],
+    );
+    return res.rows.map((row: Record<string, unknown>) => mapRfq(row));
+  }
+
+  async hasRoundInStatus(enquiryId: string, status: RfqStatus, tx: Queryable): Promise<boolean> {
+    const res = await tx.query(`SELECT 1 FROM sourcing.rfq WHERE enquiry_id = $1 AND status = $2 LIMIT 1`, [enquiryId, status]);
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  /**
+   * A proposed award waiting for approval on any round of the enquiry. Read across the
+   * module line on purpose: a revision must not pull a round out from under an award
+   * someone is about to approve (approval would then fail on a superseded round).
+   */
+  async hasPendingAward(enquiryId: string, tx: Queryable): Promise<boolean> {
+    const res = await tx.query(
+      `SELECT 1 FROM commercial.award a JOIN sourcing.rfq r ON r.id = a.rfq_id
+        WHERE r.enquiry_id = $1 AND a.status = 'proposed' LIMIT 1`,
+      [enquiryId],
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  async supersede(rfqId: string, requirementId: string, by: string, reason: string, tx: Queryable): Promise<void> {
+    await tx.query(
+      `UPDATE sourcing.rfq
+          SET status = 'superseded', superseded_by_requirement_id = $2, closed_at = now(), closed_by = $3,
+              outcome_reason = $4, aggregate_version = aggregate_version + 1, updated_at = now()
+        WHERE id = $1`,
+      [rfqId, requirementId, by, reason],
+    );
+  }
+
+  /** Organizations invited to a round that have not been revoked: who to tell it closed. */
+  async invitedOrganizations(rfqId: string, tx: Queryable): Promise<string[]> {
+    const res = await tx.query<{ supplier_organization_id: string }>(
+      `SELECT DISTINCT supplier_organization_id FROM sourcing.rfq_supplier
+        WHERE rfq_id = $1 AND status NOT IN ('prepared', 'revoked')`,
+      [rfqId],
+    );
+    return res.rows.map((r) => r.supplier_organization_id);
+  }
+
   async listRfqsForEnquiry(enquiryId: string): Promise<RfqRow[]> {
     const res = await this.q().query(
       `SELECT r.*, e.customer_organization_id

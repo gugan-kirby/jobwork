@@ -44,6 +44,12 @@ export class EnquiryNotFound extends DomainError {
   }
 }
 
+export class EnquiryItemNotFound extends DomainError {
+  constructor(enquiryItemId: string) {
+    super('ENQUIRY_ITEM_NOT_FOUND', 422, 'That item is not on this enquiry', undefined, [{ path: 'items', message: enquiryItemId }]);
+  }
+}
+
 export class EnquiryVersionConflict extends DomainError {
   constructor(expected: number, actual: number) {
     super(

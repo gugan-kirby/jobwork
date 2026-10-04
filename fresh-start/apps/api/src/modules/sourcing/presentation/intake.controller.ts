@@ -2,6 +2,7 @@ import { Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import {
   approveForSourcingRequestSchema,
+  reviseRequirementRequestSchema,
   declineEnquiryRequestSchema,
   requestClarificationRequestSchema,
   startTriageRequestSchema,
@@ -21,6 +22,7 @@ import { EnquiryNotFound } from '../domain/enquiry';
 import { EnquiryRepository } from '../infrastructure/enquiry.repository';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { ReviseRequirementCommand, type RevisedRequirement } from '../application/revise-requirement.command';
 
 const queueQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -38,6 +40,7 @@ export class IntakeController {
     private readonly startTriage: StartTriageCommand,
     private readonly requestClarification: RequestClarificationCommand,
     private readonly approve: ApproveForSourcingCommand,
+    private readonly revise: ReviseRequirementCommand,
     private readonly decline: DeclineEnquiryCommand,
     private readonly repo: EnquiryRepository,
   ) {}
@@ -108,6 +111,17 @@ export class IntakeController {
     return this.approve.execute(actor, enquiryId, body, {
       idempotencyKey: idempotencyKey(request),
     });
+  }
+
+  /** F-12.5: engineering revises the requirement while it is being sourced. */
+  @Post(':enquiryId/revise')
+  async reviseRequirement(
+    @CurrentActor() actor: Actor,
+    @Param('enquiryId') enquiryId: string,
+    @Req() request: FastifyRequest,
+  ): Promise<RevisedRequirement> {
+    const body = parseBody(reviseRequirementRequestSchema, request.body);
+    return this.revise.execute(actor, enquiryId, body, { idempotencyKey: idempotencyKey(request) });
   }
 
   @Post(':enquiryId/decline')
