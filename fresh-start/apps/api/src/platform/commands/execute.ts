@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DomainError } from '../http/domain-error';
 import { DatabaseService } from '../database/database.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { AuditWriter } from './audit.writer';
 import { canonicalJson, requestHash } from './canonical';
 import type { CommandContext, CommandDefinition } from './command';
@@ -33,6 +34,7 @@ export class CommandExecutor {
     private readonly db: DatabaseService,
     private readonly audit: AuditWriter,
     private readonly outbox: OutboxWriter,
+    private readonly metrics: MetricsService,
   ) {}
 
   async execute<TInput, TResult>(
@@ -40,6 +42,23 @@ export class CommandExecutor {
     ctx: CommandContext,
     input: TInput,
     opts: { idempotencyKey?: string | undefined } = {},
+  ): Promise<TResult> {
+    const started = performance.now();
+    try {
+      const result = await this.run(def, ctx, input, opts);
+      this.metrics.recordCommand(def.operation, (performance.now() - started) / 1000, undefined);
+      return result;
+    } catch (err) {
+      this.metrics.recordCommand(def.operation, (performance.now() - started) / 1000, err);
+      throw err;
+    }
+  }
+
+  private async run<TInput, TResult>(
+    def: CommandDefinition<TInput, TResult>,
+    ctx: CommandContext,
+    input: TInput,
+    opts: { idempotencyKey?: string | undefined },
   ): Promise<TResult> {
     const key = opts.idempotencyKey;
     const hash = key ? requestHash(def.operation, input) : null;

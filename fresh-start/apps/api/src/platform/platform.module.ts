@@ -8,6 +8,7 @@ import { DatabaseService } from './database/database.service';
 import { AuditController } from './presentation/audit.controller';
 import { ServicePrincipalGuard } from './http/service-principal.guard';
 import { RateLimitInterceptor } from './http/rate-limit/rate-limit.interceptor';
+import { MetricsService } from './metrics/metrics.service';
 
 @Global()
 @Module({
@@ -15,6 +16,7 @@ import { RateLimitInterceptor } from './http/rate-limit/rate-limit.interceptor';
   providers: [
     ConfigService,
     DatabaseService,
+    MetricsService,
     AuditWriter,
     OutboxWriter,
     CommandExecutor,
@@ -22,6 +24,6 @@ import { RateLimitInterceptor } from './http/rate-limit/rate-limit.interceptor';
     RateLimitInterceptor,
     { provide: APP_INTERCEPTOR, useExisting: RateLimitInterceptor },
   ],
-  exports: [ConfigService, DatabaseService, AuditWriter, OutboxWriter, CommandExecutor],
+  exports: [ConfigService, DatabaseService, MetricsService, RateLimitInterceptor, AuditWriter, OutboxWriter, CommandExecutor],
 })
 export class PlatformModule {}

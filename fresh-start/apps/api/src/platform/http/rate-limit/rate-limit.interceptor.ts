@@ -3,12 +3,14 @@ import { type CallHandler, type ExecutionContext, Injectable, type NestIntercept
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 import { from, type Observable, switchMap } from 'rxjs';
-import { createLogger, type Logger } from '@jobwork/observability';
+import { createLogger, Gauge, type Logger } from '@jobwork/observability';
 import type Redis from 'ioredis';
 import { ConfigService } from '../../config/config.service';
+import { MetricsService } from '../../metrics/metrics.service';
 import { RateLimited } from '../domain-error';
 import { type Dimension, type OperationClass, type RatePolicies, resolvePolicies } from './policies';
 import { RATE_LIMIT_KEY } from './rate-limit.decorator';
+import { estimate, retryAfterMs as waitUntilAllowed } from './window';
 import { createRedis, MemoryRateLimitStore, RedisRateLimitStore, ResilientRateLimitStore, type RateLimitStore } from './store';
 
 type LimitedRequest = FastifyRequest & {
@@ -43,6 +45,7 @@ export class RateLimitInterceptor implements NestInterceptor, OnModuleInit, OnMo
   constructor(
     private readonly reflector: Reflector,
     config: ConfigService,
+    private readonly metrics: MetricsService,
   ) {
     this.mode = config.env.RATE_LIMIT_MODE;
     this.prefix = config.env.RATE_LIMIT_PREFIX;
@@ -57,6 +60,15 @@ export class RateLimitInterceptor implements NestInterceptor, OnModuleInit, OnMo
       this.redis.on('error', () => undefined);
       this.store = new ResilientRateLimitStore(new RedisRateLimitStore(this.redis), memory, this.log);
     }
+    const store = this.store;
+    new Gauge({
+      name: 'jobwork_rate_limit_store_degraded',
+      help: '1 while this instance counts rate limits in memory because Redis is unreachable.',
+      registers: [metrics.registry],
+      collect() {
+        this.set(store instanceof ResilientRateLimitStore && store.degraded ? 1 : 0);
+      },
+    });
   }
 
   /**
@@ -126,9 +138,8 @@ export class RateLimitInterceptor implements NestInterceptor, OnModuleInit, OnMo
       const key = `${this.prefix}:${operationClass}:${budget.dimension}:${hash(id)}`;
       const { current, previous } = await this.store.hit(key, windowMs, now);
       const elapsed = now % windowMs;
-      const estimate = previous * (1 - elapsed / windowMs) + current;
-      if (estimate > budget.limit) {
-        const wait = windowMs - elapsed;
+      if (estimate(previous, current, elapsed, windowMs) > budget.limit) {
+        const wait = waitUntilAllowed(previous, current, budget.limit, elapsed, windowMs);
         if (wait > retryAfterMs) {
           retryAfterMs = wait;
           spent = budget.dimension;
@@ -138,6 +149,7 @@ export class RateLimitInterceptor implements NestInterceptor, OnModuleInit, OnMo
     if (!spent) return;
     const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
     this.log.warn({ operationClass, dimension: spent, retryAfterSeconds, enforced: this.mode === 'enforce' }, 'http.rate_limited');
+    this.metrics.rateLimited.inc({ operation_class: operationClass, dimension: spent });
     if (this.mode !== 'enforce') return;
     const kind = operationClass === 'login' ? 'sign_in' : operationClass === 'read' || operationClass === 'search' ? 'read' : 'command';
     throw new RateLimited(retryAfterSeconds, kind);

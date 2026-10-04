@@ -36,6 +36,9 @@ const envSchema = z.object({
    * is a loopback hop locally; deployed, the edge must set the header and be named here.
    */
   TRUST_PROXY: z.string().default('loopback'),
+  /** F-11.3: Prometheus metrics on their own port; 0 serves none (tests). Never the API port. */
+  METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(0),
+  METRICS_HOST: z.string().default('127.0.0.1'),
 });
 
 export type Env = z.infer<typeof envSchema>;

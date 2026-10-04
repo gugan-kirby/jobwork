@@ -118,6 +118,55 @@ export const publishCalendarRequestSchema = z.object({
   expectedVersion: z.number().int().positive(),
 });
 
+// ------------------------------------------------------------------ controls panel (F-11.3)
+
+export const controlQueueSchema = z.object({
+  key: workQueueKeySchema,
+  label: z.string(),
+  href: z.string(),
+  count: z.number().int().nonnegative(),
+  overdue: z.number().int().nonnegative(),
+  oldestWaitingSince: z.string().nullable(),
+  targetMinutes: z.number().int().positive().nullable(),
+});
+
+export const platformControlsSchema = z.object({
+  outbox: z.object({
+    pending: z.number().int().nonnegative(),
+    processing: z.number().int().nonnegative(),
+    /** Poison messages: an event the worker gave up on, waiting for a person (runbook). */
+    dead: z.number().int().nonnegative(),
+    oldestPendingSeconds: z.number().nonnegative(),
+  }),
+  scan: z.object({ backlog: z.number().int().nonnegative(), oldestSeconds: z.number().nonnegative() }),
+  deliveries: z.object({ failedLastHour: z.number().int().nonnegative(), stuckSending: z.number().int().nonnegative() }),
+  rateLimitStoreDegraded: z.boolean(),
+});
+
+export const sodRuleSchema = z.object({
+  key: z.string(),
+  roles: z.array(z.string()),
+  reason: z.string(),
+  source: z.string(),
+});
+
+export const roleConflictSchema = z.object({
+  userId: z.uuid(),
+  displayName: z.string(),
+  email: z.string(),
+  roles: z.array(z.string()),
+  rules: z.array(z.string()),
+});
+
+export const operationsControlsSchema = z.object({
+  generatedAt: z.string(),
+  /** The reader's own queues, as on the command center. */
+  queues: z.array(controlQueueSchema),
+  /** Platform administrators and security administrators only. */
+  platform: platformControlsSchema.nullable(),
+  separationOfDuties: z.object({ rules: z.array(sodRuleSchema), conflicts: z.array(roleConflictSchema) }).nullable(),
+});
+
 // ------------------------------------------------------------------ internal sweep
 
 export const slaSweepResultSchema = z.object({
@@ -142,3 +191,8 @@ export type BusinessCalendar = z.infer<typeof businessCalendarSchema>;
 export type SlaConfiguration = z.infer<typeof slaConfigurationSchema>;
 export type PublishCalendarRequest = z.infer<typeof publishCalendarRequestSchema>;
 export type SlaSweepResult = z.infer<typeof slaSweepResultSchema>;
+export type ControlQueue = z.infer<typeof controlQueueSchema>;
+export type PlatformControls = z.infer<typeof platformControlsSchema>;
+export type SodRuleView = z.infer<typeof sodRuleSchema>;
+export type RoleConflictView = z.infer<typeof roleConflictSchema>;
+export type OperationsControls = z.infer<typeof operationsControlsSchema>;

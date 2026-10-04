@@ -10,6 +10,8 @@ import {
 import { OutboxWriter } from '../src/platform/commands/outbox.writer';
 import type { ConfigService } from '../src/platform/config/config.service';
 import { DatabaseService } from '../src/platform/database/database.service';
+import { MetricsService } from '../src/platform/metrics/metrics.service';
+import type { HttpAdapterHost } from '@nestjs/core';
 
 const CTX: CommandContext = {
   actor: { type: 'user', id: '00000000-0000-7000-8000-000000000001', organizationId: null },
@@ -20,12 +22,18 @@ describe('command execution spine (BR-SYS-01..04, doc 02 §8)', () => {
   let db: TestDatabase;
   let dbService: DatabaseService;
   let executor: CommandExecutor;
+  let metrics: MetricsService;
   let pg: Client;
 
   beforeAll(async () => {
     db = await createTestDatabase('jobwork_spine');
     dbService = new DatabaseService({ env: { DATABASE_URL: db.url } } as unknown as ConfigService);
-    executor = new CommandExecutor(dbService, new AuditWriter(dbService), new OutboxWriter());
+    metrics = new MetricsService(
+      { env: { METRICS_PORT: 0, METRICS_HOST: '127.0.0.1' }, buildVersion: 'test' } as unknown as ConfigService,
+      {} as HttpAdapterHost,
+      dbService,
+    );
+    executor = new CommandExecutor(dbService, new AuditWriter(dbService), new OutboxWriter(), metrics);
     pg = new Client({ connectionString: db.url });
     await pg.connect();
   }, 60_000);
@@ -128,5 +136,14 @@ describe('command execution spine (BR-SYS-01..04, doc 02 §8)', () => {
       `SELECT count(*)::int AS n FROM iam.organization WHERE legal_name = 'Race Co'`,
     );
     expect(rows.rows[0]?.n).toBe(1);
+  });
+
+  it('counts every command by operation and outcome (F-11.3)', async () => {
+    const text = await metrics.registry.metrics();
+    expect(text).toMatch(/jobwork_commands_total\{operation="test\.create-org",outcome="ok",service="api"\} [1-9]/);
+    // A thrown handler error is an error; a reused key with another payload is a conflict.
+    expect(text).toMatch(/jobwork_commands_total\{operation="test\.create-org",outcome="error",service="api"\} [1-9]/);
+    expect(text).toMatch(/jobwork_commands_total\{operation="test\.counted",outcome="conflict",service="api"\} [1-9]/);
+    expect(text).toMatch(/jobwork_command_duration_seconds_count\{service="api",operation="test\.create-org"\} 2/);
   });
 });
