@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { BaselineCandidate, MeResponse, Milestone, ProductionView, WorkPackage } from '@jobwork/contracts';
+import type { BaselineCandidate, ChangeRequest, MeResponse, Milestone, ProductionView, WorkPackage } from '@jobwork/contracts';
 import {
   ButtonLink,
   Callout,
@@ -20,6 +20,7 @@ import {
   Select,
   Stack,
   StatusChip,
+  TextArea,
   TextInput,
   type Tone,
 } from '@jobwork/ui';
@@ -55,12 +56,17 @@ export default function OrderProductionPage(): React.JSX.Element {
   const [notice, setNotice] = useState<ApiError | null>(null);
   const [plan, setPlan] = useState<Record<string, { start: string; finish: string; quality: boolean }>>({});
   const [reason, setReason] = useState<Record<string, string>>({});
+  const [changes, setChanges] = useState<ChangeRequest[]>([]);
+  const [proposal, setProposal] = useState({ title: '', reason: '', urgent: false });
 
   const load = useCallback(async () => {
     try {
       const v = await api<ProductionView>(`/sales-orders/${salesOrderId}/production`);
       setView(v);
       setError(null);
+      api<ChangeRequest[]>(`/changes?salesOrderId=${salesOrderId}`)
+        .then(setChanges)
+        .catch(() => setChanges([]));
       api<{ candidates: BaselineCandidate[] }>(`/sales-orders/${salesOrderId}/baseline-candidates`)
         .then((res) => {
           setCandidates(res.candidates);
@@ -268,7 +274,11 @@ export default function OrderProductionPage(): React.JSX.Element {
                     {draft ? 'Update draft baseline' : 'Assemble draft baseline'}
                   </CommandButton>
                   {draft ? (
-                    <CommandButton receiptLabel="Released" disabled={draft.conflicts.length > 0} disabledReason="Resolve the conflicts first" onCommand={() => run(`/baselines/${draft.baselineId}/release`, { expectedVersion: draft.aggregateVersion })}>
+                    <CommandButton
+                      receiptLabel="Released"
+                      disabled={draft.conflicts.length > 0 || released !== null}
+                      disabledReason={released ? 'A released baseline is replaced only by releasing an engineering change' : 'Resolve the conflicts first'}
+                      onCommand={() => run(`/baselines/${draft.baselineId}/release`, { expectedVersion: draft.aggregateVersion })}>
                       Release {draft.number}
                     </CommandButton>
                   ) : null}
@@ -299,6 +309,45 @@ export default function OrderProductionPage(): React.JSX.Element {
             ) : null}
           </Stack>
         </Card>
+
+        {released ? (
+          <Card title="Engineering changes" description="Doc 06 §9. Any change to the released baseline goes through a change: impact, approval, the customer's decision when it moves price or date, then a new baseline.">
+            <Stack gap={3}>
+              {changes.length === 0 ? <p style={{ color: 'var(--color-text-muted)' }}>No changes on this order.</p> : null}
+              {changes.map((c) => (
+                <Inline key={c.changeRequestId} gap={3}>
+                  <Link href={`/changes/${c.changeRequestId}`} className="mono">
+                    {c.number}
+                  </Link>
+                  <span>{c.title}</span>
+                  <StatusChip tone={['closed', 'verified'].includes(c.status) ? 'positive' : ['rejected', 'withdrawn'].includes(c.status) ? 'neutral' : 'attention'}>{c.status.replace(/_/g, ' ')}</StatusChip>
+                </Inline>
+              ))}
+              {canEngineer ? (
+                <details>
+                  <summary>Propose a change</summary>
+                  <Stack gap={2}>
+                    <TextInput label="What changes" value={proposal.title} onChange={(e) => setProposal({ ...proposal, title: e.target.value })} />
+                    <TextArea label="Why" rows={3} value={proposal.reason} onChange={(e) => setProposal({ ...proposal, reason: e.target.value })} />
+                    <Checkbox label="Urgent" checked={proposal.urgent} onChange={(e) => setProposal({ ...proposal, urgent: e.target.checked })} />
+                    <CommandButton
+                      variant="secondary"
+                      receiptLabel="Proposed"
+                      disabled={proposal.title.trim().length < 3 || proposal.reason.trim().length < 3}
+                      disabledReason="Say what changes and why"
+                      onCommand={async () => {
+                        await run('/changes', { salesOrderId, title: proposal.title.trim(), reason: proposal.reason.trim(), urgency: proposal.urgent ? 'urgent' : 'normal' });
+                        setProposal({ title: '', reason: '', urgent: false });
+                      }}
+                    >
+                      Propose change
+                    </CommandButton>
+                  </Stack>
+                </details>
+              ) : null}
+            </Stack>
+          </Card>
+        ) : null}
 
         {view.purchaseOrders.length === 0 ? (
           <Card>
