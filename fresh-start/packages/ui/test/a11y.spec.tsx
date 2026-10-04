@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ReactElement } from 'react';
 import { Button } from '../src/primitives/Button';
 import { ButtonLink } from '../src/primitives/Link';
+import { LeakWarning } from '../src/conversation/LeakWarning';
 import { CommandButton } from '../src/primitives/CommandButton';
 import { Checkbox, Select, TextArea, TextInput } from '../src/primitives/Field';
 import { ReasonField } from '../src/primitives/ReasonField';
@@ -216,6 +217,16 @@ const CASES: Array<[string, ReactElement]> = [
     <ErrorState message="That enquiry is not ready to be sourced." code="SOURCING_BLOCKED" correlationId="01a075a6" />,
   ],
   ['RouteError', <RouteError digest="2846135799" onRetry={() => undefined} />],
+  [
+    'LeakWarning',
+    <LeakWarning
+      action="quarantine"
+      findings={[{ kind: 'phone', confidence: 'high', start: 5, end: 16, text: '98765 43210', label: 'Phone number' }]}
+      body="Call 98765 43210 today"
+      onEdit={() => undefined}
+      onProceed={() => undefined}
+    />,
+  ],
   ['LiveRegion', <LiveRegion message="Draft saved" />],
   ['ButtonLink', <ButtonLink href="/enquiries/new">Create enquiry</ButtonLink>],
   ['ButtonLink (disabled)', <ButtonLink href="/quotations/q-1/accept" disabled disabledReason="This quotation has expired">Accept quote</ButtonLink>],

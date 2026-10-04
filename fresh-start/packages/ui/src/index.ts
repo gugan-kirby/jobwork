@@ -92,3 +92,6 @@ export {
   type MoneyInputProps,
   type MoneyValue,
 } from './forms/MoneyInput';
+
+// ------------------------------------------------------------------ conversation (IN-10)
+export { HighlightedText, LeakWarning, type LeakWarningProps } from './conversation/LeakWarning';
