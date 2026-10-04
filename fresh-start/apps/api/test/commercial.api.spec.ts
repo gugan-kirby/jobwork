@@ -345,6 +345,13 @@ describe('Evaluation, award, cost sheet, customer quote (IN-07)', () => {
     const lines = proposed.body['lines'] as Array<Record<string, unknown>>;
     expect(lines).toHaveLength(2);
     expect(lines.reduce((s, l) => s + (l['quantity'] as number), 0)).toBe(100);
+    // The buy cost is what each supplier quoted: its own setup, and its bid's freight to
+    // JobWork and tooling/NRE in full (doc 10 §2) — not just unit price × quantity.
+    const anand = lines.find((l) => l['bidVersionId'] === bidA)!;
+    const balaji = lines.find((l) => l['bidVersionId'] === bidB)!;
+    expect(anand).toMatchObject({ setupAmountMinor: 500000, freightAmountMinor: 250000, nreAmountMinor: 0, lineTotalMinor: 4850 * 60 + 500000 + 250000 });
+    expect(balaji).toMatchObject({ setupAmountMinor: 500000, freightAmountMinor: 250000, nreAmountMinor: 200000, lineTotalMinor: 5250 * 40 + 500000 + 250000 + 200000 });
+    expect(proposed.body['buyTotalMinor']).toBe((anand['lineTotalMinor'] as number) + (balaji['lineTotalMinor'] as number));
 
     // Separation of duties: the proposer cannot approve their own award.
     const self = await sourcing.post(`/api/v1/approvals/${awardApprovalId}/decide`, { decision: 'approved' });
