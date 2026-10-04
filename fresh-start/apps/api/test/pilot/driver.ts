@@ -481,6 +481,21 @@ export class Pilot {
     }
   }
 
+  /** A call only the worker may make (service token), e.g. the expiry or deadline sweeps. */
+  async service(path: string, body?: Body): Promise<Res> {
+    const res = await fetch(`${this.baseUrl}/api/v1${path}`, {
+      method: 'POST',
+      headers: {
+        [SERVICE_TOKEN_HEADER]: mintServiceToken(SERVICE_SECRET, SCAN_WORKER_PRINCIPAL.name),
+        origin: 'http://localhost:3000',
+        ...(body ? { 'content-type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const text = await res.text();
+    return { status: res.status, body: text ? (JSON.parse(text) as Body) : {} };
+  }
+
   /** Signs and posts a provider callback the way the dev gateway does. */
   async paymentCallback(event: { id?: string; type: string; intentId: string; transactionId: string; amountMinor: number }, opts: { ageSeconds?: number } = {}): Promise<Res> {
     const id = event.id ?? `evt_${randomUUID()}`;
