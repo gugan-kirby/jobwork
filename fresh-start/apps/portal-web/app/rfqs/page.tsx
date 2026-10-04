@@ -33,6 +33,9 @@ const TONE: Record<string, Tone> = {
   prepared: 'neutral',
 };
 
+/** Only these rounds still take bids; for the rest the deadline is history. */
+const TAKING_BIDS = new Set(['open', 'responses_received']);
+
 function remaining(deadlineAt: string | null): { text: string; tone: Tone } {
   if (!deadlineAt) return { text: 'no deadline', tone: 'neutral' };
   const ms = new Date(deadlineAt).getTime() - Date.now();
@@ -79,6 +82,7 @@ export default function SupplierRfqsPage(): React.JSX.Element {
       render: (row) => {
         // F-12.5: a round closed for a revision has no time left, whatever its deadline says.
         if (row.status === 'superseded') return <StatusChip tone="neutral">Closed: requirements updated</StatusChip>;
+        if (!TAKING_BIDS.has(row.status)) return <StatusChip tone="neutral">Bidding closed</StatusChip>;
         const left = remaining(row.deadlineAt);
         return <StatusChip tone={left.tone}>{left.text}</StatusChip>;
       },
