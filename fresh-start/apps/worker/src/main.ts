@@ -81,6 +81,9 @@ async function main(): Promise<void> {
   const env = parsed.data;
   const logger = createLogger({ service: 'worker' });
   const pool = new Pool({ connectionString: env.DATABASE_URL, max: 5 });
+  // An idle connection ended by the server must not kill the worker (see the API's
+  // DatabaseService): the pool drops it and reconnects on the next query.
+  pool.on('error', (err) => logger.warn({ code: (err as { code?: string }).code }, 'db.idle_client_error'));
   await pool.query('SELECT 1');
 
   // The worker holds store credentials and a short-lived service credential only —

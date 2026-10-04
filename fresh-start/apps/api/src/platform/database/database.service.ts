@@ -1,6 +1,7 @@
 import { Injectable, type OnModuleDestroy } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
 import { registerPgTypeParsers } from '@jobwork/database';
+import { createLogger } from '@jobwork/observability';
 import { ConfigService } from '../config/config.service';
 
 // Registered before the first pool so every `date` column arrives as the calendar
@@ -17,6 +18,14 @@ export class DatabaseService implements OnModuleDestroy {
       max: 10,
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
+    });
+    // An idle connection the server ends (restart, failover, an operator's terminate)
+    // surfaces as an error on the pool. Without a listener Node treats it as uncaught and
+    // the process dies; with one, the dead client is discarded and the next query opens
+    // a fresh connection (doc 12 §3: a database blip degrades, it does not crash).
+    const log = createLogger({ service: 'api' });
+    this.pool.on('error', (err) => {
+      log.warn({ code: (err as { code?: string }).code }, 'db.idle_client_error');
     });
   }
 
