@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import type { BaselineCandidate, ChangeRequest, MeResponse, Milestone, ProductionView, WorkPackage } from '@jobwork/contracts';
+import { useParams, useRouter } from 'next/navigation';
+import type { BaselineCandidate, ChangeRequest, Inspection, MeResponse, Milestone, ProductionView, QualityPlan, QualityTemplate, WorkPackage } from '@jobwork/contracts';
 import {
   ButtonLink,
   Callout,
@@ -25,6 +25,7 @@ import {
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../../lib/api';
+import { STAGE } from '../../../quality/labels';
 
 /**
  * Technical baseline and production for one order (IN-09). Assemble the exact versions,
@@ -57,6 +58,9 @@ export default function OrderProductionPage(): React.JSX.Element {
   const [plan, setPlan] = useState<Record<string, { start: string; finish: string }>>({});
   const [reason, setReason] = useState<Record<string, string>>({});
   const [changes, setChanges] = useState<ChangeRequest[]>([]);
+  const [quality, setQuality] = useState<Record<string, { plans: QualityPlan[]; inspections: Inspection[] }>>({});
+  const [templates, setTemplates] = useState<QualityTemplate[]>([]);
+  const router = useRouter();
   const [proposal, setProposal] = useState({ title: '', reason: '', urgent: false });
 
   const load = useCallback(async () => {
@@ -67,6 +71,18 @@ export default function OrderProductionPage(): React.JSX.Element {
       api<ChangeRequest[]>(`/changes?salesOrderId=${salesOrderId}`)
         .then(setChanges)
         .catch(() => setChanges([]));
+      // IN-14: each work package's quality plans and inspections.
+      Promise.all(
+        v.workPackages.map(async (w) => {
+          const [plans, inspections] = await Promise.all([
+            api<QualityPlan[]>(`/quality-plans?workPackageId=${w.workPackageId}`).catch(() => []),
+            api<Inspection[]>(`/inspections?workPackageId=${w.workPackageId}`).catch(() => []),
+          ]);
+          return [w.workPackageId, { plans, inspections }] as const;
+        }),
+      )
+        .then((entries) => setQuality(Object.fromEntries(entries)))
+        .catch(() => setQuality({}));
       api<{ candidates: BaselineCandidate[] }>(`/sales-orders/${salesOrderId}/baseline-candidates`)
         .then((res) => {
           setCandidates(res.candidates);
@@ -89,6 +105,7 @@ export default function OrderProductionPage(): React.JSX.Element {
   useEffect(() => {
     void load();
     api<MeResponse>('/auth/me').then(setMe).catch(() => setMe(null));
+    api<QualityTemplate[]>('/quality-templates').then(setTemplates).catch(() => setTemplates([]));
   }, [load]);
 
   if (!view) {
@@ -102,6 +119,7 @@ export default function OrderProductionPage(): React.JSX.Element {
   const roles = me?.roles ?? [];
   const canEngineer = roles.includes('jobwork_engineering') || roles.includes('jobwork_sourcing');
   const canVerify = roles.includes('jobwork_quality');
+  const canQuality = canVerify;
   const order = view.order;
   const released = view.baselines.find((b) => b.status === 'released') ?? null;
   const draft = view.baselines.find((b) => b.status === 'draft') ?? null;
@@ -177,6 +195,51 @@ export default function OrderProductionPage(): React.JSX.Element {
     </div>
   );
 
+  const qualitySection = (wp: WorkPackage): React.JSX.Element => {
+    const q = quality[wp.workPackageId] ?? { plans: [], inspections: [] };
+    const plan = q.plans.find((p) => p.status !== 'superseded');
+    return (
+      <div style={{ borderTop: 'var(--hairline) solid var(--color-border)', paddingTop: 'var(--space-2)' }}>
+        <Inline gap={2}>
+          <strong>Quality</strong>
+          {plan ? (
+            <>
+              <Link href={`/quality/plans/${plan.planId}`}>Plan v{plan.versionNo}</Link>
+              <StatusChip tone={plan.status === 'approved' && plan.baselineCurrent ? 'positive' : 'attention'}>{plan.status === 'approved' && !plan.baselineCurrent ? 'approved, baseline superseded' : plan.status}</StatusChip>
+            </>
+          ) : canQuality && released && templates[0] ? (
+            <CommandButton
+              size="sm"
+              variant="secondary"
+              receiptLabel="Plan started"
+              onCommand={async () => {
+                const created = await api<QualityPlan>('/quality-plans', { method: 'POST', body: { workPackageId: wp.workPackageId, templateCode: templates[0]!.code }, idempotencyKey: crypto.randomUUID() });
+                router.push(`/quality/plans/${created.planId}`);
+              }}
+            >
+              Write quality plan ({templates[0].label})
+            </CommandButton>
+          ) : (
+            <span style={{ color: 'var(--color-text-muted)' }}>No quality plan yet</span>
+          )}
+        </Inline>
+        {q.inspections.length > 0 ? (
+          <Stack gap={1}>
+            {q.inspections.map((i) => (
+              <Inline key={i.inspectionId} gap={2}>
+                <Link href={`/quality/inspections/${i.inspectionId}`} className="mono">
+                  {i.number}
+                </Link>
+                <span>{STAGE[i.stage]}</span>
+                <StatusChip tone={i.status === 'passed' ? 'positive' : i.status === 'failed' ? 'blocked' : i.status === 'invalidated' ? 'neutral' : 'attention'}>{i.status.replace(/_/g, ' ')}</StatusChip>
+              </Inline>
+            ))}
+          </Stack>
+        ) : null}
+      </div>
+    );
+  };
+
   const workPackageCard = (poId: string): React.JSX.Element => {
     const po = view.purchaseOrders.find((p) => p.purchaseOrderId === poId)!;
     const wp: WorkPackage | undefined = view.workPackages.find((w) => w.purchaseOrderId === poId);
@@ -208,6 +271,7 @@ export default function OrderProductionPage(): React.JSX.Element {
                   Released {wp.releasedAt.slice(0, 16).replace('T', ' ')} against baseline {String((wp.releaseSnapshot?.['baseline'] as { number?: string } | undefined)?.number ?? '')}. The snapshot of every gate is kept with the release.
                 </p>
               ) : null}
+              {qualitySection(wp)}
               {wp.containment.map((c) => (
                 <Callout key={c.containmentId} tone="blocked" title={`Containment: ${c.kind.replace(/_/g, ' ')}`}>
                   {c.description} · {c.reportedAt.slice(0, 16).replace('T', ' ')}

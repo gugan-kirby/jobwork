@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { INSPECTION_STAGES } from './constants';
 
 /**
  * Quality plans, inspections and instruments (IN-14 F-14.3; doc 09 §§9–10; doc 08 §§2, 5).
@@ -6,7 +7,6 @@ import { z } from 'zod';
  * a float (doc 08 §2): `{ "value": "3.2", "unit": "um", "declaredPrecision": 1 }`.
  */
 
-export const INSPECTION_STAGES = ['incoming', 'in_process', 'fai', 'final', 'jobwork_incoming', 'customer_receiving'] as const;
 export const inspectionStageSchema = z.enum(INSPECTION_STAGES);
 export const inspectionStatusSchema = z.enum(['planned', 'in_progress', 'results_submitted', 'under_review', 'passed', 'failed', 'invalidated']);
 export const criticalitySchema = z.enum(['critical', 'major', 'minor']);
@@ -104,6 +104,8 @@ export const qualityPlanSchema = z.object({
   approvedAt: z.string().nullable(),
   aggregateVersion: z.number().int().positive(),
 });
+
+export const qualityUnitSchema = z.object({ code: z.string(), label: z.string(), dimension: z.string() });
 
 export const qualityTemplateSchema = z.object({
   code: z.string(),
@@ -253,6 +255,7 @@ export type QualityPlanVersionRequest = z.infer<typeof qualityPlanVersionRequest
 export type Characteristic = z.infer<typeof characteristicSchema>;
 export type QualityPlan = z.infer<typeof qualityPlanSchema>;
 export type QualityTemplate = z.infer<typeof qualityTemplateSchema>;
+export type QualityUnit = z.infer<typeof qualityUnitSchema>;
 export type RegisterInstrumentRequest = z.infer<typeof registerInstrumentRequestSchema>;
 export type RecordCalibrationRequest = z.infer<typeof recordCalibrationRequestSchema>;
 export type RetireInstrumentRequest = z.infer<typeof retireInstrumentRequestSchema>;

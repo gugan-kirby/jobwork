@@ -215,6 +215,11 @@ export class QualityRepository {
     };
   }
 
+  async units(tx?: Queryable): Promise<Array<{ code: string; label: string; dimension: string }>> {
+    const res = await this.q(tx).query<{ code: string; label: string; dimension: string }>(`SELECT code, label, dimension FROM quality.unit ORDER BY dimension, is_normalized DESC, code`);
+    return res.rows;
+  }
+
   async unitCodes(tx?: Queryable): Promise<Set<string>> {
     const res = await this.q(tx).query<{ code: string }>(`SELECT code FROM quality.unit`);
     return new Set(res.rows.map((r) => r.code));

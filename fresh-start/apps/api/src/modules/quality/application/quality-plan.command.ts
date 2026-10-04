@@ -7,6 +7,7 @@ import {
   type QualityPlan,
   type QualityPlanVersionRequest,
   type QualityTemplate,
+  type QualityUnit,
   type SaveQualityPlanDraftRequest,
 } from '@jobwork/contracts';
 import { type Actor, requireTransactionalStrength } from '../../iam';
@@ -69,6 +70,12 @@ export class QualityPlanCommand {
     if (!plan) throw new DomainError('QUALITY_PLAN_NOT_FOUND', 404, 'Quality plan not found');
     if (plan.aggregateVersion !== expectedVersion) throw new DomainError('VERSION_CONFLICT', 409, 'The plan moved on', 'Reload it and try again.');
     return plan;
+  }
+
+  /** Reference data every party that measures needs: the units results may be entered in. */
+  async units(actor: Actor): Promise<QualityUnit[]> {
+    if (!actor.organizationId) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');
+    return this.repo.units();
   }
 
   async templates(actor: Actor): Promise<QualityTemplate[]> {

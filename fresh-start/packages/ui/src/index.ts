@@ -101,3 +101,6 @@ export { AUDIENCE_STYLE, AudienceBanner, AudienceChip, type AudienceBannerProps 
 export { Composer, type ComposerProps } from './conversation/Composer';
 export { Thread, type ThreadProps } from './conversation/Thread';
 export { NotificationList, type NotificationListProps } from './conversation/NotificationList';
+
+// Quality (IN-14)
+export { describeLimits, MeasurementGrid, type GridBound, type GridCharacteristic, type GridResult, type MeasurementGridProps } from './quality/MeasurementGrid';

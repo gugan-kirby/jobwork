@@ -133,3 +133,6 @@ export const CHANGE_IMPACT_AREAS = [
   { key: 'contract', label: 'Contract', question: 'Warranty, acceptance, IP/NDA, liability or terms amendment?' },
   { key: 'logistics', label: 'Logistics', question: 'Extra movement, return, packaging, customs/e-waybill/document impact?' },
 ] as const;
+
+/** Inspection stages (IN-14; doc 09 §9). */
+export const INSPECTION_STAGES = ['incoming', 'in_process', 'fai', 'final', 'jobwork_incoming', 'customer_receiving'] as const;

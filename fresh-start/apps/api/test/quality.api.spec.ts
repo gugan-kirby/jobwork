@@ -52,6 +52,11 @@ describe('Quality plans and inspections (F-14.3)', () => {
     await p?.stop();
   });
 
+  it('serves the units results may be entered in, from the reference data', async () => {
+    const units = ok(await p.as.supplierA.get('/api/v1/quality-units'), 200, 'units') as unknown as Body[];
+    expect(units.filter((u) => u['dimension'] === 'length').map((u) => u['code'])).toEqual(['mm', 'inch', 'm', 'um']);
+  });
+
   it('keeps instruments to their owner: calibration needs its own clean certificate, and tags are unique', async () => {
     const list = ok(await p.as.supplierA.get('/api/v1/supplier/instruments'), 200, 'instruments') as unknown as Body[];
     expect(list.map((i) => [i['assetTag'], i['calibrationStatus']])).toEqual([

@@ -18,6 +18,7 @@ import {
   type Instrument,
   type QualityPlan,
   type QualityTemplate,
+  type QualityUnit,
 } from '@jobwork/contracts';
 import type { Actor } from '../../iam';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
@@ -37,6 +38,11 @@ const opts = (request: FastifyRequest) => ({ idempotencyKey: idempotencyKey(requ
 @Controller()
 export class QualityPlanController {
   constructor(private readonly plans: QualityPlanCommand) {}
+
+  @Get('quality-units')
+  units(@CurrentActor() actor: Actor): Promise<QualityUnit[]> {
+    return this.plans.units(actor);
+  }
 
   @Get('quality-templates')
   templates(@CurrentActor() actor: Actor): Promise<QualityTemplate[]> {
