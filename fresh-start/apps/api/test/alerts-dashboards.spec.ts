@@ -111,6 +111,19 @@ describe('alert rules and dashboards (F-11.3)', () => {
     expect(unknown).toEqual([]);
   });
 
+  it('names only registered metrics and known labels in the runbooks\' queries (F-11.4)', () => {
+    const dir = join(INFRA, '..', 'docs', 'runbooks');
+    const exprs = readdirSync(dir)
+      .filter((f) => f.endsWith('.md'))
+      .flatMap((file) => [...readFileSync(join(dir, file), 'utf8').matchAll(/```promql\n([\s\S]*?)```/g)].map((m) => ({ where: file, expr: m[1]!.trim() })));
+    expect(exprs.length).toBeGreaterThanOrEqual(10);
+    const unknown = exprs.flatMap(({ where, expr }) =>
+      (expr.match(METRIC_TOKEN) ?? []).filter((t) => !registered.has(t) && !registered.has(t.replace(HISTOGRAM_SUFFIX, ''))).map((t) => `${where}: ${t}`),
+    );
+    const odd = exprs.flatMap(({ where, expr }) => labelNames(expr).filter((l) => !KNOWN_LABELS.has(l)).map((l) => `${where}: ${l}`));
+    expect([...unknown, ...odd]).toEqual([]);
+  });
+
   it('selects and groups only on small, fixed label sets', () => {
     const exprs = [...rules().map((r) => ({ where: r.alert, expr: r.expr })), ...dashboardExprs().map((d) => ({ where: d.panel, expr: d.expr }))];
     const odd = exprs.flatMap(({ where, expr }) => labelNames(expr).filter((l) => !KNOWN_LABELS.has(l)).map((l) => `${where}: ${l}`));
