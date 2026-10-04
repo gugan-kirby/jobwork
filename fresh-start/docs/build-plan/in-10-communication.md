@@ -55,6 +55,13 @@ Covers: `FR-1001`; doc 14 §11; `BR-AUTH-06` allowlist principle; doc 03 §7 las
 
 Tests: an internal note is absent from every external listing (customer, supplier, other supplier); a supplier never sees another supplier's private messages; a shared-technical message never names the asking supplier; audience and body cannot change after post (trigger); a customer cannot post to a supplier audience or read a thread for another organization's enquiry; the check endpoint persists nothing.
 
+**Browser verification (2026-10-04).** Driven against the dev stack: customer posts on `ENQ-2026-5349`; staff see it labelled; the internal-note mode switches only by its button; a message naming "Anand Engineering (demo)" raises the hold warning with the name marked, is held, appears in the operations queue with a nav badge, is released as an edited copy by a second reviewer, and the customer sees only the edited copy signed "JobWork"; on an open RFQ, a supplier question is answered for every invited supplier. Two defects only the browser showed, both fixed:
+
+| Defect | Fix |
+|---|---|
+| The share form was pre-filled with the supplier's exact question, so one careless click republished its wording — and wording can identify a supplier even when no name is in it | The published text starts empty; the supplier's question is shown beside it as a read-only reference |
+| "Held since" in the review queue showed UTC while the thread showed local time | Both use the reader's locale |
+
 ## F-10.3 Notification pipeline (built last)
 
 Covers: `FR-1003`–`FR-1005`; UC-38; outbox-driven only.
