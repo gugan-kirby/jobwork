@@ -432,6 +432,13 @@ code,
   flex: 1;
 }
 
+/* A real basis, not zero: with `flex: 1` alone the title shrinks to a word per line
+   beside a wide action (a long <select>) instead of the actions wrapping below it.
+   Back-link headers keep the phone "‹ Title [action]" row, so they are left alone. */
+.jw-page-head:not(.jw-page-head-back) > .jw-page-title-block {
+  flex-basis: 18rem;
+}
+
 .jw-page-actions {
   display: flex;
   gap: var(--space-2);
