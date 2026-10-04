@@ -15,6 +15,7 @@ import { invitationIssuedHandler } from './outbox/handlers/invitation-issued';
 import { rfqDeadlineScan } from './outbox/handlers/rfq-deadline';
 import { paymentReconcileScan } from './outbox/handlers/payment-reconcile';
 import { verificationExpiryScan } from './outbox/handlers/verification-expiry';
+import { slaEscalator } from './sla/escalator';
 import { SignatureScanner } from './scan/scanner';
 import { DEFAULT_POLLER_OPTIONS, OutboxPoller } from './outbox/poller';
 import { HandlerRegistry } from './outbox/registry';
@@ -53,6 +54,7 @@ const envSchema = z.object({
   VERIFICATION_SWEEP_MS: z.coerce.number().int().min(1000).default(15 * 60_000),
   OUTBOX_POLL_MS: z.coerce.number().int().min(200).default(2_000),
   PAYMENT_SWEEP_MS: z.coerce.number().int().min(1000).default(5 * 60_000),
+  SLA_SWEEP_MS: z.coerce.number().int().min(1000).default(60_000),
 });
 
 const ACKNOWLEDGED_UNTIL_NOTIFICATIONS = [
@@ -185,6 +187,10 @@ async function main(): Promise<void> {
   const deadlineTimer = setInterval(() => void deadlineSweep(), env.VERIFICATION_SWEEP_MS);
   const paymentSweep = paymentReconcileScan(internalApi, logger.child({ module: 'finance.payments' }));
   const paymentTimer = setInterval(() => void paymentSweep(), env.PAYMENT_SWEEP_MS);
+  // F-11.1: queue stays, deadlines and escalations; a minute is the resolution of a deadline.
+  const slaSweep = slaEscalator(internalApi, logger.child({ module: 'platform.sla' }));
+  void slaSweep();
+  const slaTimer = setInterval(() => void slaSweep(), env.SLA_SWEEP_MS);
 
   const heartbeat = setInterval(() => {
     void pool
@@ -210,6 +216,7 @@ async function main(): Promise<void> {
     clearInterval(sweepTimer);
     clearInterval(deadlineTimer);
     clearInterval(paymentTimer);
+    clearInterval(slaTimer);
     poller.stop();
     logger.info({ signal }, 'worker stopping');
     pool

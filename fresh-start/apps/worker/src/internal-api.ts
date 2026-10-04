@@ -4,6 +4,7 @@ import type {
   RecordDeliveryRequest,
   RecordScanResultRequest,
   ScanResultResponse,
+  SlaSweepResult,
 } from '@jobwork/contracts';
 import { mintServiceToken, SERVICE_TOKEN_HEADER } from '@jobwork/service-auth';
 
@@ -83,6 +84,11 @@ export class InternalApiClient {
   /** Payment reconcile sweep (F-08.5): closes intents nobody paid before they expired. */
   sweepPayments(ctx: { correlationId: string; idempotencyKey: string }): Promise<{ expired: number }> {
     return this.post<{ expired: number }>('/api/v1/internal/payments/reconcile-sweep', undefined, ctx);
+  }
+
+  /** SLA sweep (F-11.1): open/close stays, move deadlines, fire due steps once each. */
+  sweepSla(ctx: { correlationId: string; idempotencyKey: string }): Promise<SlaSweepResult> {
+    return this.post<SlaSweepResult>('/api/v1/internal/sla/sweep', undefined, ctx);
   }
 
   /** F-10.3: who hears about a committed event, rendered; idempotent per event. */
