@@ -41,6 +41,26 @@ Covers: doc 07 §11; `BR-SYS-07`; UC-35 (SLA/calendar), UC-38; doc 21 queue tabl
 
 Tests: business-time — Asia/Kolkata across a weekend and a holiday; Europe/London and America/New_York across both DST transitions; start outside hours; deadline at the exact closing instant. API — sweep opens one assignment per member and closes departed ones; a return to the queue gets a new clock; escalation fires once per step under two concurrent sweeps; a new calendar version moves open deadlines and bumps `due_version`, and the step fires again only for the new deadline; reassignment is audited with its reason; an assignee without a queue role is refused; an external actor sees no queue; an escalation notification carries the reference, never content.
 
+**Deviations (2026-10-04, F-11.1):**
+
+- The registry is `operations/infrastructure/queue-registry.ts` (it holds SQL); the pure rules — clock start, step instants, which step fires, item state — are `operations/domain/deadline.ts`. The F-OPS summary now counts from the same registry, so its counts and the queue screen cannot disagree.
+- One read, `GET /sla`, returns the calendars and policies in force, instead of two routes. Policies are read-only for now; only a calendar version can be published (a declared holiday is the change operations needs first).
+- A first stay's clock starts at the item's waiting-since **or the policy's activation, whichever is later**: without the floor, the first sweep after go-live would declare months of history overdue at once.
+- When several steps are past due (a backlog, a worker outage), only the highest fires — one notice, not a storm of stale "due" notices (doc 13 §11 "recover backlog without storm").
+- Added `platform.queue_item_reassigned.v1` and the `internal.queue_item_assigned` template: an item handed to someone else tells them. Taking or handing back tells nobody.
+- Seeded calendar is an assumption for operations to confirm: Chennai, Monday–Saturday 09:30–18:30 IST, fixed-date public holidays only (26 Jan, 1 May, 15 Aug, 2 Oct, 25 Dec for 2026–27). Festival dates that move each year are added as a new version. Escalation roles are seeded empty, so step 2 tells the queue's whole acting team; a lead role can be named per queue when one exists.
+- The queue table is not virtualised and has no bulk selection: queues are tens of rows at launch.
+
+**Browser verification (2026-10-04, F-11.1).** Driven against the dev stack with the worker running: the first live sweep opened seven stays; the queue screen listed exactly the command-center counts with deadlines in IST; take, hand back and reassign worked, and a reassignment produced the audit row with its reason, the in-app notice and an email (`apps/worker/var/mail`) linking to `/queues?queue=…` and naming only the record number. Five defects only the browser showed, all fixed:
+
+| Defect | Fix |
+|---|---|
+| After **Take**, the row showed "Handed back": React reused the Take button's finished state for the Hand back button in the same slot — a false receipt | The two command buttons are keyed |
+| At phone width the page title collapsed to one word per line beside the queue selector | `.jw-page-title-block` had a zero flex basis, so the header never wrapped; non-back headers now have an `18rem` basis (affected every page with a wide action) |
+| Stacked rows repeated the title (card heading and "Item" row) | The stacked heading is the reference link alone |
+| Three rows' links were all named "Supplier" | Each reference link carries the item title as a visually hidden suffix (WCAG 2.4.4) |
+| The queue selector said "All queues (0)" while loading | No count until the data has arrived |
+
 ## F-11.2 Rate limits and abuse controls
 
 Covers: doc 08 §§11, 14; doc 11 §10; `AUTH-12` per-IP half; doc 12 §3 Redis row.
