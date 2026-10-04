@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
 import type { PurchaseOrderStatus, SalesOrderStatus } from '@jobwork/contracts';
 import { DatabaseService } from '../../../platform/database/database.service';
+import { parallelReads } from '../../../platform/database/parallel-reads';
 
 type Queryable = Pool | PoolClient;
 
@@ -291,7 +292,7 @@ export class OrdersRepository {
     );
     const head = res.rows[0] as Omit<SalesOrderRecord, 'lines' | 'acceptance'> | undefined;
     if (!head) return null;
-    const [lines, acceptance] = await Promise.all([this.listLines(id, tx), this.findAcceptance(head.acceptanceId, tx)]);
+    const [lines, acceptance] = await parallelReads(tx, [() => this.listLines(id, tx), () => this.findAcceptance(head.acceptanceId, tx)]);
     if (!acceptance) return null;
     return { ...head, totalMinor: num(head.totalMinor), lines, acceptance };
   }

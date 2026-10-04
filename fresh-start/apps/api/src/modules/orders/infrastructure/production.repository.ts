@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
 import type { BaselineCandidate, MilestoneStatus } from '@jobwork/contracts';
 import { DatabaseService } from '../../../platform/database/database.service';
+import { parallelReads } from '../../../platform/database/parallel-reads';
 
 type Queryable = Pool | PoolClient;
 
@@ -468,13 +469,13 @@ export class ProductionRepository {
     );
     const head = res.rows[0] as Omit<MilestoneRecord, 'forecasts' | 'evidence'> | undefined;
     if (!head) return null;
-    const [forecasts, evidence] = await Promise.all([
-      this.q(tx).query(
+    const [forecasts, evidence] = await parallelReads(tx, [
+      () => this.q(tx).query(
         `SELECT revision_no AS "revisionNo", forecast_date AS "forecastDate", reason_code AS "reasonCode", reason, recorded_at AS "recordedAt"
            FROM orders.milestone_forecast WHERE milestone_id = $1 ORDER BY revision_no`,
         [id],
       ),
-      this.q(tx).query(
+      () => this.q(tx).query(
         `SELECT e.id, e.milestone_id AS "milestoneId", dv.document_id AS "documentId", e.document_version_id AS "documentVersionId",
                 dv.original_filename AS filename, e.file_sha256 AS "fileSha256", f.scan_state AS "scanState", e.observed_at AS "observedAt",
                 e.submitted_at AS "submittedAt", e.submitted_by AS "submittedBy", e.flagged, e.flag_reason AS "flagReason", e.note
