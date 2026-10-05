@@ -38,7 +38,7 @@ This directory decomposes the [Implementation plan](../24-implementation-plan.md
 | [IN-12 Pilot readiness](in-12-pilot-readiness.md) | F-12.1–F-12.5 | build **done** 2026-10-05; Phase 1 exit gate open on owner items (UAT, legal/tax, pen test) |
 | [IN-13 Engineering change](in-13-engineering-change.md) | F-13.1–F-13.4 | build **done** 2026-10-05; UAT scenario 6 with the owner's UAT; defaults for owner review |
 | [IN-14 Quality & inspections](in-14-quality-plans-inspections.md) | F-14.1–F-14.5 | build **done** 2026-10-05; UAT scenario 7 with the owner's UAT; `D-06` default for owner review |
-| [IN-15 NCR, deviation, release](in-15-ncr-deviation-release.md) | F-15.1–F-15.6 | **in progress** (plan refreshed 2026-10-05) |
+| [IN-15 NCR, deviation, release](in-15-ncr-deviation-release.md) | F-15.1–F-15.6 | build **done** 2026-10-05; UAT scenarios 7–8 with the owner's UAT; defaults for owner review |
 | [IN-16 Logistics leg 1 & receiving](in-16-logistics-leg1-receiving.md) | F-16.1–F-16.3 | not started |
 | [IN-17 Dispatch & delivery](in-17-dispatch-delivery.md) | F-17.1–F-17.3 | not started |
 | [IN-18 Settlement & support](in-18-settlement-support.md) | F-18.1–F-18.3 | not started |

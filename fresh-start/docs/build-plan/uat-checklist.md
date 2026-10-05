@@ -1,6 +1,6 @@
 # Phase 1 UAT checklist (IN-12 F-12.1)
 
-Human acceptance of the pilot scenarios (doc 19 §10: 1–5, 9, 12 for Phase 1; 6 from IN-13; 7 from IN-14) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
+Human acceptance of the pilot scenarios (doc 19 §10: 1–5, 9, 12 for Phase 1; 6 from IN-13; 7 from IN-14–15; 8 from IN-15) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
 
 **Where and with what.** On staging, with approved anonymized fixtures (doc 13, UAT row). Never use production data, real customer or supplier identities, real CAD, or real payment credentials (`ES-39`). Each tester uses their own account with only the roles listed below, and MFA is enrolled where the role requires it. The payment provider is in sandbox mode.
 
@@ -110,6 +110,26 @@ Start from an order in production planning: baseline released and acknowledged, 
 | 7.8 | JobWork quality | same | Correct a deliberately mistyped value with a reason; accept the caliper with a reason; pass | "Corrections on record" keeps the mistyped value; the inspection passes; the supplier is told | ☐ |
 | 7.9 | Supplier A quality | `/supplier/inspections/[id]` | Plan and submit a second FAI with an oversize bore (JobWork quality plans it) | JobWork quality cannot pass it; failing it needs a note the supplier reads | ☐ |
 | 7.10 | Customer requester | `/orders/[id]` | Look at the order | No inspection, instrument or result is visible | ☐ |
+| 7.11 | JobWork quality | `/quality/inspections/[id]` (the failed FAI) | Open an NCR on the failed bore, critical, with the lot | NCR number; the supplier is notified; a corrective action is requested | ☐ |
+| 7.12 | Supplier A quality | `/supplier/ncrs/[id]` | Record containment; answer the corrective action with "Operator mistake", then with real causes | The first answer is refused; the second is recorded | ☐ |
+| 7.13 | JobWork quality | `/quality/ncrs/[id]` | Move to disposition; approve a rework plan; accept the corrective action | Status "rework"; the supplier sees the plan | ☐ |
+| 7.14 | Supplier A quality → JobWork quality | NCR page, then the reinspection | Record the rework; JobWork plans the reinspection; the supplier measures; another reviewer passes it | The NCR shows "verified"; the original FAI still shows its fail | ☐ |
+| 7.15 | JobWork quality (the one who approved the rework) | `/quality/ncrs/[id]` | Try to close | Refused: someone else closes; verify the corrective action first | ☐ |
+| 7.16 | Second JobWork quality member | `/quality/ncrs/[id]`, then `/quality/releases/[workPackageId]` | Close the NCR; after a final inspection and milestones, release the lot | NCR closed; the checklist is all green; the release shows its hash | ☐ |
+
+## Scenario 8: scoped customer-approved deviation (IN-15)
+
+Start from an order in production with an approved plan, a passed first article, and two lots at final inspection.
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 8.1 | Supplier A quality | `/supplier/inspections/[id]` | Submit LOT-A's final inspection in tolerance and LOT-B's a few microns over | LOT-A passes; LOT-B fails | ☐ |
+| 8.2 | JobWork quality | `/quality/inspections/[id]` → Open an NCR | Open an NCR for LOT-B (major, lot LOT-B); contain; move to disposition | Release of anything is refused while LOT-B's failure stands | ☐ |
+| 8.3 | JobWork quality | `/quality/ncrs/[id]` → Use as is under a deviation | Scope it to LOT-B, its parts, 30 days, with a labelling effect | Deviation number; waiting for approval | ☐ |
+| 8.4 | Second JobWork quality member | `/approvals` | Approve the deviation | It moves to the customer; the requester could not have approved it | ☐ |
+| 8.5 | Customer requester, then approver | `/orders/[id]` → Quality decisions | The requester looks; the approver confirms the scope and accepts | The requester cannot decide; the approver sees requirement, measured values, scope, period and effects; it shows "accepted as is" in violet | ☐ |
+| 8.6 | JobWork quality | `/quality/releases/[workPackageId]` | Check a release of both lots together; then LOT-B alone; then LOT-A alone | Both together are refused; each alone releases; LOT-B's release names the deviation | ☐ |
+| 8.7 | JobWork quality | `/quality/inspections/[id]` (LOT-B) | Look at the results | Still "fail", each marked "accepted under DV-…", never green | ☐ |
 
 ## Scenario 9: duplicate and delayed payment callback, reconciliation
 

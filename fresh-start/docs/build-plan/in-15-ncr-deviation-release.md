@@ -266,6 +266,23 @@ Scenario 8:
 3. A release covering both lots is refused; the deviated lot and the conforming lot release; the failed results stay `fail`.
 4. A release after expiry is refused.
 
+**Verification (2026-10-05, F-15.6).**
+
+- **`scenario-07-fai-cycle.api.spec.ts` (now 6)** runs doc 19's whole chain:
+  1. the failed second first article opens a critical NCR;
+  2. supplier containment, an approved rework recorded by the supplier;
+  3. a reinspection whose `reinspection_of` is the failed inspection, passed by another reviewer;
+  4. the corrective action accepted and verified;
+  5. closure refused for the rework's approver and done by the second quality member, the original result still `fail`;
+  6. a final inspection and a 40-piece release of LOT-2 on a green checklist.
+- **`scenario-08-scoped-deviation.api.spec.ts` (4)**:
+  - LOT-A passes and LOT-B fails final inspection, and everything is held;
+  - a LOT-B deviation with a labelling effect is approved internally and by the customer approver;
+  - a mixed release is refused, as is 21 parts under a 20-part deviation;
+  - LOT-B and LOT-A release separately, the first naming the deviation, and the five bore results stay `fail`;
+  - after the deviation expires (simulated in the test's own database), LOT-B is held again and the facts list no active deviation.
+- UAT steps 7.11–7.16 and 8.1–8.7 are in `uat-checklist.md`.
+
 ## Decisions taken on the owner's behalf
 
 Taken as safe defaults so the build can proceed; each is reversible and recorded here for review.
@@ -285,6 +302,8 @@ Taken as safe defaults so the build can proceed; each is reversible and recorded
 
 ## Increment exit
 
-- [ ] Pilot scenarios 7 (fail → NCR → rework → reinspection → closure) and 8 (scoped customer-approved deviation) green.
-- [ ] The release snapshot is reproducible from its stored checklist (hash check), and `releaseFacts` is the only input the IN-16/17 dispatch gate needs.
-- [ ] No path turns a failed result into a pass; no NCR closes on its own evidence or by the person who decided its disposition.
+- [x] Pilot scenarios 7 (fail → NCR → rework → reinspection → closure) and 8 (scoped customer-approved deviation) green.
+- [x] The release snapshot is reproducible from its stored checklist (hash check, `quality-release.api.spec.ts`), and `releaseFacts` is the only input the IN-16/17 dispatch gate needs (`GET /work-packages/:id/release-facts`).
+- [x] No path turns a failed result into a pass (database and scenarios 7–8); no NCR closes on its own evidence or by the person who decided its disposition (`chk_ncr_independent_closure`, `closeBlockers`).
+
+**IN-15 build closed 2026-10-05** (PRs #29–#35). Owner items carried: the defaults above for review (when the customer must approve a deviation; deviation authority limits under `D-07`; certificate validity model); UAT scenarios 7 and 8 run with the owner's UAT on staging.
