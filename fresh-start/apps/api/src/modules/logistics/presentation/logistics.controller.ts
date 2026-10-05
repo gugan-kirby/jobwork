@@ -2,15 +2,19 @@ import { Controller, Get, HttpCode, Param, Post, Query, Req, type RawBodyRequest
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
+  acknowledgeMaterialRequestSchema,
   cancelShipmentRequestSchema,
+  issueMaterialRequestSchema,
   planShipmentRequestSchema,
   recordCarrierEventRequestSchema,
   receiveShipmentRequestSchema,
+  registerCustomerMaterialRequestSchema,
   recordPickupRequestSchema,
   replanShipmentRequestSchema,
   resolveDiscrepancyRequestSchema,
   shipmentStatusSchema,
   shipmentVersionRequestSchema,
+  type MaterialLot,
   type ShippableLot,
   type Shipment,
   type WorkPackageLogistics,
@@ -23,6 +27,7 @@ import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorato
 import { parseBody } from '../../../platform/http/validation';
 import { DispatchCommand } from '../application/dispatch.command';
 import { LogisticsView } from '../application/logistics-view';
+import { MaterialCommand } from '../application/material.command';
 import { ReceivingCommand } from '../application/receiving.command';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
@@ -35,7 +40,10 @@ const opts = (request: FastifyRequest) => ({ idempotencyKey: idempotencyKey(requ
 /** The supplier's side of leg 1: plan, submit, hand to the carrier (doc 08 §5 `/shipments`). */
 @Controller('supplier/shipments')
 export class SupplierShipmentController {
-  constructor(private readonly dispatch: DispatchCommand) {}
+  constructor(
+    private readonly dispatch: DispatchCommand,
+    private readonly material: MaterialCommand,
+  ) {}
 
   @Get()
   list(@CurrentActor() actor: Actor, @Query('workPackageId') workPackageId?: string): Promise<Shipment[]> {
@@ -75,6 +83,12 @@ export class SupplierShipmentController {
   @Post(':shipmentId/cancel')
   cancel(@CurrentActor() actor: Actor, @Param('shipmentId') id: string, @Req() request: FastifyRequest): Promise<Shipment> {
     return this.dispatch.cancel(actor, id, parseBody(cancelShipmentRequestSchema, request.body), opts(request));
+  }
+
+  /** Material JobWork issued to the supplier has arrived (D-15). */
+  @Post(':shipmentId/acknowledge-receipt')
+  acknowledge(@CurrentActor() actor: Actor, @Param('shipmentId') id: string, @Req() request: FastifyRequest): Promise<Shipment> {
+    return this.material.acknowledge(actor, id, parseBody(acknowledgeMaterialRequestSchema, request.body), opts(request));
   }
 }
 
@@ -137,7 +151,27 @@ export class DiscrepancyController {
 /** JobWork's view of a work package's quantities and stock (doc 19 §8). */
 @Controller('logistics')
 export class LogisticsViewController {
-  constructor(private readonly view: LogisticsView) {}
+  constructor(
+    private readonly view: LogisticsView,
+    private readonly material: MaterialCommand,
+  ) {}
+
+  @Get('sales-orders/:salesOrderId/material')
+  materialLots(@CurrentActor() actor: Actor, @Param('salesOrderId') id: string): Promise<MaterialLot[]> {
+    return this.material.materialLots(actor, parseBody(z.uuid(), id));
+  }
+
+  /** The customer's material, announced or at the door (D-15). */
+  @Post('customer-material')
+  registerCustomerMaterial(@CurrentActor() actor: Actor, @Req() request: FastifyRequest): Promise<Shipment> {
+    return this.material.registerCustomerMaterial(actor, parseBody(registerCustomerMaterialRequestSchema, request.body), opts(request));
+  }
+
+  /** Customer material to the supplier, on JobWork's challan. */
+  @Post('material-issues')
+  issueMaterial(@CurrentActor() actor: Actor, @Req() request: FastifyRequest): Promise<Shipment> {
+    return this.material.issueToSupplier(actor, parseBody(issueMaterialRequestSchema, request.body), opts(request));
+  }
 
   @Get('work-packages/:workPackageId')
   workPackage(@CurrentActor() actor: Actor, @Param('workPackageId') id: string): Promise<WorkPackageLogistics> {
