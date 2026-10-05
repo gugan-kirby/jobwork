@@ -222,6 +222,7 @@ export default function OrderProductionPage(): React.JSX.Element {
           ) : (
             <span style={{ color: 'var(--color-text-muted)' }}>No quality plan yet</span>
           )}
+          {plan?.status === 'approved' ? <Link href={`/quality/releases/${wp.workPackageId}`}>Quality release</Link> : null}
         </Inline>
         {q.inspections.length > 0 ? (
           <Stack gap={1}>

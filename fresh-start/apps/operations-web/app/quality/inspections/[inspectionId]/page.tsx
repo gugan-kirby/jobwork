@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import type { Inspection } from '@jobwork/contracts';
-import { Callout, Card, CommandButton, DescriptionList, ErrorState, Inline, LoadingState, MeasurementGrid, Page, ReasonField, SplitPane, Stack, StatusChip, TextArea, TextInput } from '@jobwork/ui';
+import { useParams, useRouter } from 'next/navigation';
+import type { Inspection, Ncr } from '@jobwork/contracts';
+import { Callout, Card, Checkbox, CommandButton, DescriptionList, ErrorState, Inline, LoadingState, MeasurementGrid, Page, ReasonField, Select, SplitPane, Stack, StatusChip, TextArea, TextInput } from '@jobwork/ui';
 import { api, ApiError } from '../../../../lib/api';
 import { INSPECTION_TONE, STAGE } from '../../labels';
 
@@ -24,10 +24,15 @@ export default function InspectionReviewPage(): React.JSX.Element {
   const [reason, setReason] = useState('');
   const [fix, setFix] = useState<Record<string, { value: string; reason: string }>>({});
   const [disposition, setDisposition] = useState<Record<string, string>>({});
+  const [ncrs, setNcrs] = useState<Ncr[]>([]);
+  const [open, setOpen] = useState({ resultIds: [] as string[], severity: 'major', quantity: '', lots: '', title: '', description: '' });
+  const router = useRouter();
 
   const load = useCallback(async () => {
     try {
-      setInspection(await api<Inspection>(`/inspections/${inspectionId}`));
+      const i = await api<Inspection>(`/inspections/${inspectionId}`);
+      setInspection(i);
+      setNcrs((await api<Ncr[]>(`/ncrs?workPackageId=${i.workPackageId}`).catch(() => [])).filter((n) => n.inspectionId === i.inspectionId));
       setError(null);
     } catch (err) {
       if (err instanceof ApiError) setError(err);
@@ -198,6 +203,59 @@ export default function InspectionReviewPage(): React.JSX.Element {
                 ) : null}
               </Stack>
             </Card>
+            {i.status === 'failed' ? (
+              <Card title="Nonconformance" description="Open an NCR on the failed results: contain, decide a disposition, close independently.">
+                <Stack gap={2}>
+                  {ncrs.map((n) => (
+                    <Inline key={n.ncrId} gap={2}>
+                      <Link href={`/quality/ncrs/${n.ncrId}`} className="mono">{n.number}</Link>
+                      <StatusChip tone={n.status === 'closed' ? 'positive' : 'attention'}>{n.status.replace(/_/g, ' ')}</StatusChip>
+                    </Inline>
+                  ))}
+                  <details open={ncrs.length === 0}>
+                    <summary>Open an NCR</summary>
+                    <Stack gap={2}>
+                      {i.results
+                        .filter((r) => r.supersededByResultId === null && r.outcome === 'fail')
+                        .map((r) => {
+                          const c = i.characteristics.find((x) => x.characteristicId === r.characteristicId);
+                          return (
+                            <Checkbox
+                              key={r.resultId}
+                              label={`${c?.name ?? ''}, sample ${r.sampleNo}: ${r.original.value} ${r.original.unit ?? ''}`}
+                              checked={open.resultIds.includes(r.resultId)}
+                              onChange={(e) => setOpen({ ...open, resultIds: e.target.checked ? [...open.resultIds, r.resultId] : open.resultIds.filter((x) => x !== r.resultId) })}
+                            />
+                          );
+                        })}
+                      <TextInput label="Title" value={open.title} onChange={(e) => setOpen({ ...open, title: e.target.value })} />
+                      <TextArea label="What was found" rows={2} value={open.description} onChange={(e) => setOpen({ ...open, description: e.target.value })} />
+                      <Inline gap={2}>
+                        <Select label="Severity" value={open.severity} options={[{ value: 'critical', label: 'Critical' }, { value: 'major', label: 'Major' }, { value: 'minor', label: 'Minor' }]} onChange={(e) => setOpen({ ...open, severity: e.target.value })} />
+                        <TextInput label="Parts affected" inputMode="decimal" value={open.quantity} onChange={(e) => setOpen({ ...open, quantity: e.target.value.trim() })} />
+                        <TextInput label="Lots (comma separated)" value={open.lots || i.lot} onChange={(e) => setOpen({ ...open, lots: e.target.value })} />
+                      </Inline>
+                      <CommandButton
+                        size="sm"
+                        receiptLabel="Opened"
+                        disabled={open.resultIds.length === 0 || !open.quantity || open.title.trim().length < 3 || open.description.trim().length < 3}
+                        disabledReason="Choose the failed results, the parts affected, a title and what was found"
+                        onCommand={async () => {
+                          const created = await api<Ncr>('/ncrs', {
+                            method: 'POST',
+                            body: { inspectionId: i.inspectionId, resultIds: open.resultIds, title: open.title.trim(), description: open.description.trim(), severity: open.severity, affectedQuantity: open.quantity, lots: (open.lots || i.lot).split(',').map((x) => x.trim()).filter(Boolean) },
+                            idempotencyKey: crypto.randomUUID(),
+                          });
+                          router.push(`/quality/ncrs/${created.ncrId}`);
+                        }}
+                      >
+                        Open NCR
+                      </CommandButton>
+                    </Stack>
+                  </details>
+                </Stack>
+              </Card>
+            ) : null}
             <Card title="Record">
               <DescriptionList
                 items={[

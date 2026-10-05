@@ -231,6 +231,26 @@ What the NCR desk shows:
 
 Browser walk at desktop width and at 390 px.
 
+**Deviations (2026-10-05, F-15.5):**
+
+- **Opening an NCR.** NCRs open from the failed inspection's review page, where the failing results are already in view; there is no separate "new NCR" screen. The NCR desk, the release page, and the supplier's and customer's panels are as planned.
+- **The release page** previews the checklist for the scope typed in (`POST /quality-releases/checklist`) and shows it with the shared `GateMatrix`. Authorize stays disabled until every item is green.
+- **Deviation marks.** `MeasurementGrid` marks a failed result covered by an active deviation "accepted under DV-…" in `status-special`, beside its unchanged fail (`DS-04`). The customer's card uses the same tone.
+- **Supplier-facing text.** The corrective-action refusal no longer cites an internal document number (found in the walk).
+
+**Verification (2026-10-05, F-15.5).**
+
+- Grid test (DS-04).
+- Browser walk on the dev stack. Setup steps not under test were scripted with the drill client (`Session`):
+  1. QI-2026-0003 fails a 12.030 mm bore. JobWork quality opens NCR-2026-0001 from the review page.
+  2. The supplier records containment. The supplier's "Operator mistake" corrective action is refused; a real one is sent.
+  3. JobWork accepts the corrective action, moves the NCR to disposition and approves a rework plan. The supplier's rework is recorded.
+  4. Reinspection QI-2026-0004 is planned from the desk and passes. The NCR shows verified, with two closure blockers: the decider, and the corrective action. JobWork verifies the corrective action.
+  5. A second quality member closes the NCR.
+  6. The release page computes nine items for WP-2026-0001 and names the three red ones.
+  7. DV-2026-0001 (LOT-8, critical bore), approved by engineering, reaches the customer's order page with requirement, measured value, scope and effects. The approver accepts it, and it shows as "accepted as is" in violet.
+- 772 tests green.
+
 ## F-15.6 Pilot scenarios 7 and 8
 
 | File | Action | Contents |

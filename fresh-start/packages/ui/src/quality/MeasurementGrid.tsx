@@ -6,7 +6,8 @@ import { StatusChip } from '../status/StatusChip';
  * column per sample. Each cell shows the value and unit as measured, the normalized value
  * beside it when the unit differs, and the outcome as a glyph and a word (`DS-07`).
  * "Cannot evaluate" is its own state, never shown as a fail, and a result taken past its
- * calibration says so. Numbers are tabular (`DS-08`). A corrected cell shows the result that
+ * calibration says so. A fail accepted under a deviation keeps its fail and gains a special
+ * mark, never pass-green (`DS-04`). Numbers are tabular (`DS-08`). A corrected cell shows the result that
  * stands, and names the correction; the superseded value stays in the record.
  */
 
@@ -42,6 +43,8 @@ export interface GridResult {
   supersededByResultId: string | null;
   supersedesResultId: string | null;
   correctionReason: string | null;
+  /** A failed result accepted for use under a deviation: it stays a fail, marked special (`DS-04`). */
+  coveredByDeviation?: { number: string; active: boolean } | null | undefined;
 }
 
 export interface MeasurementGridProps {
@@ -128,6 +131,7 @@ export function MeasurementGrid({ caption, characteristics, sampleNos, results, 
                     ) : null}
                     <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)', marginTop: 'var(--space-1)' }}>
                       <StatusChip tone={o.tone}>{o.label}</StatusChip>
+                      {r.coveredByDeviation ? <StatusChip tone={r.coveredByDeviation.active ? 'special' : 'neutral'}>{r.coveredByDeviation.active ? `accepted under ${r.coveredByDeviation.number}` : `${r.coveredByDeviation.number} expired`}</StatusChip> : null}
                       {flagged ? (
                         <StatusChip tone={r.disposition?.decision === 'accept' ? 'neutral' : 'attention'}>
                           {r.calibrationStatus === 'expired' ? 'calibration expired' : 'not calibrated'}

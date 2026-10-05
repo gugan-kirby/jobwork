@@ -493,7 +493,7 @@ export class NcrCommand {
         this.requireSupplier(actor, n, SUPPLIER_INSPECTORS);
         if (ca.status !== 'requested') throw new QualityRefused('CA_STATUS', 'This corrective action is not waiting for a response');
         if (thinCause(input.occurrenceCause) || thinCause(input.escapeCause)) {
-          throw new QualityRefused('CA_CAUSE_TOO_THIN', 'Name the causes, not only who', '"Operator mistake" is not a cause: say what let it happen and what let it escape (doc 09 §13).', 422);
+          throw new QualityRefused('CA_CAUSE_TOO_THIN', 'Name the causes, not only who', '"Operator mistake" is not a cause: say what let it happen and what let it get through.', 422);
         }
         await this.repo.updateCorrectiveAction(ca.id, { status: 'responded', problemDefinition: input.problemDefinition, occurrenceCause: input.occurrenceCause, escapeCause: input.escapeCause, actions: input.actions, respondedBy: actor.userId }, tx);
         return { action: 'quality.corrective_action_responded', data: { actions: input.actions.length }, eventType: 'quality.corrective_action_responded.v1' };
