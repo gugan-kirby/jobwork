@@ -74,8 +74,8 @@ function ncrDisposition(e: OutboxEvent) {
     {
       templateKey: 'supplier.ncr_disposition',
       audience: suppliers([str(e.data['supplierOrganizationId'])]),
-      variables: { ncrNumber: str(e.data['number']), purchaseOrderNumber: str(e.data['purchaseOrderNumber']), dispositionLabel: str(e.data['dispositionLabel']) },
-      link: `/supplier/ncrs/${e.aggregateId}`,
+      variables: { ncrNumber: str(e.data['ncrNumber'] ?? e.data['number']), purchaseOrderNumber: str(e.data['purchaseOrderNumber']), dispositionLabel: str(e.data['dispositionLabel']) },
+      link: `/supplier/ncrs/${str(e.data['ncrId'] ?? e.aggregateId)}`,
     },
   ];
 }
@@ -180,6 +180,15 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
   ],
   'quality.rework_approved.v1': async (e) => ncrDisposition(e),
   'quality.ncr_rejected.v1': async (e) => ncrDisposition(e),
+  'quality.deviation_approved.v1': async (e) => ncrDisposition(e),
+  'quality.deviation_customer_decision_requested.v1': async (e) => [
+    {
+      templateKey: 'customer.deviation_decision_needed',
+      audience: customer(str(e.data['customerOrganizationId'])),
+      variables: { deviationNumber: str(e.data['number']), orderNumber: str(e.data['orderNumber']) },
+      link: `/orders/${str(e.data['salesOrderId'])}`,
+    },
+  ],
   'quality.inspection_passed.v1': async (e) => inspectionDecided(e, 'passed'),
   'quality.inspection_failed.v1': async (e) => inspectionDecided(e, 'failed'),
   'orders.purchase_order_issued.v1': async (e) => [
