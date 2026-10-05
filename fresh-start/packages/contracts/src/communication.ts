@@ -262,5 +262,8 @@ export const NOTIFIED_EVENT_TYPES = [
   'quality.inspection_planned.v1',
   'quality.inspection_passed.v1',
   'quality.inspection_failed.v1',
+  'quality.ncr_opened.v1',
+  'quality.rework_approved.v1',
+  'quality.ncr_rejected.v1',
 ] as const;
 export type NotifiedEventType = (typeof NOTIFIED_EVENT_TYPES)[number];

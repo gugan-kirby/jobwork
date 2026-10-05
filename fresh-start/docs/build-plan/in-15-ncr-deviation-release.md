@@ -98,6 +98,26 @@ What `ncr.api.spec.ts` covers:
 - the supplier sees its own NCRs, responds and cannot close or disposition them;
 - the customer sees nothing.
 
+**Deviations (2026-10-05, F-15.2):**
+
+- **One command class, `ncr.command.ts`**, holds the NCR and corrective-action commands (the plan listed separate files). Reads are by audience: JobWork's readers see every NCR, a supplier only its own, a customer none.
+- **A reinspection carries its NCR automatically.** The inspection's own decision (or invalidation) moves the NCR in the same transaction: passed → `verified`; failed or invalidated → `disposition_pending`, with the attempt recorded `still_nonconforming`. There is no separate "conclude" command.
+- **A branched NCR blocks its parent's closure** until it closes. The plan named branch lineage, not this rule; it is the safe reading of "cannot circularly close".
+- **Corrective-action causes.** A cause that is only "operator/human mistake" (or under 15 characters) is refused (`CA_CAUSE_TOO_THIN`), per doc 09 §13.
+- **Who records rework.** Supplier quality, org admin or production; JobWork cannot record it for the supplier. Containment can come from either side.
+- **Audit inventory.** The scan also recognises the `correctiveCommand` helper, as it does `move`.
+
+**Verification (2026-10-05, F-15.2).** `ncr.api.spec.ts` (5):
+
+- an NCR opens only on standing failed results of a failed inspection, and only that supplier is told;
+- supplier containment, isolated from the other supplier and the customer;
+- rework judged by new inspections: the first fails (attempt 1 kept as still nonconforming), the second passes with its `reinspection_of` chain intact, and the original result stays `fail`;
+- a corrective action refuses "Operator mistake", then is accepted and verified by a second quality member;
+- a branched child NCR is scrapped and closed independently;
+- the parent's closure is refused for its disposition decider and while the child is open, then closed by the other member, with a fifteen-step audit trail.
+
+757 tests green.
+
 ## F-15.3 Deviation
 
 | File | Action | Contents |

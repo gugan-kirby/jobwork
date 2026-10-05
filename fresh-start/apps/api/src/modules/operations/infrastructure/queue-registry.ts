@@ -265,6 +265,19 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
        WHERE i.status IN ('results_submitted', 'under_review')`,
   },
   {
+    // IN-15: every NCR until it is independently closed.
+    key: 'ncrs_open',
+    label: 'Open NCRs',
+    detail: 'Nonconformances waiting for containment, a disposition, rework, reinspection or closure.',
+    href: '/quality/ncrs',
+    roles: ['jobwork_quality'],
+    subjectType: 'ncr',
+    membership: `
+      SELECT n.id AS subject_id, n.number AS reference, n.title, '/quality/ncrs/' || n.id AS href, n.opened_at AS waiting_since
+        FROM quality.ncr n
+       WHERE n.status <> 'closed'`,
+  },
+  {
     // Messages held by the contact-leakage gate, invisible to their readers until decided (F-10.4).
     key: 'leakage_reviews_open',
     label: 'Messages held for review',
