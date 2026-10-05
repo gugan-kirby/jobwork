@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { Inspection, Instrument, QualityUnit } from '@jobwork/contracts';
+import type { Inspection, Instrument, Ncr, QualityUnit } from '@jobwork/contracts';
 import { Card, CommandButton, DataTable, FileUpload, Inline, Page, Select, Stack, StatusChip, TextInput, type Column, type Tone, type VersionState } from '@jobwork/ui';
 import { api } from '../../../lib/api';
 import { createUploadApi } from '../../../lib/upload-api';
@@ -34,6 +34,7 @@ const IST_MIDDAY = (date: string): string => new Date(`${date}T12:00:00+05:30`).
 export default function SupplierQualityPage(): React.JSX.Element {
   const [inspections, setInspections] = useState<Inspection[] | null>(null);
   const [instruments, setInstruments] = useState<Instrument[]>([]);
+  const [ncrs, setNcrs] = useState<Ncr[]>([]);
   const [units, setUnits] = useState<QualityUnit[]>([]);
   const [form, setForm] = useState({ assetTag: '', kind: '', unit: 'mm' });
   const [cal, setCal] = useState<Record<string, { performed: string; due: string; certificate: string | null }>>({});
@@ -42,6 +43,7 @@ export default function SupplierQualityPage(): React.JSX.Element {
   const load = useCallback(async () => {
     setInspections(await api<Inspection[]>('/supplier/inspections').catch(() => []));
     setInstruments(await api<Instrument[]>('/supplier/instruments').catch(() => []));
+    setNcrs(await api<Ncr[]>('/supplier/ncrs').catch(() => []));
   }, []);
 
   useEffect(() => {
@@ -70,6 +72,22 @@ export default function SupplierQualityPage(): React.JSX.Element {
             empty={{ title: 'No inspections yet', detail: 'JobWork plans them on your purchase orders; you are told when one is planned.' }}
           />
         </Card>
+
+        {ncrs.length > 0 ? (
+          <Card title="Nonconformances" description="Contain, rework when JobWork approves it, and answer the corrective action.">
+            <Stack gap={2}>
+              {ncrs.map((n) => (
+                <Inline key={n.ncrId} gap={3}>
+                  <Link href={`/supplier/ncrs/${n.ncrId}`} className="mono">
+                    {n.number}
+                  </Link>
+                  <span>{n.title}</span>
+                  <StatusChip tone={n.status === 'closed' ? 'positive' : n.status === 'open' || n.status === 'rework' ? 'attention' : 'progress'}>{n.status.replace(/_/g, ' ')}</StatusChip>
+                </Inline>
+              ))}
+            </Stack>
+          </Card>
+        ) : null}
 
         <Card title="Instruments" description="Register each gauge with its asset tag, then record every calibration with its certificate.">
           <Stack gap={4}>

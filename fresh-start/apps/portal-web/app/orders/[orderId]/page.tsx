@@ -24,6 +24,7 @@ import {
 import { api, ApiError } from '../../../lib/api';
 import { ThreadPanel } from '../../thread-panel';
 import { ChangesPanel } from './changes-panel';
+import { DeviationsPanel } from './deviations-panel';
 
 /**
  * Order detail and tracking (prototype tiles 11–12, corrected per doc 06 §13): the next
@@ -240,6 +241,8 @@ function OrderDetail() {
             })}
           </Stack>
         </Card>
+
+        <DeviationsPanel orderId={order.orderId} />
 
         <ChangesPanel orderId={order.orderId} currency={order.currency} open={order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'payment_needed'} />
 
