@@ -129,6 +129,39 @@ What `customer-documents.spec.ts` covers (the `R-08` leak suite):
 - the label, delivery note and (F-17.3) POD rendered for a shipment whose supplier lot codes, serials and site carry the supplier's name: none of the supplier's names, trade name, contact, city, lot codes, purchase order number or buy price appears in any document or in the customer's shipment JSON;
 - snapshots pin each document's content.
 
+**Deviations (2026-10-05, F-17.2):**
+
+- **Routes.**
+  - JobWork: `POST /customer-dispatches` (plan), and on `/customer-dispatches/:id`: `replan`, `address-confirmations`, `submit`, `overrides`, `release`, `GET label`, `GET delivery-note`. The planner reads `GET /logistics/sales-orders/:id/dispatch-context`: the customer's addresses, the order's invoices, the delivery terms, and each stock lot with its marking, stock, what other prepared dispatches picked, the release and any NCR.
+  - Pickup, carrier events and cancel reuse `/shipments/:id/…`. `POST /shipments/:id/release` refuses a leg-2 shipment (`SHIPMENT_LEG`).
+  - Customer: `GET /orders/:id/deliveries`, `GET /deliveries/:id`, `POST /deliveries/:id/confirm-address`, `GET /deliveries/:id/delivery-note`.
+- **The customer projection is built here.** `customer-deliveries.ts` (planned for F-17.4) is needed now: the address confirmation and both documents read it. F-17.4 extends it with POD, acceptance and exceptions.
+- **The identity scan matches whole names.** The IN-10 registry flags a party's full name, domain, email or phone, never a lone word. A serial reading "ANAND-0001" is not a finding: a lone word would match half of Chennai. That is why JobWork's lot marking, neutral by construction, is the main control and the scan is the backstop. The test plants the supplier's full name in an item description.
+- **Order status.**
+  - Release moves the order from `received_jobwork` to `ready_customer_dispatch`.
+  - Pickup moves it to `in_customer_transit`, also when a partial delivery leaves while a leg-1 shipment is still inbound.
+  - **Fixed on the way:** IN-16 applied leg 1's transit rule to every leg's pickup, so picking up a customer-material issue could have moved an order into supplier transit. The rule is now leg-specific.
+- **A carrier's pickup notifies the customer.** A carrier "picked up" on a released shipment now emits `logistics.shipment_picked_up.v1` too, so the customer hears of a carrier pickup as of a recorded one. That event is now notified (leg 2 only) rather than acknowledged.
+- **Override notices.** The guard's owner gets `internal.approval_requested` linking to the shipment page; quality and engineering do not read `/approvals`. The approvals list gains the kind, and its target opens the shipment.
+- **Refusals at planning.** Planning refuses an order still pending commercial release, cancelled or closed (`ORDER_NOT_DISPATCHABLE`), a lot outside the order's made parts (`LOT_NOT_ORDER_STOCK`), a serial not in the lot when the lot records serials, and an address not the customer's.
+
+**Verification (2026-10-05, F-17.2).**
+
+- `dispatch-gate.spec.ts` (30): each of 24 facts turns exactly its own guard red, with its reason; the e-way bill threshold; credit covering what is open; an override covering only an approved request for the exact reasons; no override of logistics' own guards.
+- `customer-dispatch.api.spec.ts` (9), on a deal received at JobWork (`Pilot.atJobWork`):
+  - the dispatch context;
+  - planning by logistics only, under JobWork markings, with the balance invoiced at planning, and four guards red;
+  - the customer's address confirmation, made stale by an edit to the site and recorded again by sales;
+  - another order's invoice and a malformed e-way bill blocking until replanned;
+  - a partial delivery the customer did not allow, and the supplier's name in an item description;
+  - overrides: refused for logistics' own guards and green ones, asked by logistics only, decided by finance only (logistics `APPROVAL_SEPARATION`, quality not an approver), covering until a credit hold adds a reason;
+  - payment, submit and release, with the stock moved to `OUT-DISPATCHED` and a second release of the same pieces refused;
+  - label, delivery note and the customer's JSON free of the supplier's names, lot codes, purchase order, city, contact and buy price;
+  - pickup into `in_customer_transit` with the customer notified, while the supplier sees nothing of leg 2.
+- `customer-documents.spec.ts` (3): label and delivery-note snapshots, escaping, and a deterministic hash.
+
+The audit inventory gains seven operations.
+
 ## F-17.3 Delivery, POD, acceptance and exceptions
 
 | File | Action | Contents |
