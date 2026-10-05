@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
-import type { PackageInput, ShipmentLeg, ShipmentStatus, SiteSnapshot } from '@jobwork/contracts';
+import type { DiscrepancyKind, DiscrepancyResolution, PackageCondition, PackageInput, ReceivingDecision, ShipmentLeg, ShipmentStatus, SiteSnapshot } from '@jobwork/contracts';
 import { DatabaseService } from '../../../platform/database/database.service';
 
 type Queryable = Pool | PoolClient;
@@ -65,6 +65,51 @@ export interface PurchaseOrderContext {
   workPackage: { id: string; number: string; status: string } | null;
 }
 
+export interface ReceivingRow {
+  id: string;
+  receivedAt: Date;
+  sealIntact: boolean;
+  packagesReceived: number;
+  packageConditions: Array<{ packageNo: number; condition: PackageCondition; note: string }>;
+  decision: ReceivingDecision;
+  note: string;
+}
+
+export interface ReceivingLineRow {
+  itemId: string;
+  lotCode: string;
+  shippedQuantity: string;
+  countedQuantity: string;
+  acceptedQuantity: string;
+  quarantinedQuantity: string;
+  refusedQuantity: string;
+  identityOk: boolean;
+  damaged: boolean;
+  note: string;
+}
+
+export interface DiscrepancyRow {
+  id: string;
+  number: string;
+  shipmentId: string;
+  kind: DiscrepancyKind;
+  lotCode: string;
+  quantity: string;
+  description: string;
+  status: 'open' | 'resolved';
+  resolution: DiscrepancyResolution | null;
+  resolutionNote: string | null;
+  caseReference: string;
+  resolvedAt: Date | null;
+  createdAt: Date;
+}
+
+export type LocationCode = 'JW-RECEIVING' | 'JW-QUARANTINE' | 'JW-STOCK' | 'OUT-DISPATCHED' | 'OUT-SCRAPPED' | 'OUT-RETURNED' | 'OUT-REWORK' | 'OUT-ISSUED';
+export type MovementType = 'receive' | 'quarantine' | 'release' | 'pick' | 'dispatch' | 'return' | 'scrap' | 'rework_out' | 'rework_in' | 'adjust' | 'issue';
+
+const DISCREPANCY_COLUMNS = `id, number, shipment_id AS "shipmentId", kind, lot_code AS "lotCode", quantity::text AS quantity, description, status, resolution,
+  resolution_note AS "resolutionNote", case_reference AS "caseReference", resolved_at AS "resolvedAt", created_at AS "createdAt"`;
+
 const SHIPMENT_COLUMNS = `s.id, s.number, s.leg, s.sales_order_id AS "salesOrderId", s.work_package_id AS "workPackageId", s.purchase_order_id AS "purchaseOrderId",
   po.number AS "purchaseOrderNumber", s.shipper_organization_id AS "shipperOrganizationId", o.display_name AS "shipperDisplayName",
   s.consignee_organization_id AS "consigneeOrganizationId", s.origin_site_id AS "originSiteId", s.destination_site_id AS "destinationSiteId",
@@ -115,6 +160,11 @@ export class LogisticsRepository {
     if (!r) return null;
     const { wpId, wpNumber, wpStatus, ...rest } = r;
     return { ...rest, workPackage: wpId ? { id: wpId, number: wpNumber!, status: wpStatus! } : null };
+  }
+
+  async workPackage(id: string, tx?: Queryable): Promise<{ id: string; number: string; salesOrderId: string } | null> {
+    const res = await this.q(tx).query<{ id: string; number: string; salesOrderId: string }>(`SELECT id, number, sales_order_id AS "salesOrderId" FROM orders.work_package WHERE id = $1`, [id]);
+    return res.rows[0] ?? null;
   }
 
   async lockWorkPackage(workPackageId: string, tx: Queryable): Promise<void> {
@@ -288,6 +338,172 @@ export class LogisticsRepository {
       [input.shipmentId, input.provider, input.providerEventId, input.rawStatus, input.normalizedStatus, input.occurredAt, JSON.stringify(input.raw), input.by],
     );
     return res.rows[0]?.id ?? null;
+  }
+
+  // ----------------------------------------------------------------- receiving
+
+  /** A clean, available document version JobWork owns (receiving photos). */
+  async ownCleanVersion(documentVersionId: string, organizationId: string, tx?: Queryable): Promise<boolean> {
+    const res = await this.q(tx).query(
+      `SELECT 1 FROM dms.document_version v JOIN dms.document d ON d.id = v.document_id JOIN dms.file_object f ON f.id = v.file_object_id
+        WHERE v.id = $1 AND d.owning_organization_id = $2 AND v.status = 'available' AND f.scan_state = 'clean'`,
+      [documentVersionId, organizationId],
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  async insertReceiving(
+    input: { shipmentId: string; by: string; siteId: string | null; sealIntact: boolean; packagesReceived: number; packageConditions: ReceivingRow['packageConditions']; photos: string[]; decision: ReceivingDecision; note: string },
+    tx: Queryable,
+  ): Promise<string> {
+    const res = await tx.query<{ id: string }>(
+      `INSERT INTO logistics.receiving_record (shipment_id, received_by, site_id, seal_intact, packages_received, package_conditions, photo_document_version_ids, decision, note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [input.shipmentId, input.by, input.siteId, input.sealIntact, input.packagesReceived, JSON.stringify(input.packageConditions), input.photos, input.decision, input.note],
+    );
+    return res.rows[0]!.id;
+  }
+
+  async insertReceivingLine(
+    input: { receivingId: string; itemId: string; shipped: string; counted: string; accepted: string; quarantined: string; refused: string; identityOk: boolean; damaged: boolean; note: string },
+    tx: Queryable,
+  ): Promise<void> {
+    await tx.query(
+      `INSERT INTO logistics.receiving_line (receiving_id, shipment_item_id, shipped_quantity, counted_quantity, accepted_quantity, quarantined_quantity, refused_quantity, identity_ok, damaged, note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [input.receivingId, input.itemId, input.shipped, input.counted, input.accepted, input.quarantined, input.refused, input.identityOk, input.damaged, input.note],
+    );
+  }
+
+  async receiving(shipmentId: string, tx?: Queryable): Promise<{ record: ReceivingRow; lines: ReceivingLineRow[] } | null> {
+    const rec = await this.q(tx).query<ReceivingRow>(
+      `SELECT id, received_at AS "receivedAt", seal_intact AS "sealIntact", packages_received AS "packagesReceived", package_conditions AS "packageConditions", decision, note
+         FROM logistics.receiving_record WHERE shipment_id = $1`,
+      [shipmentId],
+    );
+    const record = rec.rows[0];
+    if (!record) return null;
+    const lines = await this.q(tx).query<ReceivingLineRow>(
+      `SELECT l.shipment_item_id AS "itemId", i.lot_code AS "lotCode", l.shipped_quantity::text AS "shippedQuantity", l.counted_quantity::text AS "countedQuantity",
+              l.accepted_quantity::text AS "acceptedQuantity", l.quarantined_quantity::text AS "quarantinedQuantity", l.refused_quantity::text AS "refusedQuantity",
+              l.identity_ok AS "identityOk", l.damaged, l.note
+         FROM logistics.receiving_line l JOIN logistics.shipment_item i ON i.id = l.shipment_item_id
+         JOIN logistics.shipment_package p ON p.id = i.package_id
+        WHERE l.receiving_id = $1 ORDER BY p.package_no, i.lot_code`,
+      [record.id],
+    );
+    return { record, lines: lines.rows };
+  }
+
+  async insertDiscrepancy(input: { number: string; shipmentId: string; receivingId: string; kind: DiscrepancyKind; lotCode: string; quantity: string; description: string }, tx: Queryable): Promise<string> {
+    const res = await tx.query<{ id: string }>(
+      `INSERT INTO logistics.receiving_discrepancy (number, shipment_id, receiving_id, kind, lot_code, quantity, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [input.number, input.shipmentId, input.receivingId, input.kind, input.lotCode, input.quantity, input.description],
+    );
+    return res.rows[0]!.id;
+  }
+
+  async discrepancies(shipmentId: string, tx?: Queryable): Promise<DiscrepancyRow[]> {
+    const res = await this.q(tx).query<DiscrepancyRow>(`SELECT ${DISCREPANCY_COLUMNS} FROM logistics.receiving_discrepancy WHERE shipment_id = $1 ORDER BY number`, [shipmentId]);
+    return res.rows;
+  }
+
+  async findDiscrepancy(id: string, tx?: Queryable, forUpdate = false): Promise<DiscrepancyRow | null> {
+    const res = await this.q(tx).query<DiscrepancyRow>(`SELECT ${DISCREPANCY_COLUMNS} FROM logistics.receiving_discrepancy WHERE id = $1 ${forUpdate ? 'FOR UPDATE' : ''}`, [id]);
+    return res.rows[0] ?? null;
+  }
+
+  async resolveDiscrepancy(id: string, input: { resolution: DiscrepancyResolution; note: string; caseReference: string; by: string }, tx: Queryable): Promise<void> {
+    await tx.query(
+      `UPDATE logistics.receiving_discrepancy SET status = 'resolved', resolution = $2, resolution_note = $3, case_reference = $4, resolved_by = $5, resolved_at = now() WHERE id = $1`,
+      [id, input.resolution, input.note, input.caseReference, input.by],
+    );
+  }
+
+  // ----------------------------------------------------------------- custody ledger
+
+  /** The lot carries the order's released production baseline: the revision it was made to. */
+  async insertStockLot(
+    input: { lotCode: string; serials: string[]; salesOrderId: string; workPackageId: string | null; sourceShipmentId: string; receivedQuantity: string; ownership: 'jobwork' | 'customer_material'; by: string },
+    tx: Queryable,
+  ): Promise<string> {
+    const res = await tx.query<{ id: string }>(
+      `INSERT INTO logistics.stock_lot (lot_code, serials, sales_order_id, work_package_id, baseline_id, source_shipment_id, received_quantity, ownership, created_by)
+       VALUES ($1, $2, $3, $4, (SELECT id FROM dms.baseline WHERE sales_order_id = $3 AND kind = 'production' AND status = 'released' ORDER BY released_at DESC LIMIT 1), $5, $6, $7, $8) RETURNING id`,
+      [input.lotCode, input.serials, input.salesOrderId, input.workPackageId, input.sourceShipmentId, input.receivedQuantity, input.ownership, input.by],
+    );
+    return res.rows[0]!.id;
+  }
+
+  async lotFor(shipmentId: string, lotCode: string, tx?: Queryable): Promise<{ id: string } | null> {
+    const res = await this.q(tx).query<{ id: string }>(`SELECT id FROM logistics.stock_lot WHERE source_shipment_id = $1 AND lot_code = $2`, [shipmentId, lotCode]);
+    return res.rows[0] ?? null;
+  }
+
+  /** One ledger movement; the database refuses an over-draw or over-receipt. */
+  async move(
+    input: { lotId: string; from: LocationCode | null; to: LocationCode; quantity: string; type: MovementType; source: string; evidence: Record<string, unknown>; by: string },
+    tx: Queryable,
+  ): Promise<void> {
+    await tx.query(
+      `INSERT INTO logistics.stock_movement (lot_id, from_location_id, to_location_id, quantity, type, operation, evidence, created_by)
+       VALUES ($1, (SELECT id FROM logistics.custody_location WHERE code = $2), (SELECT id FROM logistics.custody_location WHERE code = $3), $4, $5, $6, $7, $8)`,
+      [input.lotId, input.from, input.to, input.quantity, input.type, input.source, JSON.stringify(input.evidence), input.by],
+    );
+  }
+
+  async balance(lotId: string, location: LocationCode, tx?: Queryable): Promise<string> {
+    const res = await this.q(tx).query<{ quantity: string }>(
+      `SELECT COALESCE(SUM(b.quantity), 0)::text AS quantity FROM logistics.stock_balance b JOIN logistics.custody_location l ON l.id = b.location_id WHERE b.lot_id = $1 AND l.code = $2`,
+      [lotId, location],
+    );
+    return res.rows[0]!.quantity;
+  }
+
+  /** Doc 19 §8 quantities for one work package, from the shipments and the ledger. */
+  async workPackageQuantities(workPackageId: string, tx?: Queryable): Promise<{ ordered: string; shipped: string; received: string; accepted: string; quarantined: string; scrapped: string; returned: string }> {
+    const res = await this.q(tx).query<{ ordered: string; shipped: string; received: string; accepted: string; quarantined: string; scrapped: string; returned: string }>(
+      `SELECT
+         (SELECT COALESCE(SUM(pl.quantity), 0) FROM orders.work_package w JOIN orders.purchase_order_line pl ON pl.purchase_order_id = w.purchase_order_id WHERE w.id = $1)::text AS ordered,
+         (SELECT COALESCE(SUM(i.quantity), 0) FROM logistics.shipment_item i JOIN logistics.shipment s ON s.id = i.shipment_id
+           WHERE s.work_package_id = $1 AND s.leg = 'supplier_to_jobwork' AND s.status = ANY($2))::text AS shipped,
+         (SELECT COALESCE(SUM(l.counted_quantity), 0) FROM logistics.receiving_line l JOIN logistics.receiving_record r ON r.id = l.receiving_id
+            JOIN logistics.shipment s ON s.id = r.shipment_id WHERE s.work_package_id = $1 AND s.leg = 'supplier_to_jobwork')::text AS received,
+         (SELECT COALESCE(SUM(m.quantity), 0) FROM logistics.stock_movement m JOIN logistics.stock_lot t ON t.id = m.lot_id
+            JOIN logistics.custody_location c ON c.id = m.to_location_id WHERE t.work_package_id = $1 AND t.ownership = 'jobwork' AND c.code = 'JW-STOCK'
+              AND m.from_location_id IS DISTINCT FROM (SELECT id FROM logistics.custody_location WHERE code = 'JW-STOCK'))::text AS accepted,
+         ${['JW-QUARANTINE', 'OUT-SCRAPPED', 'OUT-RETURNED']
+           .map(
+             (code, i) => `(SELECT COALESCE(SUM(b.quantity), 0) FROM logistics.stock_balance b JOIN logistics.stock_lot t ON t.id = b.lot_id
+            JOIN logistics.custody_location c ON c.id = b.location_id WHERE t.work_package_id = $1 AND t.ownership = 'jobwork' AND c.code = '${code}')::text AS ${['quarantined', 'scrapped', 'returned'][i]}`,
+           )
+           .join(',\n         ')}`,
+      [workPackageId, LIVE_STATUSES],
+    );
+    return res.rows[0]!;
+  }
+
+  async lotsForWorkPackage(workPackageId: string, tx?: Queryable): Promise<Array<{ id: string; lotCode: string; shipmentNumber: string; receivedQuantity: string; ownership: 'jobwork' | 'customer_material'; balances: Array<{ code: string; label: string; onHand: boolean; quantity: string }> }>> {
+    const res = await this.q(tx).query<{ id: string; lotCode: string; shipmentNumber: string; receivedQuantity: string; ownership: 'jobwork' | 'customer_material'; balances: Array<{ code: string; label: string; onHand: boolean; quantity: string }> }>(
+      `SELECT t.id, t.lot_code AS "lotCode", s.number AS "shipmentNumber", t.received_quantity::text AS "receivedQuantity", t.ownership,
+              COALESCE((SELECT jsonb_agg(jsonb_build_object('code', c.code, 'label', c.label, 'onHand', c.on_hand, 'quantity', b.quantity::text) ORDER BY c.code)
+                          FROM logistics.stock_balance b JOIN logistics.custody_location c ON c.id = b.location_id WHERE b.lot_id = t.id AND b.quantity <> 0), '[]') AS balances
+         FROM logistics.stock_lot t JOIN logistics.shipment s ON s.id = t.source_shipment_id
+        WHERE t.work_package_id = $1 ORDER BY t.created_at, t.lot_code`,
+      [workPackageId],
+    );
+    return res.rows;
+  }
+
+  /** The work packages of an order with what is ordered and accepted of each (doc 06 §7 `received_jobwork`). */
+  async orderAcceptance(salesOrderId: string, tx?: Queryable): Promise<Array<{ workPackageId: string; ordered: string; accepted: string }>> {
+    const res = await this.q(tx).query<{ workPackageId: string }>(`SELECT w.id AS "workPackageId" FROM orders.work_package w JOIN orders.purchase_order po ON po.id = w.purchase_order_id WHERE po.sales_order_id = $1 AND po.status <> 'cancelled'`, [salesOrderId]);
+    const out: Array<{ workPackageId: string; ordered: string; accepted: string }> = [];
+    for (const r of res.rows) {
+      const q = await this.workPackageQuantities(r.workPackageId, tx);
+      out.push({ workPackageId: r.workPackageId, ordered: q.ordered, accepted: q.accepted });
+    }
+    return out;
   }
 
   async carrierEvents(shipmentId: string, tx?: Queryable): Promise<Array<{ normalizedStatus: string; rawStatus: string; occurredAt: Date; provider: string }>> {
