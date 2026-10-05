@@ -24,6 +24,7 @@ import {
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
 import { ThreadPanel } from '../../thread-panel';
+import { ShipmentsCard } from './shipments-card';
 
 /**
  * One sales order (IN-08): the acceptance evidence, the commercial gate and why it says
@@ -180,6 +181,8 @@ export default function SalesOrderPage(): React.JSX.Element {
             ) : null}
           </Stack>
         </Card>
+
+        <ShipmentsCard salesOrderId={salesOrderId} />
 
         <Card title="Acceptance evidence">
           <DescriptionList
