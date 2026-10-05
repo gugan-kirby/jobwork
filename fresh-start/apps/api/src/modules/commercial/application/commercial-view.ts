@@ -233,7 +233,7 @@ export function toQuoteVersion(v: QuoteVersionRecord, approvalStatus: QuoteVersi
 }
 
 function approvalTarget(row: ApprovalRequestRow): { href: string; title: string } {
-  const context = row.context as { awardId?: string; costSheetId?: string; quoteId?: string; rfqReference?: string | null; label?: string; ncrId?: string };
+  const context = row.context as { awardId?: string; costSheetId?: string; quoteId?: string; rfqReference?: string | null; label?: string; ncrId?: string; shipmentId?: string };
   switch (row.kind) {
     case 'allocation':
       return { href: '/finance', title: context.label ?? 'Cash allocation' };
@@ -247,5 +247,7 @@ function approvalTarget(row: ApprovalRequestRow): { href: string; title: string 
       return { href: `/changes/${row.subjectId}`, title: context.label ?? 'Engineering change' };
     case 'deviation':
       return { href: `/quality/ncrs/${context.ncrId ?? ''}`, title: context.label ?? 'Deviation' };
+    case 'dispatch_override':
+      return { href: `/logistics/shipments/${context.shipmentId ?? row.subjectId}`, title: context.label ?? 'Dispatch override' };
   }
 }
