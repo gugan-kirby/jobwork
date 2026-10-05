@@ -69,6 +69,7 @@ platform.sla-escalate  modules/operations/application/sla-sweep.command.ts
 platform.sla-reschedule  modules/operations/application/sla-sweep.command.ts
 quality.approve-plan  modules/quality/application/quality-plan.command.ts
 quality.approve-rework  modules/quality/application/ncr.command.ts
+quality.authorize-release  modules/quality/application/quality-release.command.ts
 quality.close-ncr  modules/quality/application/ncr.command.ts
 quality.contain-ncr  modules/quality/application/ncr.command.ts
 quality.correct-result  modules/quality/application/inspection.command.ts
