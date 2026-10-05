@@ -419,6 +419,16 @@ export const deliveryExceptionSchema = z.object({
   resolvedAt: z.string().nullable(),
 });
 
+/** A document of an order, for the customer's own record (IN-17 F-17.4): each is rendered on request with its content hash. */
+export const customerOrderDocumentSchema = z.object({
+  kind: z.enum(['quotation', 'invoice', 'delivery_note', 'proof_of_delivery', 'conformity_certificate']),
+  title: z.string(),
+  reference: z.string(),
+  date: z.string().nullable(),
+  /** The API path that renders it: `{ html, contentHash }`. */
+  path: z.string(),
+});
+
 /** Leg 2's dispatch facts on JobWork's shipment view. */
 export const shipmentDeliverySchema = z.object({
   orderNumber: z.string(),
@@ -631,3 +641,4 @@ export type ResolveDeliveryExceptionRequest = z.infer<typeof resolveDeliveryExce
 export type ProofOfDelivery = z.infer<typeof proofOfDeliverySchema>;
 export type DeliveryAcceptance = z.infer<typeof deliveryAcceptanceSchema>;
 export type DeliveryException = z.infer<typeof deliveryExceptionSchema>;
+export type CustomerOrderDocument = z.infer<typeof customerOrderDocumentSchema>;

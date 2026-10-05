@@ -362,7 +362,10 @@ export const customerOrderListItemSchema = z.object({
   totalMinor: z.number().int().nonnegative(),
   acceptedAt: z.string(),
   expectedDeliveryAt: z.string().nullable(),
-  actionNeeded: z.object({ kind: z.enum(['pay_advance', 'pay_balance']), label: z.string(), invoiceId: z.uuid() }).nullable(),
+  /** The one thing the customer should do next on this order: pay, confirm where a delivery goes, or confirm what arrived. */
+  actionNeeded: z
+    .object({ kind: z.enum(['pay_advance', 'pay_balance', 'confirm_address', 'confirm_delivery']), label: z.string(), invoiceId: z.uuid().nullable(), shipmentId: z.uuid().nullable() })
+    .nullable(),
 });
 
 export const customerInvoiceSchema = z.object({
