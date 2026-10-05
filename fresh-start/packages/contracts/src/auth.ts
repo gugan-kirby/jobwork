@@ -274,6 +274,8 @@ export const portalQueueSchema = z.object({
     'quotations_awaiting_decision',
     'orders_in_progress',
     'invoices_unpaid',
+    // IN-17: an address to confirm before a delivery leaves, or a delivery to accept or report.
+    'deliveries_awaiting_you',
   ]),
   label: z.string(),
   detail: z.string(),

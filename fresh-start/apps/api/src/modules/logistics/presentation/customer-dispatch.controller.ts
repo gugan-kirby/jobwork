@@ -9,6 +9,7 @@ import {
   requestDispatchOverrideRequestSchema,
   shipmentVersionRequestSchema,
   type CustomerDelivery,
+  type CustomerOrderDocument,
   type DispatchContext,
   type Shipment,
 } from '@jobwork/contracts';
@@ -19,7 +20,7 @@ import { parseBody } from '../../../platform/http/validation';
 import { CustomerDeliveries } from '../application/customer-deliveries';
 import { CustomerDispatchCommand } from '../application/customer-dispatch.command';
 import { LogisticsRepository } from '../infrastructure/logistics.repository';
-import { renderDeliveryNote, renderShippingLabels, type RenderedDocument } from './customer-documents';
+import { renderConformityCertificate, renderDeliveryNote, renderShippingLabels, type RenderedDocument } from './customer-documents';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -33,6 +34,7 @@ const opts = (request: FastifyRequest) => ({ idempotencyKey: idempotencyKey(requ
 export class CustomerDispatchController {
   constructor(
     private readonly dispatch: CustomerDispatchCommand,
+    private readonly deliveries: CustomerDeliveries,
     private readonly repo: LogisticsRepository,
   ) {}
 
@@ -85,6 +87,13 @@ export class CustomerDispatchController {
     return renderDeliveryNote(delivery, await this.consignor(id), (await this.repo.acceptancePolicy()).warrantyStatement);
   }
 
+  @RateLimit('export')
+  @Get('customer-dispatches/:shipmentId/conformity')
+  async conformity(@CurrentActor() actor: Actor, @Param('shipmentId') id: string): Promise<RenderedDocument> {
+    const delivery = await this.dispatch.customerView(actor, id);
+    return renderConformityCertificate(delivery, await this.deliveries.conformity((await this.repo.find(id))!), await this.consignor(id));
+  }
+
   /** JobWork's hub city, from the frozen origin once released. */
   private async consignor(shipmentId: string): Promise<{ name: 'JobWork'; city: string }> {
     const s = await this.repo.find(shipmentId);
@@ -105,6 +114,20 @@ export class CustomerDeliveriesController {
   @Get('orders/:orderId/deliveries')
   list(@CurrentActor() actor: Actor, @Param('orderId') orderId: string): Promise<CustomerDelivery[]> {
     return this.deliveries.list(actor, parseBody(z.uuid(), orderId));
+  }
+
+  @Get('orders/:orderId/documents')
+  documents(@CurrentActor() actor: Actor, @Param('orderId') orderId: string): Promise<CustomerOrderDocument[]> {
+    return this.deliveries.documents(actor, parseBody(z.uuid(), orderId));
+  }
+
+  @RateLimit('export')
+  @Get('deliveries/:shipmentId/conformity')
+  async conformity(@CurrentActor() actor: Actor, @Param('shipmentId') id: string): Promise<RenderedDocument> {
+    const delivery = await this.deliveries.get(actor, parseBody(z.uuid(), id));
+    const s = (await this.repo.find(delivery.shipmentId))!;
+    const origin = s.originSnapshot ?? (s.originSiteId ? await this.repo.site(s.originSiteId) : null);
+    return renderConformityCertificate(delivery, await this.deliveries.conformity(s), { name: 'JobWork', city: origin?.city ?? '' });
   }
 
   @Get('deliveries/:shipmentId')

@@ -70,6 +70,23 @@ const CURRENT_LANE: Record<CustomerOrderStatus, string | null> = {
   cancelled: null,
 };
 
+/** A delivery as the customer's timeline reads it (IN-17): leg 2's own facts, nothing of leg 1. */
+export interface DeliveryFact {
+  status: string;
+  dispatchedAt: string | null;
+  carrier: string;
+  tracking: string;
+  deliveredAt: string | null;
+  dueAt: string | null;
+  acceptedAt: string | null;
+  basis: 'explicit' | 'deemed' | null;
+  addressNeeded: boolean;
+}
+
+const DAY = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+const day = (iso: string): string => DAY.format(new Date(iso));
+const MOVING = ['picked_up', 'in_transit', 'delivered_to_destination'];
+
 export function timelineFor(input: {
   status: CustomerOrderStatus;
   acceptedAt: string;
@@ -80,8 +97,14 @@ export function timelineFor(input: {
   baselineReleasedAt?: string | null;
   progress?: Array<{ label: string; at: string }>;
   scheduleUnderReview?: boolean;
+  deliveries?: DeliveryFact[];
 }): CustomerOrderTimelineStep[] {
   const current = CURRENT_LANE[input.status];
+  const deliveries = input.deliveries ?? [];
+  const dispatched = deliveries.filter((d) => d.dispatchedAt).sort((a, b) => a.dispatchedAt!.localeCompare(b.dispatchedAt!));
+  const moving = deliveries.filter((d) => MOVING.includes(d.status));
+  const delivered = deliveries.filter((d) => d.deliveredAt).sort((a, b) => a.deliveredAt!.localeCompare(b.deliveredAt!));
+  const accepted = deliveries.filter((d) => d.acceptedAt).sort((a, b) => a.acceptedAt!.localeCompare(b.acceptedAt!));
   return LANES.filter((lane) => lane.key !== 'advance' || input.advanceInvoiced || input.releaseBasis === 'credit_covered').map((lane) => {
     const done = lane.reachedBy.has(input.status);
     const state: CustomerOrderTimelineStep['state'] = done ? 'done' : lane.key === current ? 'current' : 'pending';
@@ -107,9 +130,40 @@ export function timelineFor(input: {
               : 'Your parts are being made. Checkpoints appear here as JobWork verifies them.';
       at = latest?.at ?? null;
     }
-    if (lane.key === 'final_checks' && state === 'current') detail = 'Incoming inspection and packing at JobWork.';
-    if (lane.key === 'shipping' && state === 'current') detail = 'Dispatched to your delivery site.';
-    if (lane.key === 'delivered' && state === 'current') detail = 'Confirm receipt, or report an issue.';
+    if (lane.key === 'final_checks') {
+      if (state === 'current') {
+        detail = deliveries.some((d) => d.addressNeeded)
+          ? 'Your delivery is packed. Confirm the delivery address and receiving contact so it can leave.'
+          : 'Incoming inspection and packing at JobWork.';
+      }
+      if (done) at = dispatched[0]?.dispatchedAt ?? null;
+    }
+    if (lane.key === 'shipping') {
+      const latest = moving.at(-1) ?? dispatched.at(-1);
+      if (state === 'current') {
+        detail = latest?.dispatchedAt
+          ? `Dispatched ${day(latest.dispatchedAt)}${latest.carrier ? ` with ${latest.carrier}${latest.tracking ? `, tracking ${latest.tracking}` : ''}` : ''}.${moving.length > 1 ? ` ${moving.length} deliveries on the way.` : ''}${delivered.length > 0 ? ` ${delivered.length} of ${deliveries.length} delivered.` : ''}`
+          : 'Dispatched to your delivery site.';
+      }
+      if (done || state === 'current') at = latest?.dispatchedAt ?? null;
+    }
+    if (lane.key === 'delivered') {
+      if (state === 'current') {
+        const awaiting = deliveries.filter((d) => d.status === 'receiving_check');
+        const due = awaiting.map((d) => d.dueAt).filter((x): x is string => x !== null).sort()[0];
+        detail = deliveries.some((d) => d.status === 'discrepancy_hold')
+          ? 'JobWork is handling the issue you reported.'
+          : awaiting.length > 0 && due
+            ? `Delivered ${day(awaiting[0]!.deliveredAt!)}. Accept it, or report a shortage, damage or defect, by ${day(due)}.`
+            : 'Confirm receipt, or report an issue.';
+        at = delivered.at(-1)?.deliveredAt ?? null;
+      }
+      if (done) {
+        const last = accepted.at(-1);
+        at = last?.acceptedAt ?? null;
+        if (last) detail = accepted.every((d) => d.basis === 'deemed') ? `Taken as accepted on ${day(last.acceptedAt!)}: no issue was reported in time.` : `Accepted on ${day(last.acceptedAt!)}.`;
+      }
+    }
     return { key: lane.key, label: lane.label, state, at, detail };
   });
 }
@@ -117,7 +171,19 @@ export function timelineFor(input: {
 export function nextStepFor(input: {
   status: CustomerOrderStatus;
   openInvoice: { number: string; kind: string } | null;
+  deliveries?: DeliveryFact[];
 }): { owner: 'you' | 'jobwork'; label: string; detail: string } {
+  const deliveries = input.deliveries ?? [];
+  const awaiting = deliveries.filter((d) => d.status === 'receiving_check' && d.dueAt).sort((a, b) => a.dueAt!.localeCompare(b.dueAt!));
+  if (deliveries.some((d) => d.addressNeeded) && ['final_checks', 'on_the_way', 'delivery_confirmation_needed'].includes(input.status)) {
+    return { owner: 'you', label: 'Confirm the delivery address', detail: 'A delivery is packed. Confirm the address and the receiving contact so it can leave.' };
+  }
+  if (awaiting.length > 0 && (input.status === 'on_the_way' || input.status === 'delivery_confirmation_needed')) {
+    return { owner: 'you', label: 'Confirm delivery', detail: `Accept the delivery, or report a shortage, damage or defect, by ${day(awaiting[0]!.dueAt!)}. After that it is taken as accepted; your warranty is not affected.` };
+  }
+  if (input.status === 'delivery_confirmation_needed' && deliveries.some((d) => d.status === 'discrepancy_hold')) {
+    return { owner: 'jobwork', label: 'Issue being handled', detail: 'JobWork is handling the issue you reported on a delivery. We come back to you with what happens next.' };
+  }
   switch (input.status) {
     case 'payment_needed':
       return {

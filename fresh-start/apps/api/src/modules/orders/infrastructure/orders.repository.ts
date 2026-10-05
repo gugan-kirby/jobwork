@@ -62,6 +62,20 @@ export interface SalesOrderRecord {
   acceptance: AcceptanceRecord;
 }
 
+export interface CustomerDeliveryFact {
+  shipmentId: string;
+  number: string;
+  status: string;
+  dispatchedAt: Date | null;
+  carrier: string;
+  tracking: string;
+  deliveredAt: Date | null;
+  dueAt: Date | null;
+  acceptedAt: Date | null;
+  basis: 'explicit' | 'deemed' | null;
+  addressNeeded: boolean;
+}
+
 export interface PurchaseOrderLineRecord {
   lineNo: number;
   rfqItemId: string;
@@ -545,5 +559,28 @@ export class OrdersRepository {
         WHERE id = $1`,
       [input.purchaseOrderId, input.by, input.note],
     );
+  }
+
+  // ----------------------------------------------------------------- deliveries, for the customer's timeline (IN-17)
+
+  /**
+   * The order's deliveries as the customer's timeline needs them (doc 06 §13). A read of the
+   * logistics records for a projection, never a write: logistics owns them, and imports this
+   * module, so the facts come by query rather than by import.
+   */
+  async customerDeliveryFacts(salesOrderId: string, tx?: Queryable): Promise<CustomerDeliveryFact[]> {
+    const res = await this.q(tx).query<CustomerDeliveryFact>(
+      `SELECT s.id AS "shipmentId", s.number, s.status, s.picked_up_at AS "dispatchedAt", COALESCE(s.carrier_name, '') AS carrier, COALESCE(s.tracking_reference, '') AS tracking,
+              d.received_at AS "deliveredAt", s.acceptance_due_at AS "dueAt", a.accepted_at AS "acceptedAt", a.basis,
+              (s.status IN ('planned', 'ready_for_release')
+                AND NOT EXISTS (SELECT 1 FROM logistics.address_confirmation c WHERE c.shipment_id = s.id AND c.site_id = s.destination_site_id)) AS "addressNeeded"
+         FROM logistics.shipment s
+         LEFT JOIN logistics.proof_of_delivery d ON d.shipment_id = s.id
+         LEFT JOIN logistics.delivery_acceptance a ON a.shipment_id = s.id
+        WHERE s.sales_order_id = $1 AND s.leg = 'jobwork_to_customer' AND s.status NOT IN ('draft', 'cancelled')
+        ORDER BY s.created_at`,
+      [salesOrderId],
+    );
+    return res.rows;
   }
 }
