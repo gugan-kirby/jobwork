@@ -68,6 +68,18 @@ async function messageRule(event: OutboxEvent, { contexts }: RuleLookups): Promi
 }
 
 
+/** IN-15: the supplier is told how its NCR is resolved. */
+function ncrDisposition(e: OutboxEvent) {
+  return [
+    {
+      templateKey: 'supplier.ncr_disposition',
+      audience: suppliers([str(e.data['supplierOrganizationId'])]),
+      variables: { ncrNumber: str(e.data['number']), purchaseOrderNumber: str(e.data['purchaseOrderNumber']), dispositionLabel: str(e.data['dispositionLabel']) },
+      link: `/supplier/ncrs/${e.aggregateId}`,
+    },
+  ];
+}
+
 /** The supplier's own inspection, decided by JobWork quality. JobWork's own inspections notify nobody outside. */
 function inspectionDecided(e: OutboxEvent, outcome: 'passed' | 'failed') {
   if (e.data['inspectedBySupplier'] !== true) return [];
@@ -158,6 +170,16 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
           },
         ]
       : [],
+  'quality.ncr_opened.v1': async (e) => [
+    {
+      templateKey: 'supplier.ncr_opened',
+      audience: suppliers([str(e.data['supplierOrganizationId'])]),
+      variables: { ncrNumber: str(e.data['number']), purchaseOrderNumber: str(e.data['purchaseOrderNumber']) },
+      link: `/supplier/ncrs/${e.aggregateId}`,
+    },
+  ],
+  'quality.rework_approved.v1': async (e) => ncrDisposition(e),
+  'quality.ncr_rejected.v1': async (e) => ncrDisposition(e),
   'quality.inspection_passed.v1': async (e) => inspectionDecided(e, 'passed'),
   'quality.inspection_failed.v1': async (e) => inspectionDecided(e, 'failed'),
   'orders.purchase_order_issued.v1': async (e) => [
