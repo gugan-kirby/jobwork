@@ -186,6 +186,16 @@ export class LogisticsRepository {
     return res.rows[0] ?? null;
   }
 
+  /** An organization's first active site, works before pickup before the rest; `worksOnly` for a supplier's destination. */
+  async firstSite(organizationId: string, worksOnly: boolean, tx?: Queryable): Promise<string | null> {
+    const res = await this.q(tx).query<{ id: string }>(
+      `SELECT id FROM iam.organization_site WHERE organization_id = $1 AND status = 'active' AND (NOT $2 OR kind IN ('works', 'pickup'))
+        ORDER BY CASE kind WHEN 'works' THEN 0 WHEN 'pickup' THEN 1 ELSE 2 END, created_at LIMIT 1`,
+      [organizationId, worksOnly],
+    );
+    return res.rows[0]?.id ?? null;
+  }
+
   /** JobWork's receiving hub: the internal organization's first active works site. */
   async hubSite(tx?: Queryable): Promise<{ id: string; organizationId: string } | null> {
     const res = await this.q(tx).query<{ id: string; organizationId: string }>(
@@ -219,13 +229,14 @@ export class LogisticsRepository {
     return res.rows[0] ?? null;
   }
 
-  async list(filter: { shipperOrganizationId?: string; workPackageId?: string; salesOrderId?: string; statuses?: readonly ShipmentStatus[] }, tx?: Queryable): Promise<ShipmentRow[]> {
+  /** `partyOrganizationId`: what an outside organization may see — what it ships, and material JobWork issues to it. */
+  async list(filter: { partyOrganizationId?: string; workPackageId?: string; salesOrderId?: string; statuses?: readonly ShipmentStatus[] }, tx?: Queryable): Promise<ShipmentRow[]> {
     const res = await this.q(tx).query<ShipmentRow>(
       `SELECT ${SHIPMENT_COLUMNS} ${SHIPMENT_FROM}
-        WHERE ($1::uuid IS NULL OR s.shipper_organization_id = $1) AND ($2::uuid IS NULL OR s.work_package_id = $2)
+        WHERE ($1::uuid IS NULL OR s.shipper_organization_id = $1 OR (s.leg = 'jobwork_to_supplier' AND s.consignee_organization_id = $1)) AND ($2::uuid IS NULL OR s.work_package_id = $2)
           AND ($3::uuid IS NULL OR s.sales_order_id = $3) AND ($4::text[] IS NULL OR s.status = ANY($4))
         ORDER BY s.created_at DESC LIMIT 200`,
-      [filter.shipperOrganizationId ?? null, filter.workPackageId ?? null, filter.salesOrderId ?? null, filter.statuses ?? null],
+      [filter.partyOrganizationId ?? null, filter.workPackageId ?? null, filter.salesOrderId ?? null, filter.statuses ?? null],
     );
     return res.rows;
   }
@@ -278,7 +289,8 @@ export class LogisticsRepository {
     return res.rows[0]!.aggregate_version;
   }
 
-  async replaceContents(shipmentId: string, packages: readonly PackageInput[], tx: Queryable): Promise<void> {
+  /** `stockLotIds` maps an item (by package and position) to the JobWork lot it is picked from, for legs that start at JobWork. */
+  async replaceContents(shipmentId: string, packages: readonly PackageInput[], tx: Queryable, stockLotIds?: ReadonlyArray<ReadonlyArray<string | null>>): Promise<void> {
     await tx.query(`DELETE FROM logistics.shipment_item WHERE shipment_id = $1`, [shipmentId]);
     await tx.query(`DELETE FROM logistics.shipment_package WHERE shipment_id = $1`, [shipmentId]);
     for (const p of packages) {
@@ -286,10 +298,10 @@ export class LogisticsRepository {
         `INSERT INTO logistics.shipment_package (shipment_id, package_no, length_mm, width_mm, height_mm, weight_g) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
         [shipmentId, p.packageNo, p.lengthMm, p.widthMm, p.heightMm, p.weightG],
       );
-      for (const i of p.items) {
+      for (const [k, i] of p.items.entries()) {
         await tx.query(
-          `INSERT INTO logistics.shipment_item (shipment_id, package_id, lot_code, serials, quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
-          [shipmentId, pkg.rows[0]!.id, i.lotCode, i.serials, i.quantity, i.description],
+          `INSERT INTO logistics.shipment_item (shipment_id, package_id, lot_code, serials, quantity, unit, description, stock_lot_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [shipmentId, pkg.rows[0]!.id, i.lotCode, i.serials, i.quantity, i.unit, i.description, stockLotIds?.[packages.indexOf(p)]?.[k] ?? null],
         );
       }
     }
@@ -424,13 +436,13 @@ export class LogisticsRepository {
 
   /** The lot carries the order's released production baseline: the revision it was made to. */
   async insertStockLot(
-    input: { lotCode: string; serials: string[]; salesOrderId: string; workPackageId: string | null; sourceShipmentId: string; receivedQuantity: string; ownership: 'jobwork' | 'customer_material'; by: string },
+    input: { lotCode: string; serials: string[]; salesOrderId: string; workPackageId: string | null; sourceShipmentId: string; receivedQuantity: string; unit: string; ownership: 'jobwork' | 'customer_material'; by: string },
     tx: Queryable,
   ): Promise<string> {
     const res = await tx.query<{ id: string }>(
-      `INSERT INTO logistics.stock_lot (lot_code, serials, sales_order_id, work_package_id, baseline_id, source_shipment_id, received_quantity, ownership, created_by)
-       VALUES ($1, $2, $3, $4, (SELECT id FROM dms.baseline WHERE sales_order_id = $3 AND kind = 'production' AND status = 'released' ORDER BY released_at DESC LIMIT 1), $5, $6, $7, $8) RETURNING id`,
-      [input.lotCode, input.serials, input.salesOrderId, input.workPackageId, input.sourceShipmentId, input.receivedQuantity, input.ownership, input.by],
+      `INSERT INTO logistics.stock_lot (lot_code, serials, sales_order_id, work_package_id, baseline_id, source_shipment_id, received_quantity, unit, ownership, created_by)
+       VALUES ($1, $2, $3, $4, (SELECT id FROM dms.baseline WHERE sales_order_id = $3 AND kind = 'production' AND status = 'released' ORDER BY released_at DESC LIMIT 1), $5, $6, $7, $8, $9) RETURNING id`,
+      [input.lotCode, input.serials, input.salesOrderId, input.workPackageId, input.sourceShipmentId, input.receivedQuantity, input.unit, input.ownership, input.by],
     );
     return res.rows[0]!.id;
   }
@@ -438,6 +450,28 @@ export class LogisticsRepository {
   async lotFor(shipmentId: string, lotCode: string, tx?: Queryable): Promise<{ id: string } | null> {
     const res = await this.q(tx).query<{ id: string }>(`SELECT id FROM logistics.stock_lot WHERE source_shipment_id = $1 AND lot_code = $2`, [shipmentId, lotCode]);
     return res.rows[0] ?? null;
+  }
+
+  async lot(id: string, tx?: Queryable): Promise<{ id: string; lotCode: string; unit: string; ownership: 'jobwork' | 'customer_material'; salesOrderId: string } | null> {
+    const res = await this.q(tx).query<{ id: string; lotCode: string; unit: string; ownership: 'jobwork' | 'customer_material'; salesOrderId: string }>(
+      `SELECT id, lot_code AS "lotCode", unit, ownership, sales_order_id AS "salesOrderId" FROM logistics.stock_lot WHERE id = $1`,
+      [id],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  /** Customer material on an order, with what is in stock, quarantined and issued (D-15). */
+  async materialLots(salesOrderId: string, tx?: Queryable): Promise<Array<{ id: string; lotCode: string; unit: string; shipmentNumber: string; receivedQuantity: string; inStock: string; quarantined: string; issued: string }>> {
+    const at = (code: string) =>
+      `(SELECT COALESCE(SUM(b.quantity), 0) FROM logistics.stock_balance b JOIN logistics.custody_location c ON c.id = b.location_id WHERE b.lot_id = t.id AND c.code = '${code}')::text`;
+    const res = await this.q(tx).query<{ id: string; lotCode: string; unit: string; shipmentNumber: string; receivedQuantity: string; inStock: string; quarantined: string; issued: string }>(
+      `SELECT t.id, t.lot_code AS "lotCode", t.unit, s.number AS "shipmentNumber", t.received_quantity::text AS "receivedQuantity",
+              ${at('JW-STOCK')} AS "inStock", ${at('JW-QUARANTINE')} AS quarantined, ${at('OUT-ISSUED')} AS issued
+         FROM logistics.stock_lot t JOIN logistics.shipment s ON s.id = t.source_shipment_id
+        WHERE t.sales_order_id = $1 AND t.ownership = 'customer_material' ORDER BY t.created_at, t.lot_code`,
+      [salesOrderId],
+    );
+    return res.rows;
   }
 
   /** One ledger movement; the database refuses an over-draw or over-receipt. */
