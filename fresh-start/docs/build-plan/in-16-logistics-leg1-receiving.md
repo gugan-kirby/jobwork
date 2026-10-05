@@ -231,6 +231,50 @@ The audit inventory gains two operations and the worker acknowledges four events
 
 Browser walk at desktop width and at 390 px; receiving is the mobile-first screen (doc 14 §12).
 
+**Deviations (2026-10-05, F-16.4):**
+
+- **`GET /supplier/shipments/shippable?purchaseOrderId=`.** The supplier cannot read quality releases. The planner shows the quantity guard ahead of time instead: per released lot, released, shipped on live shipments, available, and the open NCRs holding it.
+- **Portal.**
+  - `/supplier/shipments` lists the supplier's shipments.
+  - `/supplier/shipments/new?purchaseOrderId=` plans one. The editor offers released lots and the supplier's works or pickup sites, plus documents and packages with dimensions and weight.
+  - `/supplier/shipments/[id]` shows the guards (`GateMatrix`) and offers submit, edit (replan), cancel and pickup (carrier, tracking or LR). It also shows contents with JobWork's count, carrier updates and discrepancies.
+  - The PO page has a shipments panel, and the supplier navigation gains "Shipments".
+- **Operations.**
+  - `/logistics` groups shipments: to release, coming in, discrepancy hold, being prepared, received.
+  - `/logistics/shipments/[id]` covers:
+    - release with the guard matrix;
+    - pickup on the supplier's behalf;
+    - manual carrier updates in IST;
+    - the receiving workstation;
+    - discrepancy resolution, offering only the matrix's choices and marking quality's.
+  - The receiving workstation:
+    - takes a seal check, a documents check and each package's condition (a missing package zeroes its counts);
+    - splits each item's count, defaulting to all accepted until split by hand;
+    - records identity and damage;
+    - uploads photos through the normal scan pipeline;
+    - previews the discrepancies the receipt will open.
+  - `/logistics/work-packages/[id]` reconciles quantities and stock.
+  - The order page gains a shipments card grouped by leg, and the navigation gains "Logistics" with the three queues as its badge.
+- **Found and fixed in the walk (UI kit).**
+  - **Navigation highlight.** Navigation and the tab bar lit every item whose href prefixed the path, so the supplier's "Home" (`/supplier`) stayed lit on every supplier page. `activeHref` now lights only the most specific match.
+  - **`FileUpload` at phone width.** The control was wider than a 390 px card, because the native file input and the header row could not shrink. They now wrap and shrink.
+- **Dev data.** The dev seed has the hub. The walk's logistics user (`logistics@jobwork.local`, the demo-chain password and TOTP) and LOT-7's release were scripted; they are not in the seed.
+
+**Verification (2026-10-05, F-16.4).** Browser walk on the dev stack (PO-2026-0001, LOT-7 released 30 of 60):
+
+- **Supplier, desktop.** Planned SH-2026-0001 as two packages of 15 with the documents guard red, edited in the challan, all guards green, submitted.
+- **Logistics, desktop.** The board showed it to release. Released it, freezing the addresses. Recorded the pickup (VRL Logistics, LR-88213) and a carrier "delivered", which shows a not-a-receipt callout.
+- **Receiving at 390 px:**
+  - package 2 damaged, one count short;
+  - 12 accepted, 2 quarantined and 1 refused on the damaged line;
+  - one photo uploaded and scanned;
+  - preview, then RD-2026-0001 (shortage 1) and RD-2026-0002 (damage 3) opened, on hold.
+- **Resolution.** Logistics accepted the shortage. Logistics was refused the scrap ("Requires jobwork_quality"). Quality scrapped it, and the shipment was received.
+- **Reconciliation.** Ordered 60, released 30, shipped 30, counted 29, accepted 26, scrapped 2, outstanding 34. Lot LOT-7: 28 received, 26 in stock and 2 scrapped.
+- **The supplier at 390 px.** Counts per package and both discrepancies with their resolutions; no split and no stock.
+
+`dispatch.api.spec.ts` gains the shippable read (released, shipped, available, the NCR hold, and isolation), and the UI kit gains an `activeHref` test. Full verify green: api 441, ui 171, portal-web 21, worker 39, database 96.
+
 ## F-16.5 Customer-supplied material (`D-15`)
 
 | File | Action | Contents |
