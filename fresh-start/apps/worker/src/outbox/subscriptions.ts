@@ -84,6 +84,12 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'quality.deviation_withdrawn.v1',
   // IN-16's dispatch gate will consume releases; until then they are recorded.
   'quality.release_authorized.v1',
+  // IN-16 logistics: recorded; the supplier is told when its shipment is released.
+  'logistics.shipment_planned.v1',
+  'logistics.shipment_submitted.v1',
+  'logistics.shipment_cancelled.v1',
+  'logistics.shipment_picked_up.v1',
+  'logistics.carrier_event_recorded.v1',
   'supplier.admitted.v1',
   'supplier.application_declined.v1',
   'supplier.application_received.v1',
