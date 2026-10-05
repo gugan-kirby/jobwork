@@ -57,6 +57,23 @@ What `0025_logistics.sql` creates:
   - Queues `shipments_to_release` and `shipments_awaiting_receiving` (released or carrier-delivered, not yet received), and `receiving_discrepancies_open`.
   - Templates `supplier.shipment_released` and `supplier.receiving_discrepancy`.
 
+**Deviations (2026-10-05, F-16.1):**
+
+- **Where the JobWork hub lives.** Migrations do not create JobWork's internal organization (the seed and the test fixtures do), so the hub's address cannot be seeded with it. The ledger's JobWork locations are seeded as codes (`JW-RECEIVING`, `JW-QUARANTINE`, `JW-STOCK`). The hub address for a shipment's destination snapshot is the internal organization's active works site; the dev seed and the pilot driver create one (F-16.2).
+- **The ledger has no exit.** Only a receipt enters from outside, and nothing leaves: dispatched, scrapped, returned, out-for-rework and issued quantities move to sink locations instead. So "received = on hand + dispatched + scrapped + returned + in rework" holds by construction, and the property suite checks it against a model.
+- **Receiving lines name refusals.** A line splits every counted piece into accepted, quarantined and refused. Refused pieces never enter custody, and their return is IN-18's.
+
+**Verification (2026-10-05, F-16.1).** `logistics.db.spec.ts` (5) covers:
+
+- the leg machine, with addresses, documents, contents and carrier frozen at release and pickup;
+- carrier events once each and immutable;
+- receiving records immutable and lines splitting every counted piece;
+- discrepancies resolved once with a note;
+- over-receipt and over-draw refused at the constraint;
+- a fast-check property, over 25 random movement sequences, that the database accepts exactly the draws a model allows and conserves every received quantity.
+
+Database suite 96 green; the template pin moved to 31.
+
 ## F-16.2 Supplier dispatch (leg 1)
 
 | File | Action | Contents |
