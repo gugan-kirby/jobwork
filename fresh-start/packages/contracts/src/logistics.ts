@@ -327,6 +327,98 @@ export const addressConfirmationSchema = z.object({
   current: z.boolean(),
 });
 
+// ----------------------------------------------------------------- delivery, POD and acceptance (IN-17 F-17.3; BR-LOG-05; FR-905)
+
+export const podRemarksSchema = z.enum(['clean', 'with_remarks']);
+export const podSourceSchema = z.enum(['carrier', 'driver', 'jobwork_staff']);
+export const deliveryExceptionKindSchema = z.enum(['address_change', 'refused', 'not_received', 'shortage', 'damage', 'wrong_item', 'quality_defect', 'documents']);
+/** What a customer reports about a delivery: at the door, inside the window, or later as a warranty claim. */
+export const deliveryIssueKindSchema = z.enum(['not_received', 'shortage', 'damage', 'wrong_item', 'quality_defect', 'documents']);
+export const deliveryExceptionResolutionSchema = z.enum(['found_delivered', 'customer_withdrew', 'handed_to_case', 'redirected', 'declined', 'returned_to_stock']);
+
+/** Proof of delivery: who took the goods, when, in what state (doc 10 §11). Not acceptance (BR-LOG-05). */
+export const recordPodRequestSchema = z.object({
+  ...versioned,
+  receivedByName: z.string().trim().min(2).max(120),
+  receivedAt: z.iso.datetime(),
+  packagesReceived: z.number().int().min(0).max(999),
+  remarks: podRemarksSchema,
+  remarksNote: z.string().trim().max(1000).default(''),
+  /** The signed copy and photos: JobWork's own clean files. */
+  documentVersionIds: z.array(z.uuid()).max(20).default([]),
+  source: podSourceSchema,
+}).refine((pod) => pod.remarks === 'clean' || pod.remarksNote.length >= 3, { path: ['remarksNote'], message: 'Say what the remarks were' });
+
+export const acceptDeliveryRequestSchema = z.object({ ...versioned, note: z.string().trim().max(500).default('') });
+
+export const reportDeliveryIssueRequestSchema = z.object({
+  kind: deliveryIssueKindSchema,
+  /** JobWork's lot marking, as on the delivery note; empty for the whole delivery. */
+  lotMarking: z.string().trim().max(60).default(''),
+  quantity: quantity.default('0'),
+  description: z.string().trim().min(3).max(2000),
+  /** Photos and documents: the customer's own clean files. */
+  evidenceDocumentVersionIds: z.array(z.uuid()).max(20).default([]),
+});
+
+export const withdrawDeliveryIssueRequestSchema = z.object({ note: z.string().trim().max(500).default('') });
+
+export const requestAddressChangeRequestSchema = z.object({ siteId: z.uuid(), reason: z.string().trim().min(3).max(1000) });
+
+export const recordRefusalRequestSchema = z.object({
+  ...versioned,
+  refusedBy: z.string().trim().min(2).max(120),
+  reason: z.string().trim().min(3).max(1000),
+  evidenceDocumentVersionIds: z.array(z.uuid()).max(20).default([]),
+});
+
+export const resolveDeliveryExceptionRequestSchema = z.object({
+  resolution: deliveryExceptionResolutionSchema,
+  note: z.string().trim().min(3).max(1000),
+  /** The support case (IN-18) or carrier reference this continues under. */
+  caseReference: reference.default(''),
+  carrierChargeNote: z.string().trim().max(500).default(''),
+});
+
+export const proofOfDeliverySchema = z.object({
+  receivedByName: z.string(),
+  receivedAt: z.string(),
+  deliveredTo: siteSnapshotSchema,
+  packagesReceived: z.number().int(),
+  remarks: podRemarksSchema,
+  remarksNote: z.string(),
+  source: podSourceSchema,
+  documentCount: z.number().int(),
+});
+
+export const deliveryAcceptanceSchema = z.object({
+  basis: z.enum(['explicit', 'deemed']),
+  acceptedAt: z.string(),
+  warrantyStatement: z.string(),
+  note: z.string(),
+});
+
+export const deliveryExceptionSchema = z.object({
+  exceptionId: z.uuid(),
+  number: z.string(),
+  kind: deliveryExceptionKindSchema,
+  raisedByParty: z.enum(['customer', 'jobwork', 'carrier']),
+  lotMarking: z.string(),
+  quantity: z.string(),
+  description: z.string(),
+  evidenceCount: z.number().int(),
+  warrantyClaim: z.boolean(),
+  requestedAddress: siteSnapshotSchema.nullable(),
+  status: z.enum(['open', 'resolved']),
+  resolution: deliveryExceptionResolutionSchema.nullable(),
+  /** JobWork's own note; empty outside JobWork. */
+  resolutionNote: z.string(),
+  caseReference: z.string(),
+  carrierChargeNote: z.string(),
+  createdAt: z.string(),
+  resolvedAt: z.string().nullable(),
+});
+
 /** Leg 2's dispatch facts on JobWork's shipment view. */
 export const shipmentDeliverySchema = z.object({
   orderNumber: z.string(),
@@ -336,6 +428,13 @@ export const shipmentDeliverySchema = z.object({
   packingCheck: packingCheckSchema,
   addressConfirmation: addressConfirmationSchema.nullable(),
   overrides: z.array(dispatchOverrideSchema),
+  pod: proofOfDeliverySchema.nullable(),
+  acceptance: deliveryAcceptanceSchema.nullable(),
+  /** The end of the customer's window, set by the POD (FR-905). */
+  acceptanceDueAt: z.string().nullable(),
+  exceptions: z.array(deliveryExceptionSchema),
+  /** The leg bringing a refused delivery back. */
+  returnShipmentId: z.uuid().nullable(),
 });
 
 /** A stock lot of an order that leg 2 may pick from, with what is free of other prepared dispatches (JobWork only). */
@@ -403,6 +502,15 @@ export const customerDeliverySchema = z.object({
   totalQuantity: z.string(),
   documents: z.object({ invoiceNumber: z.string(), eWaybillNumber: z.string() }),
   tracking: z.array(z.object({ status: carrierStatusSchema, occurredAt: z.string() })),
+  pod: proofOfDeliverySchema.omit({ source: true, documentCount: true }).nullable(),
+  acceptance: deliveryAcceptanceSchema.nullable(),
+  acceptanceDueAt: z.string().nullable(),
+  /** The customer's own reports, address changes and a refusal, with JobWork's resolution but not its notes. */
+  exceptions: z.array(deliveryExceptionSchema.omit({ carrierChargeNote: true })),
+  /** What acceptance means for the warranty, in force now (FR-905). */
+  warrantyStatement: z.string(),
+  /** What the delivery's state allows; the portal also checks the reader's roles. */
+  actions: z.object({ confirmAddress: z.boolean(), accept: z.boolean(), reportIssue: z.boolean(), reportNotReceived: z.boolean(), reportDefect: z.boolean(), requestAddressChange: z.boolean() }),
   createdAt: z.string(),
   aggregateVersion: z.number().int().positive(),
 });
@@ -509,3 +617,17 @@ export type DispatchableLot = z.infer<typeof dispatchableLotSchema>;
 export type DispatchContext = z.infer<typeof dispatchContextSchema>;
 export type CustomerDeliveryStatus = z.infer<typeof customerDeliveryStatusSchema>;
 export type CustomerDelivery = z.infer<typeof customerDeliverySchema>;
+export type PodRemarks = z.infer<typeof podRemarksSchema>;
+export type DeliveryExceptionKind = z.infer<typeof deliveryExceptionKindSchema>;
+export type DeliveryIssueKind = z.infer<typeof deliveryIssueKindSchema>;
+export type DeliveryExceptionResolution = z.infer<typeof deliveryExceptionResolutionSchema>;
+export type RecordPodRequest = z.infer<typeof recordPodRequestSchema>;
+export type AcceptDeliveryRequest = z.infer<typeof acceptDeliveryRequestSchema>;
+export type ReportDeliveryIssueRequest = z.infer<typeof reportDeliveryIssueRequestSchema>;
+export type WithdrawDeliveryIssueRequest = z.infer<typeof withdrawDeliveryIssueRequestSchema>;
+export type RequestAddressChangeRequest = z.infer<typeof requestAddressChangeRequestSchema>;
+export type RecordRefusalRequest = z.infer<typeof recordRefusalRequestSchema>;
+export type ResolveDeliveryExceptionRequest = z.infer<typeof resolveDeliveryExceptionRequestSchema>;
+export type ProofOfDelivery = z.infer<typeof proofOfDeliverySchema>;
+export type DeliveryAcceptance = z.infer<typeof deliveryAcceptanceSchema>;
+export type DeliveryException = z.infer<typeof deliveryExceptionSchema>;
