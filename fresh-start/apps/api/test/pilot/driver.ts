@@ -30,6 +30,7 @@ type Res = { status: number; body: Body };
 const PASSWORD = 'pilot-password-1';
 const SERVICE_SECRET = 'test-service-token-secret';
 export const WEBHOOK_SECRET = 'test-payment-webhook-secret';
+export const CARRIER_SECRET = 'test-carrier-webhook-secret';
 
 export type Actor =
   | 'buyer'
@@ -46,6 +47,7 @@ export type Actor =
   | 'finance2'
   | 'quality'
   | 'quality2'
+  | 'logistics'
   | 'admin';
 
 const PEOPLE: Record<Actor, { email: string; org: 'customer' | 'outsider' | 'supplierA' | 'supplierB' | 'internal'; roles: string[]; mfa: boolean }> = {
@@ -63,6 +65,7 @@ const PEOPLE: Record<Actor, { email: string; org: 'customer' | 'outsider' | 'sup
   finance2: { email: 'finance2@jobwork.test', org: 'internal', roles: ['jobwork_finance'], mfa: true },
   quality: { email: 'quality@jobwork.test', org: 'internal', roles: ['jobwork_quality'], mfa: true },
   quality2: { email: 'quality2@jobwork.test', org: 'internal', roles: ['jobwork_quality'], mfa: true },
+  logistics: { email: 'logistics@jobwork.test', org: 'internal', roles: ['jobwork_logistics'], mfa: true },
   admin: { email: 'admin@jobwork.test', org: 'internal', roles: ['platform_admin', 'security_admin'], mfa: true },
 };
 
@@ -81,6 +84,8 @@ export class Pilot {
   pg!: Client;
   as = {} as Record<Actor, TestClient>;
   orgs = {} as Record<'customer' | 'outsider' | 'supplierA' | 'supplierB' | 'internal', string>;
+  /** IN-16: JobWork's receiving hub and each supplier's works site. */
+  sites = {} as Record<'hub' | 'supplierA' | 'supplierB', string>;
   memberships = {} as Record<Actor, string>;
   users = {} as Record<Actor, string>;
   profiles = {} as Record<'supplierA' | 'supplierB', string>;
@@ -94,6 +99,7 @@ export class Pilot {
     process.env['SESSION_SECRET'] = 'test-secret-value';
     process.env['SERVICE_TOKEN_SECRET'] = SERVICE_SECRET;
     process.env['PAYMENT_WEBHOOK_SECRET'] = WEBHOOK_SECRET;
+    process.env['CARRIER_WEBHOOK_SECRET'] = CARRIER_SECRET;
     process.env['NODE_ENV'] = 'test';
     p.pg = new Client({ connectionString: p.db.url });
     await p.pg.connect();
@@ -141,6 +147,16 @@ export class Pilot {
       this.users[actor] = user.id;
       this.memberships[actor] = m.id;
     }
+    const site = async (orgId: string, label: string, city: string): Promise<string> =>
+      (await this.one<{ id: string }>(
+        `INSERT INTO iam.organization_site (organization_id, label, kind, address_line1, city, state, postal_code, contact_name, contact_phone) VALUES ($1, $2, 'works', 'Plot 7, Industrial Estate', $3, 'Tamil Nadu', '600032', 'Stores', '+91 90000 00001') RETURNING id`,
+        [orgId, label, city],
+      )).id;
+    this.sites = {
+      hub: await site(this.orgs.internal, 'JobWork receiving hub', 'Chennai'),
+      supplierA: await site(this.orgs.supplierA, 'Anand works', 'Coimbatore'),
+      supplierB: await site(this.orgs.supplierB, 'Balaji works', 'Hosur'),
+    };
     for (const supplier of ['supplierA', 'supplierB'] as const) {
       const name = supplier === 'supplierA' ? 'Anand Engineering' : 'Balaji Precision';
       const profile = await this.one<{ id: string }>(
