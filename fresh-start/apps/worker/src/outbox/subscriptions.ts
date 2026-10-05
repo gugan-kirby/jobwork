@@ -82,6 +82,8 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'quality.deviation_requested.v1',
   'quality.deviation_rejected.v1',
   'quality.deviation_withdrawn.v1',
+  // IN-16's dispatch gate will consume releases; until then they are recorded.
+  'quality.release_authorized.v1',
   'supplier.admitted.v1',
   'supplier.application_declined.v1',
   'supplier.application_received.v1',

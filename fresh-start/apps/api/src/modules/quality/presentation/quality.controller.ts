@@ -2,6 +2,11 @@ import { Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import {
   approveReworkRequestSchema,
+  authorizeReleaseRequestSchema,
+  releaseScopeSchema,
+  type QualityRelease,
+  type ReleaseChecklist,
+  type ReleaseFactsView,
   calibrationDispositionRequestSchema,
   closeNcrRequestSchema,
   containNcrRequestSchema,
@@ -45,6 +50,7 @@ import { InspectionCommand } from '../application/inspection.command';
 import { InstrumentCommand } from '../application/instrument.command';
 import { NcrCommand } from '../application/ncr.command';
 import { QualityPlanCommand } from '../application/quality-plan.command';
+import { QualityReleaseCommand } from '../application/quality-release.command';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -354,5 +360,31 @@ export class CustomerDeviationController {
   @Post('customer/deviations/:deviationId/decide')
   decide(@CurrentActor() actor: Actor, @Param('deviationId') id: string, @Req() request: FastifyRequest): Promise<CustomerDeviation> {
     return this.deviations.customerDecide(actor, id, parseBody(customerDeviationDecisionSchema, request.body), opts(request));
+  }
+}
+
+/** Quality release (doc 08 §5 `/quality-releases`; doc 09 §14): checklist, authorize, history, and the facts dispatch reads. */
+@Controller()
+export class QualityReleaseController {
+  constructor(private readonly releases: QualityReleaseCommand) {}
+
+  @Post('quality-releases/checklist')
+  checklist(@CurrentActor() actor: Actor, @Req() request: FastifyRequest): Promise<ReleaseChecklist> {
+    return this.releases.preview(actor, parseBody(releaseScopeSchema, request.body));
+  }
+
+  @Post('quality-releases')
+  authorize(@CurrentActor() actor: Actor, @Req() request: FastifyRequest): Promise<QualityRelease> {
+    return this.releases.authorize(actor, parseBody(authorizeReleaseRequestSchema, request.body), opts(request));
+  }
+
+  @Get('quality-releases')
+  list(@CurrentActor() actor: Actor, @Query('workPackageId') workPackageId: string): Promise<QualityRelease[]> {
+    return this.releases.list(actor, workPackageId);
+  }
+
+  @Get('work-packages/:workPackageId/release-facts')
+  facts(@CurrentActor() actor: Actor, @Param('workPackageId') workPackageId: string): Promise<ReleaseFactsView> {
+    return this.releases.facts(actor, workPackageId);
   }
 }
