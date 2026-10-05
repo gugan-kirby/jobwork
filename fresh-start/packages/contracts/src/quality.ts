@@ -209,6 +209,8 @@ export const inspectionResultSchema = z.object({
   supersedesResultId: z.uuid().nullable(),
   correctionReason: z.string().nullable(),
   recordedAt: z.string(),
+  /** A failed result accepted for use under an approved deviation; it stays failed (BR-QLT-02). */
+  coveredByDeviation: z.object({ number: z.string(), expiresAt: z.string(), active: z.boolean() }).nullable(),
 });
 
 export const inspectionSchema = z.object({
@@ -250,6 +252,7 @@ export const inspectionSchema = z.object({
 export const ncrStatusSchema = z.enum(['open', 'containment', 'disposition_pending', 'rework', 'reinspection', 'deviation_pending', 'accepted_under_deviation', 'rejected', 'verified', 'closed']);
 export const ncrSeveritySchema = z.enum(['critical', 'major', 'minor']);
 export const costResponsibilitySchema = z.enum(['supplier', 'jobwork', 'customer', 'undetermined']);
+export const deviationStatusSchema = z.enum(['pending_internal', 'pending_customer', 'approved', 'rejected', 'withdrawn']);
 const quantity = z.string().trim().regex(/^\d{1,12}(\.\d{1,4})?$/, 'A quantity, e.g. 5 or 2.5');
 const tags = z.array(z.string().trim().min(1).max(60)).max(200).default([]);
 
@@ -347,10 +350,94 @@ export const ncrSchema = z.object({
       aggregateVersion: z.number().int().positive(),
     })
     .nullable(),
+  deviations: z.array(z.object({ deviationId: z.uuid(), number: z.string(), status: deviationStatusSchema, active: z.boolean(), quantity: z.string(), lots: z.array(z.string()), expiresAt: z.string() })),
   /** Why it cannot close for the reader; empty when it can (internal view only). */
   closeBlockers: z.array(z.string()),
   closedAt: z.string().nullable(),
   closureNote: z.string().nullable(),
+  aggregateVersion: z.number().int().positive(),
+});
+
+// ----------------------------------------------------------------- deviation (IN-15)
+
+
+export const requestDeviationRequestSchema = z.object({
+  ...versioned,
+  characteristicIds: z.array(z.uuid()).min(1).max(50),
+  quantity,
+  lots: tags,
+  serials: tags,
+  expiresAt: z.iso.datetime(),
+  rationale: z.string().trim().min(3).max(2000),
+  riskAssessment: z.string().trim().min(3).max(2000),
+  fitFunctionSafety: z.string().trim().min(3).max(2000),
+  priceEffect: z.string().trim().max(500).default(''),
+  warrantyEffect: z.string().trim().max(500).default(''),
+  traceabilityEffect: z.string().trim().max(500).default(''),
+  labelingEffect: z.string().trim().max(500).default(''),
+});
+export const withdrawDeviationRequestSchema = z.object({ ...versioned, reason });
+export const customerDeviationDecisionSchema = z.object({
+  ...versioned,
+  decision: z.enum(['approved', 'rejected']),
+  reason: z.string().trim().max(1000).default(''),
+  /** The approver confirms the scope, period and effects they are accepting. */
+  acknowledgeScope: z.literal(true),
+});
+
+const deviationEffectsSchema = z.object({ price: z.string(), warranty: z.string(), traceability: z.string(), labeling: z.string() });
+
+export const deviationSchema = z.object({
+  deviationId: z.uuid(),
+  number: z.string(),
+  ncrId: z.uuid(),
+  ncrNumber: z.string(),
+  status: deviationStatusSchema,
+  /** Approved and not yet expired. */
+  active: z.boolean(),
+  characteristics: z.array(z.object({ characteristicId: z.uuid(), name: z.string() })),
+  quantity: z.string(),
+  lots: z.array(z.string()),
+  serials: z.array(z.string()),
+  expiresAt: z.string(),
+  rationale: z.string(),
+  riskAssessment: z.string(),
+  fitFunctionSafety: z.string(),
+  effects: deviationEffectsSchema,
+  customerApprovalRequired: z.boolean(),
+  approvalRequestId: z.uuid().nullable(),
+  customerDecision: z.object({ decision: z.enum(['approved', 'rejected']), reason: z.string(), decidedAt: z.string() }).nullable(),
+  requestedAt: z.string(),
+  decidedAt: z.string().nullable(),
+  decisionReason: z.string().nullable(),
+  aggregateVersion: z.number().int().positive(),
+});
+
+/** The customer's view: its own requirement, the parts concerned, the effects; nothing of the supplier. */
+export const customerDeviationSchema = z.object({
+  deviationId: z.uuid(),
+  number: z.string(),
+  orderId: z.uuid(),
+  orderNumber: z.string(),
+  status: deviationStatusSchema,
+  requirements: z.array(
+    z.object({
+      name: z.string(),
+      drawingReference: z.string(),
+      limits: z.string(),
+      actual: z.array(z.object({ sampleNo: z.number().int(), value: z.string(), unit: z.string().nullable() })),
+    }),
+  ),
+  quantity: z.string(),
+  lots: z.array(z.string()),
+  serials: z.array(z.string()),
+  expiresAt: z.string(),
+  rationale: z.string(),
+  fitFunctionSafety: z.string(),
+  effects: deviationEffectsSchema,
+  decisionNeeded: z.boolean(),
+  canDecide: z.boolean(),
+  decision: z.object({ decision: z.enum(['approved', 'rejected']), reason: z.string(), decidedAt: z.string() }).nullable(),
   aggregateVersion: z.number().int().positive(),
 });
 
@@ -392,3 +479,9 @@ export type RespondCorrectiveActionRequest = z.infer<typeof respondCorrectiveAct
 export type ReviewCorrectiveActionRequest = z.infer<typeof reviewCorrectiveActionRequestSchema>;
 export type VerifyCorrectiveActionRequest = z.infer<typeof verifyCorrectiveActionRequestSchema>;
 export type Ncr = z.infer<typeof ncrSchema>;
+export type DeviationStatus = z.infer<typeof deviationStatusSchema>;
+export type RequestDeviationRequest = z.infer<typeof requestDeviationRequestSchema>;
+export type WithdrawDeviationRequest = z.infer<typeof withdrawDeviationRequestSchema>;
+export type CustomerDeviationDecision = z.infer<typeof customerDeviationDecisionSchema>;
+export type Deviation = z.infer<typeof deviationSchema>;
+export type CustomerDeviation = z.infer<typeof customerDeviationSchema>;
