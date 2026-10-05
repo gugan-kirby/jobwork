@@ -58,6 +58,7 @@ describe('JobWork receiving (F-16.3)', () => {
     expect((await receive(s1, receipt(s1, { 1: { countedQuantity: '31', acceptedQuantity: '31' } }))).body['code']).toBe('ACCEPT_BEYOND_SHIPPED');
     expect((await receive(s1, receipt(s1, { 1: { identity: 'mismatch' } }))).body['code']).toBe('ACCEPT_UNSOUND');
     expect((await receive(s1, receipt(s1, { 1: { damaged: true } }))).body['code']).toBe('DAMAGE_UNSPLIT');
+    expect((await receive(s1, receipt(s1, { 1: { acceptedQuantity: '28', quarantinedQuantity: '2' } }))).body['code']).toBe('QUARANTINE_REASON');
     expect((await receive(s1, receipt(s1, {}, { photoDocumentVersionIds: [await p.cleanDrawing(p.orgs.supplierA)] }))).body['code']).toBe('PHOTO_UNAVAILABLE');
 
     s1 = ok(await receive(s1, receipt(s1, {}, { photoDocumentVersionIds: [await p.cleanDrawing(p.orgs.internal)] })), 201, 'receive');
