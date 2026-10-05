@@ -196,6 +196,24 @@ What `quality-release.api.spec.ts` covers:
 - the snapshot hash reproduces from the stored snapshot;
 - the supplier cannot release (`BR-QLT-03`).
 
+**Deviations (2026-10-05, F-15.4):**
+
+- **Lot rules.** Lots under a deviation release on their own, never mixed with other lots in one release, and at most the deviation's quantity less what earlier releases took under it. Without IN-16's per-lot quantities this is the exact reading of "release only scoped items".
+- **Which lots are held.** A rejected NCR holds its lots for good. A reworked one holds nothing once verified or closed. A deviated one holds whatever its active deviations do not cover. When any NCR is scoped by lot, a release must name its lots.
+- **Inspections counted.** The latest non-invalidated inspection of each plan stage. A later failed inspection therefore turns that stage red again, and a release then waits for its NCR's resolution.
+- **Routes.** `POST /quality-releases/checklist` (a preview for a proposed scope; nothing written), `POST /quality-releases`, `GET /quality-releases?workPackageId=`, `GET /work-packages/:id/release-facts`. `quality.release_authorized.v1` is acknowledged until IN-16 consumes it.
+- **Snapshot hash.** The snapshot is canonical JSON with keys sorted at every level; `snapshotHash` is exported for anyone to recompute it.
+
+**Verification (2026-10-05, F-15.4).** `quality-release.api.spec.ts` (3):
+
+- the nine items in doc 09 §14's order, red while milestones, inspections and packing are open;
+- the supplier is refused and engineering is not a releaser;
+- over-quantity is refused;
+- a 5-piece LOT-A release once green, its hash recomputed from the stored snapshot;
+- a later final inspection fails LOT-B: the NCR shows in the facts as open and after the last release, LOT-B is held with the reason named, and the release history and hash are unchanged.
+
+764 tests green.
+
 ## F-15.5 UX
 
 | File | Action | Contents |
