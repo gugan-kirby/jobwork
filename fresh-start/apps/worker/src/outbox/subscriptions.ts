@@ -88,7 +88,6 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'logistics.shipment_planned.v1',
   'logistics.shipment_submitted.v1',
   'logistics.shipment_cancelled.v1',
-  'logistics.shipment_picked_up.v1',
   'logistics.carrier_event_recorded.v1',
   'logistics.shipment_received.v1',
   'logistics.receiving_discrepancy_resolved.v1',
@@ -96,6 +95,8 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'logistics.customer_material_registered.v1',
   'logistics.material_issued.v1',
   'logistics.material_receipt_acknowledged.v1',
+  // IN-17: the customer is asked to confirm the address and told when a delivery leaves (notified).
+  'logistics.delivery_address_confirmed.v1',
   'supplier.admitted.v1',
   'supplier.application_declined.v1',
   'supplier.application_received.v1',
