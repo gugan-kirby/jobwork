@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
-import type { DiscrepancyKind, DiscrepancyResolution, PackageCondition, PackageInput, ReceivingDecision, ShipmentLeg, ShipmentStatus, SiteSnapshot } from '@jobwork/contracts';
+import type { DiscrepancyKind, DiscrepancyResolution, DispatchOverrideStatus, PackageCondition, PackageInput, PackingCheck, ReceivingDecision, ShipmentLeg, ShipmentStatus, SiteSnapshot } from '@jobwork/contracts';
 import { DatabaseService } from '../../../platform/database/database.service';
 
 type Queryable = Pool | PoolClient;
@@ -29,6 +29,9 @@ export interface ShipmentRow {
   releasedAt: Date | null;
   pickedUpAt: Date | null;
   carrierDeliveredAt: Date | null;
+  returnsShipmentId: string | null;
+  packingCheck: PackingCheck;
+  acceptanceDueAt: Date | null;
   createdAt: Date;
   aggregateVersion: number;
 }
@@ -42,6 +45,9 @@ export interface ItemRow {
   quantity: string;
   unit: string;
   description: string;
+  stockLotId: string | null;
+  /** The stock lot's own code (the lot quality released), behind a leg-2 marking. */
+  sourceLotCode: string;
 }
 
 export interface PackageRow {
@@ -116,6 +122,7 @@ const SHIPMENT_COLUMNS = `s.id, s.number, s.leg, s.sales_order_id AS "salesOrder
   s.origin_snapshot AS "originSnapshot", s.destination_snapshot AS "destinationSnapshot", s.documents, s.carrier_mode AS "carrierMode",
   s.carrier_name AS "carrierName", s.tracking_reference AS "trackingReference", s.status, s.release_snapshot AS "releaseSnapshot",
   s.released_at AS "releasedAt", s.picked_up_at AS "pickedUpAt", s.carrier_delivered_at AS "carrierDeliveredAt", s.created_at AS "createdAt",
+  s.returns_shipment_id AS "returnsShipmentId", s.packing_check AS "packingCheck", s.acceptance_due_at AS "acceptanceDueAt",
   s.aggregate_version AS "aggregateVersion"`;
 const SHIPMENT_FROM = `FROM logistics.shipment s
   JOIN iam.organization o ON o.id = s.shipper_organization_id
@@ -196,6 +203,17 @@ export class LogisticsRepository {
     return res.rows[0]?.id ?? null;
   }
 
+  /** A customer's active addresses, delivery addresses first. */
+  async customerSites(organizationId: string, tx?: Queryable): Promise<Array<SiteSnapshot & { id: string }>> {
+    const res = await this.q(tx).query<SiteSnapshot & { id: string }>(
+      `SELECT id, label, address_line1 AS "addressLine1", address_line2 AS "addressLine2", city, state, postal_code AS "postalCode", country_code AS "countryCode",
+              contact_name AS "contactName", contact_phone AS "contactPhone"
+         FROM iam.organization_site WHERE organization_id = $1 AND status = 'active' ORDER BY created_at`,
+      [organizationId],
+    );
+    return res.rows;
+  }
+
   /** JobWork's receiving hub: the internal organization's first active works site. */
   async hubSite(tx?: Queryable): Promise<{ id: string; organizationId: string } | null> {
     const res = await this.q(tx).query<{ id: string; organizationId: string }>(
@@ -208,13 +226,26 @@ export class LogisticsRepository {
   // ----------------------------------------------------------------- shipments
 
   async insert(
-    input: { number: string; leg: ShipmentLeg; salesOrderId: string; workPackageId: string | null; purchaseOrderId: string | null; shipperOrganizationId: string; consigneeOrganizationId: string; originSiteId: string | null; destinationSiteId: string | null; documents: Record<string, string>; by: string },
+    input: {
+      number: string;
+      leg: ShipmentLeg;
+      salesOrderId: string;
+      workPackageId: string | null;
+      purchaseOrderId: string | null;
+      shipperOrganizationId: string;
+      consigneeOrganizationId: string;
+      originSiteId: string | null;
+      destinationSiteId: string | null;
+      documents: Record<string, string>;
+      by: string;
+      returnsShipmentId?: string | null;
+    },
     tx: Queryable,
   ): Promise<string> {
     const res = await tx.query<{ id: string }>(
-      `INSERT INTO logistics.shipment (number, leg, sales_order_id, work_package_id, purchase_order_id, shipper_organization_id, consignee_organization_id, origin_site_id, destination_site_id, documents, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-      [input.number, input.leg, input.salesOrderId, input.workPackageId, input.purchaseOrderId, input.shipperOrganizationId, input.consigneeOrganizationId, input.originSiteId, input.destinationSiteId, JSON.stringify(input.documents), input.by],
+      `INSERT INTO logistics.shipment (number, leg, sales_order_id, work_package_id, purchase_order_id, shipper_organization_id, consignee_organization_id, origin_site_id, destination_site_id, documents, created_by, returns_shipment_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+      [input.number, input.leg, input.salesOrderId, input.workPackageId, input.purchaseOrderId, input.shipperOrganizationId, input.consigneeOrganizationId, input.originSiteId, input.destinationSiteId, JSON.stringify(input.documents), input.by, input.returnsShipmentId ?? null],
     );
     return res.rows[0]!.id;
   }
@@ -230,13 +261,25 @@ export class LogisticsRepository {
   }
 
   /** `partyOrganizationId`: what an outside organization may see — what it ships, and material JobWork issues to it. */
-  async list(filter: { partyOrganizationId?: string; workPackageId?: string; salesOrderId?: string; statuses?: readonly ShipmentStatus[] }, tx?: Queryable): Promise<ShipmentRow[]> {
+  async list(filter: { partyOrganizationId?: string; workPackageId?: string; salesOrderId?: string; statuses?: readonly ShipmentStatus[]; leg?: ShipmentLeg }, tx?: Queryable): Promise<ShipmentRow[]> {
     const res = await this.q(tx).query<ShipmentRow>(
       `SELECT ${SHIPMENT_COLUMNS} ${SHIPMENT_FROM}
         WHERE ($1::uuid IS NULL OR s.shipper_organization_id = $1 OR (s.leg = 'jobwork_to_supplier' AND s.consignee_organization_id = $1)) AND ($2::uuid IS NULL OR s.work_package_id = $2)
-          AND ($3::uuid IS NULL OR s.sales_order_id = $3) AND ($4::text[] IS NULL OR s.status = ANY($4))
+          AND ($3::uuid IS NULL OR s.sales_order_id = $3) AND ($4::text[] IS NULL OR s.status = ANY($4)) AND ($5::text IS NULL OR s.leg = $5)
         ORDER BY s.created_at DESC LIMIT 200`,
-      [filter.partyOrganizationId ?? null, filter.workPackageId ?? null, filter.salesOrderId ?? null, filter.statuses ?? null],
+      [filter.partyOrganizationId ?? null, filter.workPackageId ?? null, filter.salesOrderId ?? null, filter.statuses ?? null, filter.leg ?? null],
+    );
+    return res.rows;
+  }
+
+  /** A customer's own deliveries (leg 2), never a cancelled or unplanned one. */
+  async customerDeliveries(customerOrganizationId: string, salesOrderId: string | null, tx?: Queryable): Promise<ShipmentRow[]> {
+    const res = await this.q(tx).query<ShipmentRow>(
+      `SELECT ${SHIPMENT_COLUMNS} ${SHIPMENT_FROM}
+        WHERE s.leg = 'jobwork_to_customer' AND s.consignee_organization_id = $1 AND ($2::uuid IS NULL OR s.sales_order_id = $2)
+          AND s.status NOT IN ('draft', 'cancelled')
+        ORDER BY s.created_at DESC LIMIT 200`,
+      [customerOrganizationId, salesOrderId],
     );
     return res.rows;
   }
@@ -257,6 +300,9 @@ export class LogisticsRepository {
       trackingReference: string;
       pickedUpAt: Date;
       carrierDeliveredAt: Date;
+      destinationSiteId: string;
+      packingCheck: PackingCheck;
+      acceptanceDueAt: Date;
     }>,
     tx: Queryable,
   ): Promise<number> {
@@ -267,6 +313,8 @@ export class LogisticsRepository {
               release_snapshot = COALESCE($7::jsonb, release_snapshot), released_by = COALESCE($8, released_by), released_at = COALESCE($9, released_at),
               carrier_mode = COALESCE($10, carrier_mode), carrier_name = COALESCE($11, carrier_name), tracking_reference = COALESCE($12, tracking_reference),
               picked_up_at = COALESCE($13, picked_up_at), carrier_delivered_at = COALESCE($14, carrier_delivered_at),
+              destination_site_id = COALESCE($15, destination_site_id), packing_check = COALESCE($16::jsonb, packing_check),
+              acceptance_due_at = COALESCE($17, acceptance_due_at),
               aggregate_version = aggregate_version + 1, updated_at = now()
         WHERE id = $1 RETURNING aggregate_version`,
       [
@@ -284,6 +332,9 @@ export class LogisticsRepository {
         fields.trackingReference ?? null,
         fields.pickedUpAt ?? null,
         fields.carrierDeliveredAt ?? null,
+        fields.destinationSiteId ?? null,
+        fields.packingCheck ? JSON.stringify(fields.packingCheck) : null,
+        fields.acceptanceDueAt ?? null,
       ],
     );
     return res.rows[0]!.aggregate_version;
@@ -318,8 +369,10 @@ export class LogisticsRepository {
 
   async items(shipmentId: string, tx?: Queryable): Promise<ItemRow[]> {
     const res = await this.q(tx).query<ItemRow>(
-      `SELECT i.id, i.package_id AS "packageId", p.package_no AS "packageNo", i.lot_code AS "lotCode", i.serials, i.quantity::text AS quantity, i.unit, i.description
+      `SELECT i.id, i.package_id AS "packageId", p.package_no AS "packageNo", i.lot_code AS "lotCode", i.serials, i.quantity::text AS quantity, i.unit, i.description,
+              i.stock_lot_id AS "stockLotId", COALESCE(t.lot_code, '') AS "sourceLotCode"
          FROM logistics.shipment_item i JOIN logistics.shipment_package p ON p.id = i.package_id
+         LEFT JOIN logistics.stock_lot t ON t.id = i.stock_lot_id
         WHERE i.shipment_id = $1 ORDER BY p.package_no, i.lot_code`,
       [shipmentId],
     );
@@ -546,5 +599,133 @@ export class LogisticsRepository {
       [shipmentId],
     );
     return res.rows;
+  }
+
+  // ----------------------------------------------------------------- leg 2 (IN-17)
+
+  /** A stock lot with what leg 2 needs: whose it is, where it came from, and the work package it was made on. */
+  async lotDetail(id: string, tx?: Queryable): Promise<{ id: string; lotCode: string; unit: string; serials: string[]; ownership: 'jobwork' | 'customer_material'; salesOrderId: string; workPackageId: string | null; workPackageNumber: string; sourceShipmentId: string; sourceShipmentNumber: string } | null> {
+    const res = await this.q(tx).query<{ id: string; lotCode: string; unit: string; serials: string[]; ownership: 'jobwork' | 'customer_material'; salesOrderId: string; workPackageId: string | null; workPackageNumber: string; sourceShipmentId: string; sourceShipmentNumber: string }>(
+      `SELECT t.id, t.lot_code AS "lotCode", t.unit, t.serials, t.ownership, t.sales_order_id AS "salesOrderId", t.work_package_id AS "workPackageId",
+              COALESCE(w.number, '') AS "workPackageNumber", t.source_shipment_id AS "sourceShipmentId", s.number AS "sourceShipmentNumber"
+         FROM logistics.stock_lot t JOIN logistics.shipment s ON s.id = t.source_shipment_id LEFT JOIN orders.work_package w ON w.id = t.work_package_id
+        WHERE t.id = $1`,
+      [id],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  async openDiscrepancyCount(shipmentId: string, tx?: Queryable): Promise<number> {
+    const res = await this.q(tx).query<{ n: number }>(`SELECT count(*)::int AS n FROM logistics.receiving_discrepancy WHERE shipment_id = $1 AND status = 'open'`, [shipmentId]);
+    return res.rows[0]!.n;
+  }
+
+  /** What the order's made parts hold at `OUT-DISPATCHED`, net of anything brought back. */
+  async dispatchedFromOrder(salesOrderId: string, tx?: Queryable): Promise<string> {
+    const res = await this.q(tx).query<{ quantity: string }>(
+      `SELECT COALESCE(SUM(b.quantity), 0)::text AS quantity FROM logistics.stock_balance b JOIN logistics.stock_lot t ON t.id = b.lot_id
+         JOIN logistics.custody_location c ON c.id = b.location_id WHERE t.sales_order_id = $1 AND t.ownership = 'jobwork' AND c.code = 'OUT-DISPATCHED'`,
+      [salesOrderId],
+    );
+    return res.rows[0]!.quantity;
+  }
+
+  /** What one released lot of a work package holds at `OUT-DISPATCHED`, across every receipt of it. */
+  async dispatchedOfLot(workPackageId: string, lotCode: string, tx?: Queryable): Promise<string> {
+    const res = await this.q(tx).query<{ quantity: string }>(
+      `SELECT COALESCE(SUM(b.quantity), 0)::text AS quantity FROM logistics.stock_balance b JOIN logistics.stock_lot t ON t.id = b.lot_id
+         JOIN logistics.custody_location c ON c.id = b.location_id WHERE t.work_package_id = $1 AND t.lot_code = $2 AND t.ownership = 'jobwork' AND c.code = 'OUT-DISPATCHED'`,
+      [workPackageId, lotCode],
+    );
+    return res.rows[0]!.quantity;
+  }
+
+  /** The order's made-part lots that hold stock, with what other prepared leg-2 shipments have picked. */
+  async dispatchableLots(salesOrderId: string, tx?: Queryable): Promise<Array<{ id: string; lotCode: string; unit: string; serials: string[]; workPackageId: string | null; workPackageNumber: string; sourceShipmentId: string; sourceShipmentNumber: string; inStock: string; onPrepared: string }>> {
+    const res = await this.q(tx).query<{ id: string; lotCode: string; unit: string; serials: string[]; workPackageId: string | null; workPackageNumber: string; sourceShipmentId: string; sourceShipmentNumber: string; inStock: string; onPrepared: string }>(
+      `SELECT t.id, t.lot_code AS "lotCode", t.unit, t.serials, t.work_package_id AS "workPackageId", COALESCE(w.number, '') AS "workPackageNumber",
+              t.source_shipment_id AS "sourceShipmentId", src.number AS "sourceShipmentNumber",
+              (SELECT COALESCE(SUM(b.quantity), 0) FROM logistics.stock_balance b JOIN logistics.custody_location c ON c.id = b.location_id WHERE b.lot_id = t.id AND c.code = 'JW-STOCK')::text AS "inStock",
+              (SELECT COALESCE(SUM(i.quantity), 0) FROM logistics.shipment_item i JOIN logistics.shipment x ON x.id = i.shipment_id
+                WHERE i.stock_lot_id = t.id AND x.leg = 'jobwork_to_customer' AND x.status IN ('draft', 'planned', 'ready_for_release'))::text AS "onPrepared"
+         FROM logistics.stock_lot t JOIN logistics.shipment src ON src.id = t.source_shipment_id LEFT JOIN orders.work_package w ON w.id = t.work_package_id
+        WHERE t.sales_order_id = $1 AND t.ownership = 'jobwork'
+        ORDER BY t.created_at, t.lot_code`,
+      [salesOrderId],
+    );
+    return res.rows;
+  }
+
+  /** The customer's delivery terms, as the enquiry recorded them (doc 14 wizard step 6). */
+  async deliveryTerms(salesOrderId: string, tx?: Queryable): Promise<{ partialDelivery: 'allowed' | 'not_allowed'; packagingNote: string }> {
+    const res = await this.q(tx).query<{ partialDelivery: 'allowed' | 'not_allowed'; packagingNote: string }>(
+      `SELECT e.partial_delivery AS "partialDelivery", e.packaging_note AS "packagingNote" FROM orders.sales_order so JOIN sourcing.enquiry e ON e.id = so.enquiry_id WHERE so.id = $1`,
+      [salesOrderId],
+    );
+    return res.rows[0] ?? { partialDelivery: 'not_allowed', packagingNote: '' };
+  }
+
+  /** Change requests on the order still being decided or implemented (doc 06 §9). */
+  async openChanges(salesOrderId: string, tx?: Queryable): Promise<Array<{ number: string; status: string }>> {
+    const res = await this.q(tx).query<{ number: string; status: string }>(
+      `SELECT number, status FROM change.change_request WHERE sales_order_id = $1 AND status NOT IN ('rejected', 'withdrawn', 'verified', 'closed') ORDER BY number`,
+      [salesOrderId],
+    );
+    return res.rows;
+  }
+
+  async insertAddressConfirmation(input: { shipmentId: string; siteId: string; snapshotHash: string; party: 'customer' | 'jobwork'; by: string; note: string }, tx: Queryable): Promise<void> {
+    await tx.query(
+      `INSERT INTO logistics.address_confirmation (shipment_id, site_id, snapshot_hash, party, confirmed_by, note) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [input.shipmentId, input.siteId, input.snapshotHash, input.party, input.by, input.note],
+    );
+  }
+
+  async latestAddressConfirmation(shipmentId: string, tx?: Queryable): Promise<{ siteId: string; snapshotHash: string; party: 'customer' | 'jobwork'; note: string; confirmedAt: Date } | null> {
+    const res = await this.q(tx).query<{ siteId: string; snapshotHash: string; party: 'customer' | 'jobwork'; note: string; confirmedAt: Date }>(
+      `SELECT site_id AS "siteId", snapshot_hash AS "snapshotHash", party, note, confirmed_at AS "confirmedAt" FROM logistics.address_confirmation WHERE shipment_id = $1 ORDER BY confirmed_at DESC, id DESC LIMIT 1`,
+      [shipmentId],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  async insertOverride(input: { shipmentId: string; guardKey: string; reasons: string[]; reasonsHash: string; justification: string; approvalRequestId: string; by: string }, tx: Queryable): Promise<string> {
+    const res = await tx.query<{ id: string }>(
+      `INSERT INTO logistics.dispatch_override (shipment_id, guard_key, reasons, reasons_hash, justification, approval_request_id, requested_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [input.shipmentId, input.guardKey, JSON.stringify(input.reasons), input.reasonsHash, input.justification, input.approvalRequestId, input.by],
+    );
+    return res.rows[0]!.id;
+  }
+
+  async overrides(shipmentId: string, tx?: Queryable): Promise<Array<{ id: string; guardKey: string; reasons: string[]; reasonsHash: string; justification: string; status: DispatchOverrideStatus; approvalRequestId: string; requiredRoles: string[]; requestedAt: Date; decidedAt: Date | null }>> {
+    const res = await this.q(tx).query<{ id: string; guardKey: string; reasons: string[]; reasonsHash: string; justification: string; status: DispatchOverrideStatus; approvalRequestId: string; requiredRoles: string[]; requestedAt: Date; decidedAt: Date | null }>(
+      `SELECT o.id, o.guard_key AS "guardKey", o.reasons, o.reasons_hash AS "reasonsHash", o.justification, o.status, o.approval_request_id AS "approvalRequestId",
+              r.required_roles AS "requiredRoles", o.requested_at AS "requestedAt", o.decided_at AS "decidedAt"
+         FROM logistics.dispatch_override o JOIN commercial.approval_request r ON r.id = o.approval_request_id
+        WHERE o.shipment_id = $1 ORDER BY o.requested_at, o.id`,
+      [shipmentId],
+    );
+    return res.rows;
+  }
+
+  async findOverrideByApproval(approvalRequestId: string, tx: Queryable): Promise<{ id: string; shipmentId: string; guardKey: string; status: DispatchOverrideStatus } | null> {
+    const res = await tx.query<{ id: string; shipmentId: string; guardKey: string; status: DispatchOverrideStatus }>(
+      `SELECT id, shipment_id AS "shipmentId", guard_key AS "guardKey", status FROM logistics.dispatch_override WHERE approval_request_id = $1 FOR UPDATE`,
+      [approvalRequestId],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  async decideOverride(id: string, status: Exclude<DispatchOverrideStatus, 'requested'>, by: string, tx: Queryable): Promise<void> {
+    await tx.query(`UPDATE logistics.dispatch_override SET status = $2, decided_by = $3, decided_at = now() WHERE id = $1`, [id, status, by]);
+  }
+
+  /** The acceptance policy in force (FR-905): the window and the warranty statement shown with acceptance. */
+  async acceptancePolicy(tx?: Queryable): Promise<{ id: string; version: number; windowDays: number; deemedAcceptance: boolean; warrantyStatement: string }> {
+    const res = await this.q(tx).query<{ id: string; version: number; windowDays: number; deemedAcceptance: boolean; warrantyStatement: string }>(
+      `SELECT id, version, window_days AS "windowDays", deemed_acceptance AS "deemedAcceptance", warranty_statement AS "warrantyStatement"
+         FROM logistics.acceptance_policy_version WHERE effective_from <= now() ORDER BY version DESC LIMIT 1`,
+    );
+    return res.rows[0]!;
   }
 }

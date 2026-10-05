@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import type {
@@ -10,6 +11,7 @@ import type {
   ShipmentGuard,
   ShipmentStatus,
   ShipmentVersionRequest,
+  ShipmentDelivery,
   ShippableLot,
   SiteSnapshot,
 } from '@jobwork/contracts';
@@ -48,6 +50,18 @@ export const snapshot = (s: SiteSnapshot): SiteSnapshot => ({
   contactPhone: s.contactPhone,
 });
 
+/** What a confirmation of an address is bound to: the snapshot as it stood (IN-17). */
+export const siteHash = (s: SiteSnapshot): string => createHash('sha256').update(JSON.stringify(snapshot(s))).digest('hex');
+
+/** Guards saved before IN-17 carry neither override field. */
+const withDefaults = (g: ShipmentGuard): ShipmentGuard => ({ ...g, overridable: g.overridable ?? false, override: g.override ?? null });
+
+/** Leg 2 lives in `CustomerDispatchCommand`, which registers how its shipments are guarded and shown (IN-17). */
+export interface LegTwoHooks {
+  guards(s: ShipmentRow, tx?: PoolClient): Promise<ShipmentGuard[]>;
+  delivery(s: ShipmentRow): Promise<ShipmentDelivery>;
+}
+
 /**
  * Leg 1, supplier to JobWork (IN-16 F-16.2; doc 06 §11; doc 10 §§11–12; BR-LOG-01, BR-LOG-02).
  * The supplier packs released lots into packages and submits; JobWork logistics releases the
@@ -65,19 +79,25 @@ export class DispatchCommand {
     private readonly executor: CommandExecutor,
   ) {}
 
+  private legTwo: LegTwoHooks | null = null;
+
+  registerLegTwo(hooks: LegTwoHooks): void {
+    this.legTwo = hooks;
+  }
+
   // ----------------------------------------------------------------- helpers
 
   private audit(s: { id: string; number: string }, version: number, action: string, data: Record<string, unknown> = {}, reason?: string): AuditSpec {
     return { action, subjectType: 'shipment', subjectId: s.id, subjectVersion: version, ...(reason ? { reason } : {}), data: { number: s.number, ...data } };
   }
 
-  private event(s: { id: string; number: string; leg: string; salesOrderId: string; shipperOrganizationId: string }, version: number, type: string, data: Record<string, unknown> = {}): OutboxSpec {
+  private event(s: { id: string; number: string; leg: string; salesOrderId: string; shipperOrganizationId: string; consigneeOrganizationId?: string }, version: number, type: string, data: Record<string, unknown> = {}): OutboxSpec {
     return {
       eventType: type,
       aggregateType: 'shipment',
       aggregateId: s.id,
       aggregateVersion: version,
-      data: { shipmentId: s.id, number: s.number, leg: s.leg, salesOrderId: s.salesOrderId, shipperOrganizationId: s.shipperOrganizationId, ...data },
+      data: { shipmentId: s.id, number: s.number, leg: s.leg, salesOrderId: s.salesOrderId, shipperOrganizationId: s.shipperOrganizationId, consigneeOrganizationId: s.consigneeOrganizationId ?? null, ...data },
     };
   }
 
@@ -254,6 +274,7 @@ export class DispatchCommand {
         operation: 'logistics.release-shipment',
         handler: async (tx, _ctx, cmd: ShipmentVersionRequest) => {
           const s = await this.locked(shipmentId, cmd.expectedVersion, tx);
+          if (s.leg !== 'supplier_to_jobwork') throw new LogisticsRefused('SHIPMENT_LEG', 'This releases a supplier’s shipment', 'A customer dispatch is released with its own gate.');
           if (s.status !== 'ready_for_release') throw new LogisticsRefused('SHIPMENT_STATUS', 'Only a submitted shipment is released', `It is ${s.status.replace(/_/g, ' ')}.`);
           // Serialise releases on the work package so two cannot both take the last released pieces (BR-LOG-02).
           if (s.workPackageId) await this.repo.lockWorkPackage(s.workPackageId, tx);
@@ -292,6 +313,7 @@ export class DispatchCommand {
           if (actor.isInternal) this.requireLogistics(actor);
           else this.requireShipper(actor, s, SUPPLIER_DISPATCHERS);
           if (s.status !== 'released') throw new LogisticsRefused('SHIPMENT_STATUS', 'Only a released shipment is picked up', `It is ${s.status.replace(/_/g, ' ')}.`);
+          if (s.leg === 'jobwork_to_customer' && cmd.carrierMode === 'supplier_vehicle') throw new LogisticsRefused('CARRIER_MODE', 'A delivery to the customer travels by carrier, courier or JobWork’s vehicle', undefined, 422);
           if ((cmd.carrierMode === 'carrier' || cmd.carrierMode === 'courier') && (!cmd.carrierName || !cmd.trackingReference)) {
             throw new LogisticsRefused('CARRIER_INCOMPLETE', 'Name the carrier and its tracking or LR number', undefined, 422);
           }
@@ -299,8 +321,8 @@ export class DispatchCommand {
           const transit = await this.orderInTransit(s, tx);
           return {
             result: undefined,
-            audit: [this.audit(s, version, 'logistics.shipment_picked_up', { carrierMode: cmd.carrierMode, carrierName: cmd.carrierName, trackingReference: cmd.trackingReference }), ...transit],
-            outbox: [this.event(s, version, 'logistics.shipment_picked_up.v1')],
+            audit: [this.audit(s, version, 'logistics.shipment_picked_up', { carrierMode: cmd.carrierMode, carrierName: cmd.carrierName, trackingReference: cmd.trackingReference }), ...transit.audit],
+            outbox: [this.event(s, version, 'logistics.shipment_picked_up.v1', { orderNumber: transit.orderNumber })],
           };
         },
       },
@@ -311,12 +333,24 @@ export class DispatchCommand {
     return this.get(actor, shipmentId);
   }
 
-  /** Doc 06 §7: the order is in supplier-to-JobWork transit once everything was ready and goods move. */
-  private async orderInTransit(s: ShipmentRow, tx: PoolClient): Promise<AuditSpec[]> {
+  /**
+   * Doc 06 §7: the order is in supplier-to-JobWork transit once everything was ready and a supplier's
+   * goods move, and in customer transit once a delivery leaves JobWork (a partial delivery may leave
+   * while another work package is still on its way in).
+   */
+  private async orderInTransit(s: ShipmentRow, tx: PoolClient): Promise<{ audit: AuditSpec[]; orderNumber: string }> {
     const order = await this.orders.findSalesOrder(s.salesOrderId, tx);
-    if (!order || order.status !== 'ready_supplier_dispatch') return [];
-    await this.orders.setSalesOrderStatus({ orderId: order.id, status: 'in_supplier_to_jobwork_transit' }, tx);
-    return [{ action: 'orders.sales_order_in_transit', subjectType: 'sales_order', subjectId: order.id, data: { number: order.number, shipment: s.number } }];
+    if (!order) return { audit: [], orderNumber: '' };
+    const none = { audit: [], orderNumber: order.number };
+    if (s.leg === 'supplier_to_jobwork' && order.status === 'ready_supplier_dispatch') {
+      await this.orders.setSalesOrderStatus({ orderId: order.id, status: 'in_supplier_to_jobwork_transit' }, tx);
+      return { audit: [{ action: 'orders.sales_order_in_transit', subjectType: 'sales_order', subjectId: order.id, data: { number: order.number, shipment: s.number } }], orderNumber: order.number };
+    }
+    if (s.leg === 'jobwork_to_customer' && ['ready_supplier_dispatch', 'in_supplier_to_jobwork_transit', 'received_jobwork', 'ready_customer_dispatch'].includes(order.status)) {
+      await this.orders.setSalesOrderStatus({ orderId: order.id, status: 'in_customer_transit' }, tx);
+      return { audit: [{ action: 'orders.sales_order_in_customer_transit', subjectType: 'sales_order', subjectId: order.id, data: { number: order.number, shipment: s.number } }], orderNumber: order.number };
+    }
+    return none;
   }
 
   /** Apply one carrier event, idempotently; it moves the leg and never receives anything. */
@@ -325,16 +359,22 @@ export class DispatchCommand {
     if (!eventId) return { audit: [], outbox: [], duplicate: true };
     let version = s.aggregateVersion;
     const audit: AuditSpec[] = [];
+    const extra: Record<string, unknown> = {};
     if (e.normalizedStatus === 'picked_up' && s.status === 'released') {
       version = await this.repo.update(s.id, { status: 'picked_up', carrierMode: 'carrier', trackingReference: s.trackingReference ?? e.raw['reference']?.toString() ?? '', pickedUpAt: e.occurredAt }, tx);
-      audit.push(...(await this.orderInTransit(s, tx)));
+      const transit = await this.orderInTransit(s, tx);
+      audit.push(...transit.audit);
+      extra['orderNumber'] = transit.orderNumber;
     } else {
       const to = carrierTarget(s.status, e.normalizedStatus);
       if (to) version = await this.repo.update(s.id, { status: to as ShipmentStatus, ...(to === 'delivered_to_destination' ? { carrierDeliveredAt: e.occurredAt } : {}) }, tx);
       else version = await this.repo.update(s.id, {}, tx);
     }
     audit.unshift(this.audit(s, version, 'logistics.carrier_event_recorded', { provider, providerEventId: e.providerEventId, rawStatus: e.rawStatus, normalizedStatus: e.normalizedStatus }));
-    return { audit, outbox: [this.event(s, version, 'logistics.carrier_event_recorded.v1', { normalizedStatus: e.normalizedStatus })], duplicate: false };
+    const outbox = [this.event(s, version, 'logistics.carrier_event_recorded.v1', { normalizedStatus: e.normalizedStatus })];
+    // A carrier pickup is the pickup: the customer hears of it as of a recorded one.
+    if (extra['orderNumber'] !== undefined) outbox.push(this.event(s, version, 'logistics.shipment_picked_up.v1', extra));
+    return { audit, outbox, duplicate: false };
   }
 
   /** Logistics records what the carrier reported, when no carrier feed is connected (`T-05` open). */
@@ -432,10 +472,14 @@ export class DispatchCommand {
     const [packages, items, events, receiving, discrepancies] = [await this.repo.packages(s.id), await this.repo.items(s.id), await this.repo.carrierEvents(s.id), await this.repo.receiving(s.id), await this.repo.discrepancies(s.id)];
     const live = !PREPARING.includes(s.status);
     const guards = live
-      ? (((s.releaseSnapshot as { guards?: ShipmentGuard[] } | null)?.guards ?? []) as ShipmentGuard[])
-      : s.status === 'cancelled' || s.leg !== 'supplier_to_jobwork'
+      ? (((s.releaseSnapshot as { guards?: ShipmentGuard[] } | null)?.guards ?? []) as ShipmentGuard[]).map(withDefaults)
+      : s.status === 'cancelled'
         ? []
-        : await this.guards(s);
+        : s.leg === 'supplier_to_jobwork'
+          ? await this.guards(s)
+          : s.leg === 'jobwork_to_customer' && this.legTwo
+            ? await this.legTwo.guards(s)
+            : [];
     const origin = s.originSnapshot ?? (s.originSiteId ? await this.repo.site(s.originSiteId) : null);
     const destination = s.destinationSnapshot ?? (s.destinationSiteId ? await this.repo.site(s.destinationSiteId) : null);
     return {
@@ -458,7 +502,9 @@ export class DispatchCommand {
         widthMm: p.widthMm,
         heightMm: p.heightMm,
         weightG: p.weightG,
-        items: items.filter((i) => i.packageId === p.id).map((i) => ({ itemId: i.id, lotCode: i.lotCode, serials: i.serials, quantity: show(i.quantity), unit: i.unit, description: i.description })),
+        items: items
+          .filter((i) => i.packageId === p.id)
+          .map((i) => ({ itemId: i.id, lotCode: i.lotCode, serials: i.serials, quantity: show(i.quantity), unit: i.unit, description: i.description, stockLotId: i.stockLotId, sourceLotCode: actor.isInternal && s.leg === 'jobwork_to_customer' ? i.sourceLotCode : '' })),
       })),
       totalQuantity: items.reduce((t, i) => t.add(Rational.parse(i.quantity)), Rational.of(0)).toDisplay(4),
       guards,
@@ -501,6 +547,8 @@ export class DispatchCommand {
         resolvedAt: d.resolvedAt ? d.resolvedAt.toISOString() : null,
         createdAt: d.createdAt.toISOString(),
       })),
+      returnsShipmentId: s.returnsShipmentId,
+      delivery: s.leg === 'jobwork_to_customer' && actor.isInternal && this.legTwo ? await this.legTwo.delivery(s) : null,
       createdAt: s.createdAt.toISOString(),
       aggregateVersion: s.aggregateVersion,
     };

@@ -1,0 +1,44 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`customer logistics documents (F-17.2) > renders one label per package, to the customer from JobWork 1`] = `
+"<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Labels SH-2026-0002</title><style>body{font:0.875rem/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:rgb(21,26,45);margin:2rem;max-width:50rem}
+h1{font-size:1.25rem;margin:0 0 0.25rem}.muted{color:rgb(102,112,133)}table{width:100%;border-collapse:collapse;margin:1rem 0}
+th,td{padding:0.4rem 0.5rem;border-bottom:thin solid rgb(225,230,238);text-align:left;vertical-align:top}.n{text-align:right;font-variant-numeric:tabular-nums}
+.label{border:0.125rem solid rgb(21,26,45);border-radius:0.5rem;padding:1rem;margin:0 0 1.5rem;page-break-after:always}
+.to{font-size:1.125rem;font-weight:600}.box{border:thin solid rgb(225,230,238);border-radius:0.5rem;padding:0.75rem;margin:0.75rem 0}</style></head><body>
+<section class="label">
+<p class="muted">From: JobWork, Chennai</p>
+<p class="to">Kovai Pumps plant<br>SIDCO Industrial Estate, Mudalipalayam<br>Tiruppur, Tamil Nadu 641606</p>
+<p>Attn: R. Kumar · +91 98400 12345</p>
+<p><strong>SH-2026-0002</strong> · package 1 of 2 · 9.0 kg · order SO-2026-0001</p>
+<p>Carrier: to be assigned</p>
+<p class="muted">Contents: JW-6F1C2A90 × 60 Nos</p>
+</section>
+<section class="label">
+<p class="muted">From: JobWork, Chennai</p>
+<p class="to">Kovai Pumps plant<br>SIDCO Industrial Estate, Mudalipalayam<br>Tiruppur, Tamil Nadu 641606</p>
+<p>Attn: R. Kumar · +91 98400 12345</p>
+<p><strong>SH-2026-0002</strong> · package 2 of 2 · order SO-2026-0001</p>
+<p>Carrier: to be assigned</p>
+<p class="muted">Contents: JW-0B44D1E7 × 2 Nos</p>
+</section>
+</body></html>"
+`;
+
+exports[`customer logistics documents (F-17.2) > renders the delivery note with the documents, the lot markings and the warranty statement 1`] = `
+"<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Delivery note SH-2026-0002</title><style>body{font:0.875rem/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:rgb(21,26,45);margin:2rem;max-width:50rem}
+h1{font-size:1.25rem;margin:0 0 0.25rem}.muted{color:rgb(102,112,133)}table{width:100%;border-collapse:collapse;margin:1rem 0}
+th,td{padding:0.4rem 0.5rem;border-bottom:thin solid rgb(225,230,238);text-align:left;vertical-align:top}.n{text-align:right;font-variant-numeric:tabular-nums}
+.label{border:0.125rem solid rgb(21,26,45);border-radius:0.5rem;padding:1rem;margin:0 0 1.5rem;page-break-after:always}
+.to{font-size:1.125rem;font-weight:600}.box{border:thin solid rgb(225,230,238);border-radius:0.5rem;padding:0.75rem;margin:0.75rem 0}</style></head><body>
+<h1>JobWork — Delivery note SH-2026-0002</h1>
+<p class="muted">Order SO-2026-0001 · 2 packages · 62 in all · Tax invoice INV-2026-0002 · E-way bill 1811 0000 0042</p>
+<p>Deliver to:<br>Kovai Pumps plant<br>SIDCO Industrial Estate, Mudalipalayam<br>Tiruppur, Tamil Nadu 641606</p>
+<table><thead><tr><th>Package</th><th>Item</th><th>Lot</th><th>Serials</th><th class="n">Quantity</th></tr></thead>
+<tbody><tr><td>1</td><td>Pump bracket</td><td>JW-6F1C2A90</td><td></td><td class="n">60 Nos</td></tr><tr><td>2</td><td>Pump bracket &lt;spare&gt;</td><td>JW-0B44D1E7</td><td>S-001, S-002</td><td class="n">2 Nos</td></tr></tbody></table>
+<div class="box">Check this delivery against the note. Report a shortage, damage or defect in the JobWork portal, with photos, within the period shown there. Accepting does not waive JobWork’s warranty.</div>
+<p class="muted">Dispatched by JobWork, Chennai. Quote SH-2026-0002 in anything about this delivery.</p>
+</body></html>"
+`;

@@ -553,11 +553,15 @@ export class Pilot {
 
   /** The customer pays the advance through the dev gateway: the order is commercially released. */
   async payAdvance(deal: SourcedDeal): Promise<void> {
-    const invoiceId = ((deal.order['invoices'] as Body[])[0]!['invoiceId']) as string;
+    await this.payInvoice(((deal.order['invoices'] as Body[])[0]!['invoiceId']) as string);
+  }
+
+  /** The customer pays one invoice in full through the gateway, confirmed by its signed callback. */
+  async payInvoice(invoiceId: string): Promise<void> {
     const intent = ok(await this.as.approver.post(`/api/v1/invoices/${invoiceId}/pay`), 201, 'start payment');
     const row = await this.one<{ provider_intent_id: string; amount_minor: string }>(`SELECT provider_intent_id, amount_minor FROM finance.payment_intent WHERE id = $1`, [intent['paymentIntentId']]);
     const paid = await this.paymentCallback({ type: 'payment.captured', intentId: row.provider_intent_id, transactionId: `txn_${randomUUID()}`, amountMinor: Number(row.amount_minor) });
-    if (paid.body['outcome'] !== 'processed') throw new Error(`advance not processed: ${JSON.stringify(paid.body)}`);
+    if (paid.body['outcome'] !== 'processed') throw new Error(`payment not processed: ${JSON.stringify(paid.body)}`);
   }
 
   async productionView(orderId: string): Promise<Body> {
@@ -687,6 +691,44 @@ export class Pilot {
     s = ok(await this.as.supplierA.post(`/api/v1/supplier/shipments/${s['shipmentId']}/submit`, { expectedVersion: s['aggregateVersion'] }), 201, 'submit shipment');
     s = ok(await this.as.logistics.post(`/api/v1/shipments/${s['shipmentId']}/release`, { expectedVersion: s['aggregateVersion'] }), 201, 'release shipment');
     return ok(await this.as.supplierA.post(`/api/v1/supplier/shipments/${s['shipmentId']}/pickup`, { expectedVersion: s['aggregateVersion'], carrierMode: 'carrier', carrierName: 'Safe Carriers', trackingReference }), 201, 'pickup');
+  }
+
+  /** IN-16: a leg-1 shipment received in full, every piece accepted into JobWork stock. */
+  async receivedInFull(shipment: Body): Promise<Body> {
+    const items = (shipment['packages'] as Body[]).flatMap((pk) => pk['items'] as Body[]);
+    return ok(
+      await this.as.logistics.post(`/api/v1/shipments/${shipment['shipmentId']}/receive`, {
+        expectedVersion: shipment['aggregateVersion'],
+        sealIntact: true,
+        packages: (shipment['packages'] as Body[]).map((pk) => ({ packageNo: pk['packageNo'], condition: 'ok' })),
+        lines: items.map((i) => ({ itemId: i['itemId'], countedQuantity: i['quantity'], acceptedQuantity: i['quantity'] })),
+      }),
+      201,
+      'receive in full',
+    );
+  }
+
+  /** IN-17: the customer's delivery address, with a receiving contact. */
+  async customerSite(label = 'Kovai Pumps plant', city = 'Tiruppur'): Promise<string> {
+    return (
+      await this.one<{ id: string }>(
+        `INSERT INTO iam.organization_site (organization_id, label, kind, address_line1, city, state, postal_code, contact_name, contact_phone) VALUES ($1, $2, 'delivery', 'SIDCO Industrial Estate, Mudalipalayam', $3, 'Tamil Nadu', '641606', 'R. Kumar', '+91 98400 12345') RETURNING id`,
+        [this.orgs.customer, label, city],
+      )
+    ).id;
+  }
+
+  /**
+   * IN-17: a deal made, quality released lot by lot, shipped by supplier A and received in full at
+   * JobWork: the order is `received_jobwork` and its stock lots are ready for leg 2.
+   */
+  async atJobWork(lots: Array<{ lot: string; quantity: string }> = [{ lot: 'LOT-A', quantity: '60' }, { lot: 'LOT-B', quantity: '40' }]): Promise<{ deal: SourcedDeal; workPackageId: string; inbound: Body }> {
+    const deal = await this.sourceToPurchaseOrder((await this.approvedEnquiry()).enquiryId);
+    const workPackageId = (await this.intoProduction(deal)).workPackageId;
+    await this.releasedLots(deal, workPackageId, lots);
+    const shipped = await this.shippedToJobWork(deal.purchaseOrderId, lots.map((l, n) => ({ packageNo: n + 1, weightG: 9000, items: [{ lotCode: l.lot, quantity: l.quantity }] })));
+    const inbound = await this.receivedInFull(shipped);
+    return { deal, workPackageId, inbound };
   }
 
   /**

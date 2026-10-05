@@ -205,6 +205,26 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
           },
         ]
       : [],
+  // IN-17: the customer confirms where a delivery goes, and hears when it leaves JobWork.
+  'logistics.customer_dispatch_planned.v1': async (e) => [
+    {
+      templateKey: 'customer.delivery_address_confirmation',
+      audience: customer(str(e.data['customerOrganizationId'])),
+      variables: { orderNumber: str(e.data['orderNumber']), shipmentNumber: str(e.data['number']) },
+      link: `/orders/${str(e.data['salesOrderId'])}/deliveries/${e.aggregateId}`,
+    },
+  ],
+  'logistics.shipment_picked_up.v1': async (e) =>
+    e.data['leg'] === 'jobwork_to_customer'
+      ? [
+          {
+            templateKey: 'customer.delivery_dispatched',
+            audience: customer(str(e.data['consigneeOrganizationId'])),
+            variables: { orderNumber: str(e.data['orderNumber']), shipmentNumber: str(e.data['number']) },
+            link: `/orders/${str(e.data['salesOrderId'])}/deliveries/${e.aggregateId}`,
+          },
+        ]
+      : [],
   'quality.deviation_customer_decision_requested.v1': async (e) => [
     {
       templateKey: 'customer.deviation_decision_needed',
@@ -268,6 +288,13 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
     const roles = Array.isArray(e.data['requiredRoles']) ? (e.data['requiredRoles'] as string[]) : [];
     return reference && roles.length
       ? [{ templateKey: 'internal.approval_requested', audience: internal(roles), variables: { subjectLabel: `Cost sheet for ${reference}` }, link: '/approvals' }]
+      : [];
+  },
+  // Doc 03 §4: the owner of a hold decides a dispatch override; the link opens the shipment's gate.
+  'logistics.dispatch_override_requested.v1': async (e) => {
+    const roles = strings(e.data['requiredRoles']);
+    return roles.length
+      ? [{ templateKey: 'internal.approval_requested', audience: internal(roles), variables: { subjectLabel: `Dispatch override on ${str(e.data['number'])}` }, link: `/logistics/shipments/${e.aggregateId}` }]
       : [];
   },
   'commercial.quote_accepted.v1': async (e) => [

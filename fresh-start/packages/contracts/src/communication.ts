@@ -269,5 +269,8 @@ export const NOTIFIED_EVENT_TYPES = [
   'quality.deviation_customer_decision_requested.v1',
   'logistics.shipment_released.v1',
   'logistics.receiving_discrepancy_opened.v1',
+  'logistics.customer_dispatch_planned.v1',
+  'logistics.shipment_picked_up.v1',
+  'logistics.dispatch_override_requested.v1',
 ] as const;
 export type NotifiedEventType = (typeof NOTIFIED_EVENT_TYPES)[number];

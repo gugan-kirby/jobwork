@@ -18,6 +18,8 @@ export const shipmentStatusSchema = z.enum([
   'accepted',
   'discrepancy_hold',
   'cancelled',
+  /** Leg 2 only: refused at the door; a return leg brings it back (IN-17). */
+  'refused',
 ]);
 export const carrierModeSchema = z.enum(['carrier', 'supplier_vehicle', 'courier', 'jobwork_vehicle']);
 export const carrierStatusSchema = z.enum(['picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'exception']);
@@ -225,7 +227,21 @@ export const materialLotSchema = z.object({
   issued: z.string(),
 });
 
-export const shipmentGuardSchema = z.object({ key: z.string(), label: z.string(), pass: z.boolean(), reasons: z.array(z.string()) });
+export const dispatchOverrideStatusSchema = z.enum(['requested', 'approved', 'rejected', 'returned']);
+
+export const shipmentGuardSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  pass: z.boolean(),
+  reasons: z.array(z.string()),
+  /** Leg 2: whether the guard's owner may approve an override (doc 03 §4). */
+  overridable: z.boolean().default(false),
+  /** Leg 2: the latest override asked for this guard; an approved one covers exactly the reasons it names. */
+  override: z
+    .object({ overrideId: z.uuid(), status: dispatchOverrideStatusSchema, approvalRequestId: z.uuid(), covers: z.boolean() })
+    .nullable()
+    .default(null),
+});
 
 export const siteSnapshotSchema = z.object({
   label: z.string(),
@@ -237,6 +253,158 @@ export const siteSnapshotSchema = z.object({
   countryCode: z.string(),
   contactName: z.string(),
   contactPhone: z.string(),
+});
+
+// ----------------------------------------------------------------- leg 2: JobWork to the customer (IN-17; doc 10 §12; BR-LOG-03)
+
+/** Doc 10 §12 "neutral/approved packaging and no unintended supplier identity", as the packer confirms it. */
+export const packingCheckSchema = z.object({
+  /** Plain cartons or JobWork's own: nothing printed by the workshop. */
+  neutralCartons: z.boolean().default(false),
+  /** Workshop tags, stickers and paperwork taken out. */
+  supplierMarksRemoved: z.boolean().default(false),
+  jobworkLabelsApplied: z.boolean().default(false),
+  /** The packaging the customer asked for in the enquiry. */
+  packagingNoteFollowed: z.boolean().default(false),
+});
+
+const packingCheckDefault = { neutralCartons: false, supplierMarksRemoved: false, jobworkLabelsApplied: false, packagingNoteFollowed: false };
+
+/** A leg-2 package: pieces picked from JobWork stock lots, which carry JobWork's own marking. */
+export const dispatchPackageInputSchema = z.object({
+  packageNo: z.number().int().min(1).max(999),
+  lengthMm: z.number().int().positive().max(100_000).nullable().default(null),
+  widthMm: z.number().int().positive().max(100_000).nullable().default(null),
+  heightMm: z.number().int().positive().max(100_000).nullable().default(null),
+  weightG: z.number().int().positive().max(100_000_000).nullable().default(null),
+  items: z
+    .array(
+      z.object({
+        stockLotId: z.uuid(),
+        quantity,
+        serials: z.array(z.string().trim().min(1).max(60)).max(500).default([]),
+        /** In the customer's words; the order's own line when left empty. */
+        description: z.string().trim().max(200).default(''),
+      }),
+    )
+    .min(1)
+    .max(50),
+});
+
+export const planCustomerDispatchRequestSchema = z.object({
+  salesOrderId: z.uuid(),
+  /** One of the customer's active addresses; the order's delivery address, else the customer's first, when omitted. */
+  destinationSiteId: z.uuid().optional(),
+  packages: z.array(dispatchPackageInputSchema).min(1).max(100),
+  documents: shipmentDocumentsSchema.default({ challanNumber: '', invoiceNumber: '', eWaybillNumber: '' }),
+  packingCheck: packingCheckSchema.default(packingCheckDefault),
+});
+export const replanCustomerDispatchRequestSchema = planCustomerDispatchRequestSchema.omit({ salesOrderId: true }).extend(versioned);
+/** The customer confirms the destination and receiving contact as they stand. */
+export const confirmDeliveryAddressRequestSchema = z.object(versioned);
+/** JobWork records a confirmation the customer gave by phone or mail. */
+export const recordAddressConfirmationRequestSchema = z.object({ ...versioned, note: z.string().trim().min(3).max(500) });
+export const overridableGuardSchema = z.enum(['quality', 'payment', 'commitment', 'holds']);
+export const requestDispatchOverrideRequestSchema = z.object({ guardKey: overridableGuardSchema, justification: z.string().trim().min(10).max(1000) });
+
+export const dispatchOverrideSchema = z.object({
+  overrideId: z.uuid(),
+  guardKey: overridableGuardSchema,
+  reasons: z.array(z.string()),
+  justification: z.string(),
+  status: dispatchOverrideStatusSchema,
+  approvalRequestId: z.uuid(),
+  requiredRoles: z.array(z.string()),
+  requestedAt: z.string(),
+  decidedAt: z.string().nullable(),
+});
+
+export const addressConfirmationSchema = z.object({
+  party: z.enum(['customer', 'jobwork']),
+  confirmedAt: z.string(),
+  note: z.string(),
+  /** False once the site was edited after the confirmation, or another site was chosen. */
+  current: z.boolean(),
+});
+
+/** Leg 2's dispatch facts on JobWork's shipment view. */
+export const shipmentDeliverySchema = z.object({
+  orderNumber: z.string(),
+  customerDisplayName: z.string(),
+  packagingNote: z.string(),
+  partialDelivery: z.enum(['allowed', 'not_allowed']),
+  packingCheck: packingCheckSchema,
+  addressConfirmation: addressConfirmationSchema.nullable(),
+  overrides: z.array(dispatchOverrideSchema),
+});
+
+/** A stock lot of an order that leg 2 may pick from, with what is free of other prepared dispatches (JobWork only). */
+export const dispatchableLotSchema = z.object({
+  stockLotId: z.uuid(),
+  /** JobWork's marking, as the customer will see it. */
+  marking: z.string(),
+  /** The lot as quality released it. */
+  lotCode: z.string(),
+  workPackageNumber: z.string(),
+  sourceShipmentNumber: z.string(),
+  unit: z.string(),
+  serials: z.array(z.string()),
+  inStock: z.string(),
+  onPreparedDispatches: z.string(),
+  available: z.string(),
+  /** The receipt it came on still has an open discrepancy. */
+  receiptOpen: z.boolean(),
+  released: z.boolean(),
+  heldBy: z.array(z.string()),
+});
+
+/** What the leg-2 planner needs for one order (JobWork only). */
+export const dispatchContextSchema = z.object({
+  salesOrderId: z.uuid(),
+  orderNumber: z.string(),
+  customerDisplayName: z.string(),
+  deliverySiteId: z.uuid().nullable(),
+  sites: z.array(siteSnapshotSchema.extend({ siteId: z.uuid() })),
+  /** The order's issued invoices: the tax invoice travels with the goods. */
+  invoices: z.array(z.object({ number: z.string(), kind: z.string(), status: z.string() })),
+  partialDelivery: z.enum(['allowed', 'not_allowed']),
+  packagingNote: z.string(),
+  ordered: z.string(),
+  /** Already delivered or on the way, net of anything brought back. */
+  dispatched: z.string(),
+  lots: z.array(dispatchableLotSchema),
+});
+
+export const customerDeliveryStatusSchema = z.enum(['preparing', 'ready_to_leave', 'on_the_way', 'carrier_reports_delivered', 'awaiting_your_confirmation', 'issue_reported', 'accepted', 'refused']);
+
+/**
+ * A delivery as the customer sees it (doc 06 §13), built by construction from allowlisted fields:
+ * JobWork's lot markings, the customer's own address, JobWork's carrier and documents. Nothing of
+ * the supplier, its purchase order, its lot codes or the workshop's address.
+ */
+export const customerDeliverySchema = z.object({
+  shipmentId: z.uuid(),
+  number: z.string(),
+  orderId: z.uuid(),
+  orderNumber: z.string(),
+  status: customerDeliveryStatusSchema,
+  statusLabel: z.string(),
+  destination: siteSnapshotSchema.nullable(),
+  addressConfirmation: z.object({ needed: z.boolean(), confirmedAt: z.string().nullable(), byJobWork: z.boolean() }),
+  carrier: z.object({ name: z.string(), trackingReference: z.string() }),
+  dispatchedAt: z.string().nullable(),
+  packages: z.array(
+    z.object({
+      packageNo: z.number().int(),
+      weightG: z.number().nullable(),
+      items: z.array(z.object({ lotMarking: z.string(), serials: z.array(z.string()), quantity: z.string(), unit: z.string(), description: z.string() })),
+    }),
+  ),
+  totalQuantity: z.string(),
+  documents: z.object({ invoiceNumber: z.string(), eWaybillNumber: z.string() }),
+  tracking: z.array(z.object({ status: carrierStatusSchema, occurredAt: z.string() })),
+  createdAt: z.string(),
+  aggregateVersion: z.number().int().positive(),
 });
 
 export const shipmentSchema = z.object({
@@ -262,7 +430,21 @@ export const shipmentSchema = z.object({
       widthMm: z.number().nullable(),
       heightMm: z.number().nullable(),
       weightG: z.number().nullable(),
-      items: z.array(z.object({ itemId: z.uuid(), lotCode: z.string(), serials: z.array(z.string()), quantity: z.string(), unit: z.string(), description: z.string() })),
+      items: z.array(
+        z.object({
+          itemId: z.uuid(),
+          /** On leg 2, JobWork's marking. */
+          lotCode: z.string(),
+          serials: z.array(z.string()),
+          quantity: z.string(),
+          unit: z.string(),
+          description: z.string(),
+          /** The JobWork stock lot a leg-2 or issue item is picked from. */
+          stockLotId: z.uuid().nullable(),
+          /** Leg 2, JobWork only: the lot as quality released it, behind JobWork's marking. */
+          sourceLotCode: z.string(),
+        }),
+      ),
     }),
   ),
   totalQuantity: z.string(),
@@ -274,6 +456,10 @@ export const shipmentSchema = z.object({
   carrierDeliveredAt: z.string().nullable(),
   receiving: receivingSchema.nullable(),
   discrepancies: z.array(receivingDiscrepancySchema),
+  /** A return leg names the outbound shipment it brings back. */
+  returnsShipmentId: z.uuid().nullable(),
+  /** Leg 2 only. */
+  delivery: shipmentDeliverySchema.nullable(),
   createdAt: z.string(),
   aggregateVersion: z.number().int().positive(),
 });
@@ -307,3 +493,19 @@ export type RegisterCustomerMaterialRequest = z.infer<typeof registerCustomerMat
 export type IssueMaterialRequest = z.infer<typeof issueMaterialRequestSchema>;
 export type AcknowledgeMaterialRequest = z.infer<typeof acknowledgeMaterialRequestSchema>;
 export type MaterialLot = z.infer<typeof materialLotSchema>;
+export type PackingCheck = z.infer<typeof packingCheckSchema>;
+export type DispatchPackageInput = z.infer<typeof dispatchPackageInputSchema>;
+export type PlanCustomerDispatchRequest = z.infer<typeof planCustomerDispatchRequestSchema>;
+export type ReplanCustomerDispatchRequest = z.infer<typeof replanCustomerDispatchRequestSchema>;
+export type ConfirmDeliveryAddressRequest = z.infer<typeof confirmDeliveryAddressRequestSchema>;
+export type RecordAddressConfirmationRequest = z.infer<typeof recordAddressConfirmationRequestSchema>;
+export type OverridableGuard = z.infer<typeof overridableGuardSchema>;
+export type RequestDispatchOverrideRequest = z.infer<typeof requestDispatchOverrideRequestSchema>;
+export type DispatchOverride = z.infer<typeof dispatchOverrideSchema>;
+export type DispatchOverrideStatus = z.infer<typeof dispatchOverrideStatusSchema>;
+export type AddressConfirmation = z.infer<typeof addressConfirmationSchema>;
+export type ShipmentDelivery = z.infer<typeof shipmentDeliverySchema>;
+export type DispatchableLot = z.infer<typeof dispatchableLotSchema>;
+export type DispatchContext = z.infer<typeof dispatchContextSchema>;
+export type CustomerDeliveryStatus = z.infer<typeof customerDeliveryStatusSchema>;
+export type CustomerDelivery = z.infer<typeof customerDeliverySchema>;

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CommercialModule } from '../commercial';
 import { IamModule } from '../iam';
 import { AcceptQuoteCommand } from './application/accept-quote.command';
+import { DispatchFinance } from './application/dispatch-finance';
 import { MoneyFlow } from './application/money-flow';
 import { OrderCommand } from './application/order.command';
 import { OrdersView } from './application/orders-view';
@@ -51,6 +52,7 @@ import {
     OrdersRepository,
     FinanceRepository,
     MoneyFlow,
+    DispatchFinance,
     OrdersView,
     AcceptQuoteCommand,
     OrderCommand,
@@ -61,6 +63,6 @@ import {
     // `T-03`: the provider is chosen by configuration; `dev` is the only adapter until the decision lands.
     { provide: PaymentGateway, useExisting: DevGateway },
   ],
-  exports: [OrdersRepository, FinanceRepository, ProductionRepository],
+  exports: [OrdersRepository, FinanceRepository, ProductionRepository, DispatchFinance],
 })
 export class OrdersModule {}
