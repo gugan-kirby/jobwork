@@ -38,6 +38,14 @@ describe('MeasurementGrid', () => {
     expect(within(raRow).getAllByText('fail')).toHaveLength(1);
   });
 
+  it('keeps a deviated result failed, marked special rather than passed (DS-04)', () => {
+    const covered = results.map((r) => (r.resultId === 'r2' ? { ...r, calibrationStatus: 'valid' as const, coveredByDeviation: { number: 'DV-2026-0001', active: true } } : r));
+    render(<MeasurementGrid caption="Final results" characteristics={[bore]} sampleNos={[1, 2]} results={covered} />);
+    const row = screen.getByRole('row', { name: /Bore diameter/ });
+    expect(within(row).getByText('fail')).toBeInTheDocument();
+    expect(within(row).getByText('accepted under DV-2026-0001')).toBeInTheDocument();
+  });
+
   it('has no accessibility violations', async () => {
     const { container } = render(<MeasurementGrid caption="FAI results" characteristics={[ra, bore]} sampleNos={[1, 2]} results={results} />);
     const result = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
