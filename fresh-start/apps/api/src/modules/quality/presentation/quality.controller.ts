@@ -13,8 +13,12 @@ import {
   respondCorrectiveActionRequestSchema,
   reviewCorrectiveActionRequestSchema,
   verifyCorrectiveActionRequestSchema,
+  withdrawDeviationRequestSchema,
+  type CustomerDeviation,
+  type Deviation,
   correctResultRequestSchema,
   createQualityPlanRequestSchema,
+  customerDeviationDecisionSchema,
   decideInspectionRequestSchema,
   inspectionVersionRequestSchema,
   invalidateInspectionRequestSchema,
@@ -22,6 +26,7 @@ import {
   qualityPlanVersionRequestSchema,
   recordCalibrationRequestSchema,
   registerInstrumentRequestSchema,
+  requestDeviationRequestSchema,
   retireInstrumentRequestSchema,
   saveQualityPlanDraftRequestSchema,
   submitResultsRequestSchema,
@@ -35,6 +40,7 @@ import {
 import type { Actor } from '../../iam';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { DeviationCommand } from '../application/deviation.command';
 import { InspectionCommand } from '../application/inspection.command';
 import { InstrumentCommand } from '../application/instrument.command';
 import { NcrCommand } from '../application/ncr.command';
@@ -301,5 +307,52 @@ export class SupplierNcrController {
   @Post(':ncrId/corrective-action')
   respond(@CurrentActor() actor: Actor, @Param('ncrId') id: string, @Req() request: FastifyRequest): Promise<Ncr> {
     return this.ncrs.respondCorrectiveAction(actor, id, parseBody(respondCorrectiveActionRequestSchema, request.body), opts(request));
+  }
+}
+
+/** Deviations inside JobWork: requested on an NCR, decided through the approval rail. */
+@Controller()
+export class DeviationController {
+  constructor(private readonly deviations: DeviationCommand) {}
+
+  @Get('ncrs/:ncrId/deviations')
+  list(@CurrentActor() actor: Actor, @Param('ncrId') ncrId: string): Promise<Deviation[]> {
+    return this.deviations.forNcr(actor, ncrId);
+  }
+
+  @Post('ncrs/:ncrId/deviations')
+  request(@CurrentActor() actor: Actor, @Param('ncrId') ncrId: string, @Req() request: FastifyRequest): Promise<Deviation> {
+    return this.deviations.request(actor, ncrId, parseBody(requestDeviationRequestSchema, request.body), opts(request));
+  }
+
+  @Get('deviations/:deviationId')
+  get(@CurrentActor() actor: Actor, @Param('deviationId') id: string): Promise<Deviation> {
+    return this.deviations.get(actor, id);
+  }
+
+  @Post('deviations/:deviationId/withdraw')
+  withdraw(@CurrentActor() actor: Actor, @Param('deviationId') id: string, @Req() request: FastifyRequest): Promise<Deviation> {
+    return this.deviations.withdraw(actor, id, parseBody(withdrawDeviationRequestSchema, request.body), opts(request));
+  }
+}
+
+/** The customer's decision on a deviation that touches its parts (UC-06; doc 14 §4). */
+@Controller()
+export class CustomerDeviationController {
+  constructor(private readonly deviations: DeviationCommand) {}
+
+  @Get('orders/:orderId/deviations')
+  list(@CurrentActor() actor: Actor, @Param('orderId') orderId: string): Promise<CustomerDeviation[]> {
+    return this.deviations.customerList(actor, orderId);
+  }
+
+  @Get('customer/deviations/:deviationId')
+  get(@CurrentActor() actor: Actor, @Param('deviationId') id: string): Promise<CustomerDeviation> {
+    return this.deviations.customerGet(actor, id);
+  }
+
+  @Post('customer/deviations/:deviationId/decide')
+  decide(@CurrentActor() actor: Actor, @Param('deviationId') id: string, @Req() request: FastifyRequest): Promise<CustomerDeviation> {
+    return this.deviations.customerDecide(actor, id, parseBody(customerDeviationDecisionSchema, request.body), opts(request));
   }
 }

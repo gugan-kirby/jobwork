@@ -62,7 +62,13 @@ export class QualityPlanCommand {
   }
 
   private event(plan: { id: string; workPackageId: string }, version: number, type: string, data: Record<string, unknown> = {}): OutboxSpec {
-    return { eventType: type, aggregateType: 'quality_plan', aggregateId: plan.id, aggregateVersion: version, data: { planId: plan.id, workPackageId: plan.workPackageId, ...data } };
+    return {
+      eventType: type,
+      aggregateType: 'quality_plan',
+      aggregateId: plan.id,
+      aggregateVersion: version,
+      data: { planId: plan.id, workPackageId: plan.workPackageId, ...data },
+    };
   }
 
   private async locked(planId: string, expectedVersion: number, tx: PoolClient): Promise<PlanRow> {

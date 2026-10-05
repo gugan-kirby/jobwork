@@ -18,6 +18,7 @@ import { CommandExecutor } from '../../../platform/commands/execute';
 import { DomainError } from '../../../platform/http/domain-error';
 import { currentResults, InspectionNotFound, nonMandatoryFailures, passBlockers, QualityRefused, STAGE_LABEL } from '../domain/inspection';
 import { type CharacteristicRule, type ConversionTable, evaluate, MeasurementRefused } from '../domain/measurement';
+import { NcrRepository } from '../infrastructure/ncr.repository';
 import { type CharacteristicRow, type InspectionRow, QualityRepository } from '../infrastructure/quality.repository';
 import { calibrationStanding, SUPPLIER_INSPECTORS } from './instrument.command';
 import { NcrCommand } from './ncr.command';
@@ -54,6 +55,7 @@ export class InspectionCommand {
     private readonly repo: QualityRepository,
     private readonly executor: CommandExecutor,
     private readonly ncrs: NcrCommand,
+    private readonly ncrRepo: NcrRepository,
   ) {}
 
   // ----------------------------------------------------------------- helpers
@@ -63,7 +65,13 @@ export class InspectionCommand {
   }
 
   private event(i: InspectionRow | { id: string; number: string; workPackageId: string }, version: number, type: string, data: Record<string, unknown> = {}): OutboxSpec {
-    return { eventType: type, aggregateType: 'inspection', aggregateId: i.id, aggregateVersion: version, data: { inspectionId: i.id, number: i.number, workPackageId: i.workPackageId, ...data } };
+    return {
+      eventType: type,
+      aggregateType: 'inspection',
+      aggregateId: i.id,
+      aggregateVersion: version,
+      data: { inspectionId: i.id, number: i.number, workPackageId: i.workPackageId, ...data },
+    };
   }
 
   private async locked(inspectionId: string, expectedVersion: number, tx: PoolClient): Promise<InspectionRow> {
@@ -535,6 +543,7 @@ export class InspectionCommand {
     const results = await this.repo.results(row.id);
     const samples = await this.repo.samples(row.id);
     const attachments = await this.repo.attachments(row.id);
+    const coverage = await this.ncrRepo.deviationCoverage(row.id);
     const rollup = characteristics.map((c) => ({ id: c.id, seq: c.seq, name: c.name, mandatory: c.mandatory }));
     const inspector = actor.organizationId === row.inspectingOrganizationId && actor.roles.some((r) => (actor.isInternal ? QUALITY : SUPPLIER_INSPECTORS).includes(r));
     return {
@@ -571,6 +580,7 @@ export class InspectionCommand {
         supersedesResultId: r.supersedesResultId,
         correctionReason: r.correctionReason,
         recordedAt: r.recordedAt.toISOString(),
+        coveredByDeviation: ((c) => (c ? { number: c.number, expiresAt: c.expiresAt.toISOString(), active: c.expiresAt.getTime() > Date.now() } : null))(coverage.find((c) => c.resultId === r.id)),
       })),
       attachments,
       passBlockers: ['results_submitted', 'under_review'].includes(row.status) ? passBlockers(rollup, samples.map((s) => s.sampleNo), results) : [],
