@@ -167,6 +167,60 @@ What `receiving.api.spec.ts` covers:
 - a receipt cannot exceed what is in custody;
 - the supplier sees its discrepancy, but not JobWork's stock.
 
+**Deviations (2026-10-05, F-16.3):**
+
+- **One receipt per shipment.** `receiving_record` is unique per shipment, so a shipment is counted once. "Partial" means part of the order: further pieces arrive on another shipment.
+- **The count is complete and split.**
+  - Every shipped item gets one line, and every package one condition.
+  - Each line splits the counted pieces into accepted, quarantined and refused.
+  - Nothing beyond the shipped quantity goes to stock; extra pieces are quarantined or refused until the overage is resolved.
+  - A damaged line must set its damaged pieces aside, and may accept the sound ones.
+  - A line whose identity is in doubt accepts nothing.
+  - Photos must be JobWork's own clean files.
+- **Discrepancies are derived, not typed in.**
+
+  | Discrepancy | Raised when | Quantity |
+  |---|---|---|
+  | Shortage | counted < shipped | shipped − counted |
+  | Overage | counted > shipped | counted − shipped |
+  | Damage | a line is damaged | quarantined + refused |
+  | Identity | the marking or lot does not match | counted |
+  | Wrong item | not the ordered part | counted |
+  | Document mismatch | the box's challan or invoice differs | — |
+
+  Package condition and seal state are recorded as evidence and raise nothing by themselves.
+- **Ledger entry.** Each lot that entered custody becomes one `stock_lot` (keyed by shipment and lot code, carrying the order's released production baseline). It is entered by `receive` movements straight into `JW-STOCK` and `JW-QUARANTINE`; the receiving dock location is not used for leg 1. Refused pieces never enter the ledger.
+- **Resolution matrix.**
+
+  | Discrepancy | Allowed resolutions |
+  |---|---|
+  | Shortage | accept, replacement expected |
+  | Overage | overage accepted, return to supplier |
+  | Damage | scrapped, released to stock, return to supplier |
+  | Wrong item | return to supplier, scrapped |
+  | Identity | released to stock, return to supplier, scrapped |
+  | Document mismatch | document corrected |
+
+  - Quality decides scrap, release to stock and overage acceptance. Logistics decides the rest.
+  - A movement out of quarantine moves the lesser of the discrepancy quantity and what quarantine holds of the lot.
+  - Scrap, release to stock and overage acceptance need something in quarantine.
+  - A return with nothing in quarantine covers refused pieces and moves nothing; the return leg is IN-18's.
+- **Order received at JobWork.** The order becomes `received_jobwork` when every work package's accepted quantity (everything that ever entered `JW-STOCK`) reaches its ordered quantity and no other inbound shipment of the order is in `receiving_check` or `discrepancy_hold`. A released-but-short order stays in transit, and its shortfall shows as `outstanding`.
+- **Hand-off to IN-18: replacement capacity.** Quality release is capped at ordered less released (IN-15). Replacement pieces for an accepted shortage or a scrap therefore cannot be released until the cap counts what never arrived. Returns, replacements and that cap change are IN-18's.
+- **Pilot driver helpers.** `inspection`, `calibratedGauge`, `releasedLots` and `shippedToJobWork` replace the setup the dispatch spec carried; scenario 10 reuses them.
+
+**Verification (2026-10-05, F-16.3).** `receiving.api.spec.ts` (6) covers:
+
+- receipt by logistics only, with each refusal: an incomplete count, a split that does not add up, acceptance beyond shipped, an unsound acceptance, an unsplit damage, and a photo JobWork does not own;
+- a clean two-package receipt into stock, and a second receipt refused;
+- shortage and damage holding the shipment, while the PO and shipment quantities stay unchanged and `outstanding` shows 6;
+- the supplier notified of each discrepancy, seeing counts but no split and no stock; the other supplier and the customer refused;
+- the resolution roles and matrix, each resolution made once, and the scrap reaching `OUT-SCRAPPED`;
+- conservation per lot, with the refused piece absent and receiving lines immutable;
+- a second order reaching `received_jobwork` after a document correction and a quality release from quarantine.
+
+The audit inventory gains two operations and the worker acknowledges four events. Full verify green: api 441, database 96, ui 170, worker 39.
+
 ## F-16.4 UX
 
 | File | Action | Contents |
