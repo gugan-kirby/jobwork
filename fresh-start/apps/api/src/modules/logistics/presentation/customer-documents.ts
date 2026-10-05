@@ -87,3 +87,24 @@ export function renderDeliveryNote(d: CustomerDelivery, from: Consignor, warrant
 <p class="muted">Dispatched by ${escape(from.name)}, ${escape(from.city)}. Quote ${escape(d.number)} in anything about this delivery.</p>
 </body></html>`);
 }
+
+/** The proof of delivery as the customer keeps it: who took it, when, where, and the remarks on the handover. */
+export function renderProofOfDelivery(d: CustomerDelivery, from: Consignor): RenderedDocument {
+  const pod = d.pod;
+  const rows = d.packages
+    .flatMap((p) => p.items.map((i) => `<tr><td>${p.packageNo}</td><td>${escape(i.description)}</td><td>${escape(i.lotMarking)}</td><td class="n">${escape(i.quantity)} ${escape(i.unit === 'piece' ? 'Nos' : i.unit)}</td></tr>`))
+    .join('');
+  return done(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Proof of delivery ${escape(d.number)}</title><style>${STYLE}</style></head><body>
+<h1>${escape(from.name)} — Proof of delivery ${escape(d.number)}</h1>
+<p class="muted">Order ${escape(d.orderNumber)} · ${d.packages.length} package${d.packages.length === 1 ? '' : 's'} dispatched${d.carrier.name ? ` by ${escape(d.carrier.name)} · ${escape(d.carrier.trackingReference)}` : ''}</p>
+${
+  pod
+    ? `<p>Handed over to <strong>${escape(pod.receivedByName)}</strong> on ${escape(pod.receivedAt.slice(0, 16).replace('T', ' '))} UTC, ${pod.packagesReceived} package${pod.packagesReceived === 1 ? '' : 's'} received, at:<br>${address(pod.deliveredTo)}</p>
+<p>${pod.remarks === 'clean' ? 'Received without remarks.' : `Received with remarks: ${escape(pod.remarksNote)}`}</p>`
+    : '<p>Not yet delivered.</p>'
+}
+<table><thead><tr><th>Package</th><th>Item</th><th>Lot</th><th class="n">Quantity</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="box">A proof of delivery records the handover only. Accepting the delivery is a separate step in the JobWork portal${d.acceptanceDueAt ? `, open until ${escape(d.acceptanceDueAt.slice(0, 10))}` : ''}.</div>
+</body></html>`);
+}

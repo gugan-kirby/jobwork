@@ -234,6 +234,7 @@ export class CustomerDispatchCommand {
     const terms = await this.repo.deliveryTerms(order.id);
     const confirmation = await this.repo.latestAddressConfirmation(s.id);
     const site = s.destinationSiteId ? await this.repo.site(s.destinationSiteId) : null;
+    const [pod, acceptance] = [await this.repo.proofOfDelivery(s.id), await this.repo.acceptance(s.id)];
     return {
       orderNumber: order.number,
       customerDisplayName: order.customerDisplayName,
@@ -259,6 +260,31 @@ export class CustomerDispatchCommand {
         requestedAt: o.requestedAt.toISOString(),
         decidedAt: o.decidedAt ? o.decidedAt.toISOString() : null,
       })),
+      pod: pod
+        ? { receivedByName: pod.receivedByName, receivedAt: pod.receivedAt.toISOString(), deliveredTo: snapshot(pod.deliveredTo), packagesReceived: pod.packagesReceived, remarks: pod.remarks, remarksNote: pod.remarksNote, source: pod.source, documentCount: pod.documentVersionIds.length }
+        : null,
+      acceptance: acceptance ? { basis: acceptance.basis, acceptedAt: acceptance.acceptedAt.toISOString(), warrantyStatement: acceptance.warrantyStatement, note: acceptance.note } : null,
+      acceptanceDueAt: s.acceptanceDueAt ? s.acceptanceDueAt.toISOString() : null,
+      exceptions: (await this.repo.deliveryExceptions(s.id)).map((x) => ({
+        exceptionId: x.id,
+        number: x.number,
+        kind: x.kind,
+        raisedByParty: x.raisedByParty,
+        lotMarking: x.lotMarking,
+        quantity: show(q(x.quantity)),
+        description: x.description,
+        evidenceCount: x.evidence.length,
+        warrantyClaim: x.warrantyClaim,
+        requestedAddress: x.requestedSnapshot ? snapshot(x.requestedSnapshot) : null,
+        status: x.status,
+        resolution: x.resolution,
+        resolutionNote: x.resolutionNote ?? '',
+        caseReference: x.caseReference,
+        carrierChargeNote: x.carrierChargeNote,
+        createdAt: x.createdAt.toISOString(),
+        resolvedAt: x.resolvedAt ? x.resolvedAt.toISOString() : null,
+      })),
+      returnShipmentId: await this.repo.returnLeg(s.id),
     };
   }
 

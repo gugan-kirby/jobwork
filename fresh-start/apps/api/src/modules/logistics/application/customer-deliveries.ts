@@ -78,7 +78,10 @@ export class CustomerDeliveries {
     const live = s.destinationSnapshot ? null : s.destinationSiteId ? await this.repo.site(s.destinationSiteId) : null;
     const destination = s.destinationSnapshot ?? (live ? snapshot(live) : null);
     const confirmation = await this.repo.latestAddressConfirmation(s.id);
+    const [pod, acceptance, exceptions, policy] = [await this.repo.proofOfDelivery(s.id), await this.repo.acceptance(s.id), await this.repo.deliveryExceptions(s.id), await this.repo.acceptancePolicy()];
     const preparing = ['planned', 'ready_for_release'].includes(s.status);
+    const now = Date.now();
+    const inWindow = s.status === 'receiving_check' && (!s.acceptanceDueAt || now <= s.acceptanceDueAt.getTime());
     const current = Boolean(confirmation && live && confirmation.siteId === s.destinationSiteId && confirmation.snapshotHash === siteHash(live));
     const status = STATUS[s.status];
     return {
@@ -106,6 +109,39 @@ export class CustomerDeliveries {
       totalQuantity: items.reduce((t, i) => t.add(Rational.parse(i.quantity)), Rational.of(0)).toDisplay(4),
       documents: { invoiceNumber: s.documents.invoiceNumber ?? '', eWaybillNumber: s.documents.eWaybillNumber ?? '' },
       tracking: events.map((e) => ({ status: e.normalizedStatus as CustomerDelivery['tracking'][number]['status'], occurredAt: e.occurredAt.toISOString() })),
+      pod: pod
+        ? { receivedByName: pod.receivedByName, receivedAt: pod.receivedAt.toISOString(), deliveredTo: snapshot(pod.deliveredTo), packagesReceived: pod.packagesReceived, remarks: pod.remarks, remarksNote: pod.remarksNote }
+        : null,
+      acceptance: acceptance ? { basis: acceptance.basis, acceptedAt: acceptance.acceptedAt.toISOString(), warrantyStatement: acceptance.warrantyStatement, note: acceptance.note } : null,
+      acceptanceDueAt: s.acceptanceDueAt ? s.acceptanceDueAt.toISOString() : null,
+      // JobWork's resolution and case reference are the customer's to see; its notes and the carrier's charges are not.
+      exceptions: exceptions.map((x) => ({
+        exceptionId: x.id,
+        number: x.number,
+        kind: x.kind,
+        raisedByParty: x.raisedByParty,
+        lotMarking: x.lotMarking,
+        quantity: show(x.quantity),
+        description: x.raisedByParty === 'customer' ? x.description : '',
+        evidenceCount: x.evidence.length,
+        warrantyClaim: x.warrantyClaim,
+        requestedAddress: x.requestedSnapshot ? snapshot(x.requestedSnapshot) : null,
+        status: x.status,
+        resolution: x.resolution,
+        resolutionNote: '',
+        caseReference: x.caseReference,
+        createdAt: x.createdAt.toISOString(),
+        resolvedAt: x.resolvedAt ? x.resolvedAt.toISOString() : null,
+      })),
+      warrantyStatement: policy.warrantyStatement,
+      actions: {
+        confirmAddress: preparing && !current,
+        accept: s.status === 'receiving_check',
+        reportIssue: inWindow || s.status === 'discrepancy_hold',
+        reportNotReceived: s.status === 'delivered_to_destination',
+        reportDefect: s.status === 'accepted' || (s.status === 'receiving_check' && !inWindow),
+        requestAddressChange: ['released', 'picked_up', 'in_transit'].includes(s.status) && !exceptions.some((x) => x.kind === 'address_change' && x.status === 'open'),
+      },
       createdAt: s.createdAt.toISOString(),
       aggregateVersion: s.aggregateVersion,
     };

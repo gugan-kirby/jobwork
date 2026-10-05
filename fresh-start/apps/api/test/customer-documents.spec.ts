@@ -1,6 +1,6 @@
 import type { CustomerDelivery } from '@jobwork/contracts';
 import { describe, expect, it } from 'vitest';
-import { renderDeliveryNote, renderShippingLabels } from '../src/modules/logistics/presentation/customer-documents';
+import { renderDeliveryNote, renderProofOfDelivery, renderShippingLabels } from '../src/modules/logistics/presentation/customer-documents';
 
 /**
  * IN-17 F-17.2 (`R-08`): the customer's logistics documents are rendered from the customer's own
@@ -35,6 +35,12 @@ const delivery: CustomerDelivery = {
   totalQuantity: '62',
   documents: { invoiceNumber: 'INV-2026-0002', eWaybillNumber: '1811 0000 0042' },
   tracking: [],
+  pod: null,
+  acceptance: null,
+  acceptanceDueAt: null,
+  exceptions: [],
+  warrantyStatement: 'Accepting does not waive JobWork’s warranty.',
+  actions: { confirmAddress: false, accept: false, reportIssue: false, reportNotReceived: false, reportDefect: false, requestAddressChange: false },
   createdAt: '2026-10-05T08:00:00.000Z',
   aggregateVersion: 6,
 };
@@ -56,6 +62,22 @@ describe('customer logistics documents (F-17.2)', () => {
     expect(html).toContain('Tax invoice INV-2026-0002 · E-way bill 1811 0000 0042');
     expect(html).toContain('Pump bracket &lt;spare&gt;');
     expect(html).toContain(WARRANTY);
+    expect(html).toMatchSnapshot();
+  });
+
+  it('renders the proof of delivery as the handover only, naming where it was handed over (F-17.3)', () => {
+    const delivered: CustomerDelivery = {
+      ...delivery,
+      status: 'awaiting_your_confirmation',
+      carrier: { name: 'Safexpress', trackingReference: 'SX-55120' },
+      pod: { receivedByName: 'R. Kumar', receivedAt: '2026-10-07T06:30:00.000Z', deliveredTo: { ...delivery.destination!, label: 'Kovai Pumps Hosur unit', city: 'Hosur' }, packagesReceived: 2, remarks: 'with_remarks', remarksNote: 'Carton 1 corner crushed' },
+      acceptanceDueAt: '2026-10-14T18:29:59.999Z',
+    };
+    const { html } = renderProofOfDelivery(delivered, from);
+    expect(html).toContain('Handed over to <strong>R. Kumar</strong>');
+    expect(html).toContain('Kovai Pumps Hosur unit');
+    expect(html).toContain('Received with remarks: Carton 1 corner crushed');
+    expect(html).toContain('open until 2026-10-14');
     expect(html).toMatchSnapshot();
   });
 

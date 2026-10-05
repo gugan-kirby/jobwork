@@ -192,6 +192,46 @@ What `delivery.api.spec.ts` covers:
 - the sweep deems acceptance only past the window and never over an open exception;
 - order status `in_customer_transit → delivered → customer_accepted` from real facts; the supplier sees none of it.
 
+**Deviations (2026-10-05, F-17.3):**
+
+- **Routes.**
+  - JobWork: `POST /shipments/:id/pod`, `POST /shipments/:id/refusal`, `POST /delivery-exceptions/:id/resolve`, `POST /customer-dispatches/:id/address-change` (sales or logistics, for a request by phone or mail), and `GET /customer-dispatches/:id/pod`.
+  - Customer: `POST /deliveries/:id/accept`, `/issues` and `/address-change`; `POST /delivery-exceptions/:id/withdraw`; `GET /deliveries/:id/pod`.
+  - Worker: `POST /internal/deliveries/acceptance-sweep` (service-only), ticked every `DELIVERY_SWEEP_MS` (15 minutes).
+- **A POD while held.** "Not received" holds a carrier-delivered leg with no POD. The investigation records the POD while the leg is held, and `found_delivered` needs that POD.
+- **Holds.**
+  - Once nothing holds the leg, it returns to awaiting acceptance.
+  - A report the customer withdraws, one found delivered, or one JobWork declines with a note lifts the hold.
+  - A report handed to a case keeps it: IN-18's case decides. An order with such a delivery stays `delivered`, not `customer_accepted`.
+- **The window, exactly.**
+  - Inside it, any report holds the delivery.
+  - After it closes, and before the sweep runs, only a defect may be reported, as a warranty claim.
+  - After acceptance, a shortage, damage or wrong item is refused (`WINDOW_CLOSED`). A defect is a warranty claim and holds nothing.
+- **What the customer sees of an exception:** JobWork's resolution and case reference, but not its notes, the carrier's charges, or the wording of an exception JobWork raised.
+- **Readers.** `jobwork_support` joins the logistics readers: it triages what customers report and reads the shipment it resolves.
+- **POD remarks.** "With remarks" without a note is refused at the contract (400), not at the database.
+- **The return leg.**
+  - It is created already picked up, with the outbound's carrier and tracking reference, so the carrier's events land on it.
+  - Its receipt moves the same lots `OUT-DISPATCHED → JW-STOCK` or `JW-QUARANTINE` (type `return`) and closes the refusal as `returned_to_stock`.
+  - A discrepancy on a return leg finds its lot through the item's stock lot.
+- **Address changes.** Only logistics resolves one: it arranges the carrier. A redirect is refused once the POD is recorded.
+- **The sweep in tests.** The endpoint runs on the real clock, and the test also calls the command with a clock nine days ahead. Moving `acceptance_due_at` is refused by the trigger, so no row is rewritten to stage it.
+
+**Verification (2026-10-05, F-17.3).**
+
+`delivery.api.spec.ts` (8) runs four deliveries of one order (partial delivery allowed at enquiry) and covers:
+
+- the POD by logistics only, refused in the future, refused "with remarks" without a note, opening a window to the end of the seventh day in IST and accepting nothing; acceptance by the approver only, with the warranty statement;
+- a defect after acceptance recorded as a warranty claim while a shortage is refused;
+- "not received" holding a carrier-delivered leg (seen in `deliveries_awaiting_pod`, support and logistics notified), a POD recorded while held, and `found_delivered` returning it to awaiting acceptance;
+- damage reported with the customer's own photo (another party's file, a quantity beyond the delivery and an unknown marking refused), withdrawn; a shortage handed to case `CASE-2026-0001` keeping the hold;
+- refusal, the return leg in carrier custody with the same markings, its receipt bringing 40 back to `JW-STOCK` with no new lot, the refusal closed, and the stock dispatchable again;
+- an address change after dispatch: the shipment's snapshot unchanged (the trigger refuses a rewrite), redirected by logistics only, with the POD naming the Hosur unit;
+- the sweep: nothing on the real clock; nine days on, the past-window delivery is deemed accepted with no actor, the held one untouched, and the customer told; the order `delivered` but not `customer_accepted`;
+- the ledger at 100 dispatched, the POD document free of the supplier, and leg 2 refused to the supplier.
+
+`customer-documents.spec.ts` gains the POD snapshot. The audit inventory gains eight operations.
+
 ## F-17.4 Customer projection, timeline and documents
 
 | File | Action | Contents |

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
-import type { DiscrepancyKind, DiscrepancyResolution, DispatchOverrideStatus, PackageCondition, PackageInput, PackingCheck, ReceivingDecision, ShipmentLeg, ShipmentStatus, SiteSnapshot } from '@jobwork/contracts';
+import type { DeliveryExceptionKind, DeliveryExceptionResolution, DiscrepancyKind, DiscrepancyResolution, DispatchOverrideStatus, PackageCondition, PackageInput, PackingCheck, PodRemarks, ReceivingDecision, ShipmentLeg, ShipmentStatus, SiteSnapshot } from '@jobwork/contracts';
 import { DatabaseService } from '../../../platform/database/database.service';
 
 type Queryable = Pool | PoolClient;
@@ -110,6 +110,42 @@ export interface DiscrepancyRow {
   createdAt: Date;
 }
 
+export interface DeliveryExceptionRow {
+  id: string;
+  number: string;
+  shipmentId: string;
+  kind: DeliveryExceptionKind;
+  raisedByParty: 'customer' | 'jobwork' | 'carrier';
+  lotMarking: string;
+  quantity: string;
+  description: string;
+  evidence: string[];
+  warrantyClaim: boolean;
+  requestedSnapshot: SiteSnapshot | null;
+  status: 'open' | 'resolved';
+  resolution: DeliveryExceptionResolution | null;
+  resolutionNote: string | null;
+  caseReference: string;
+  carrierChargeNote: string;
+  createdAt: Date;
+  resolvedAt: Date | null;
+}
+
+export interface PodRow {
+  receivedByName: string;
+  receivedAt: Date;
+  deliveredTo: SiteSnapshot;
+  packagesReceived: number;
+  remarks: PodRemarks;
+  remarksNote: string;
+  documentVersionIds: string[];
+  source: 'carrier' | 'driver' | 'jobwork_staff';
+}
+
+const EXCEPTION_COLUMNS = `id, number, shipment_id AS "shipmentId", kind, raised_by_party AS "raisedByParty", lot_marking AS "lotMarking", quantity::text AS quantity, description,
+  evidence_document_version_ids AS evidence, warranty_claim AS "warrantyClaim", requested_snapshot AS "requestedSnapshot", status, resolution, resolution_note AS "resolutionNote",
+  case_reference AS "caseReference", carrier_charge_note AS "carrierChargeNote", created_at AS "createdAt", resolved_at AS "resolvedAt"`;
+
 export type LocationCode = 'JW-RECEIVING' | 'JW-QUARANTINE' | 'JW-STOCK' | 'OUT-DISPATCHED' | 'OUT-SCRAPPED' | 'OUT-RETURNED' | 'OUT-REWORK' | 'OUT-ISSUED';
 export type MovementType = 'receive' | 'quarantine' | 'release' | 'pick' | 'dispatch' | 'return' | 'scrap' | 'rework_out' | 'rework_in' | 'adjust' | 'issue';
 
@@ -140,7 +176,7 @@ export class LogisticsRepository {
     return tx ?? this.db.pool;
   }
 
-  async allocateNumber(prefix: 'SH' | 'RD', table: 'shipment' | 'receiving_discrepancy', now: Date, tx: Queryable): Promise<string> {
+  async allocateNumber(prefix: 'SH' | 'RD' | 'DX', table: 'shipment' | 'receiving_discrepancy' | 'delivery_exception', now: Date, tx: Queryable): Promise<string> {
     const year = now.getUTCFullYear();
     await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`logistics.${table}.number`]);
     const res = await tx.query<{ next: number }>(
@@ -500,8 +536,15 @@ export class LogisticsRepository {
     return res.rows[0]!.id;
   }
 
+  /** The lot a receipt created, or, on a return leg, the lot its item carries back. */
   async lotFor(shipmentId: string, lotCode: string, tx?: Queryable): Promise<{ id: string } | null> {
-    const res = await this.q(tx).query<{ id: string }>(`SELECT id FROM logistics.stock_lot WHERE source_shipment_id = $1 AND lot_code = $2`, [shipmentId, lotCode]);
+    const res = await this.q(tx).query<{ id: string }>(
+      `SELECT id FROM logistics.stock_lot WHERE source_shipment_id = $1 AND lot_code = $2
+       UNION ALL
+       SELECT stock_lot_id FROM logistics.shipment_item WHERE shipment_id = $1 AND lot_code = $2 AND stock_lot_id IS NOT NULL
+       LIMIT 1`,
+      [shipmentId, lotCode],
+    );
     return res.rows[0] ?? null;
   }
 
@@ -727,5 +770,113 @@ export class LogisticsRepository {
          FROM logistics.acceptance_policy_version WHERE effective_from <= now() ORDER BY version DESC LIMIT 1`,
     );
     return res.rows[0]!;
+  }
+
+  // ----------------------------------------------------------------- delivery (IN-17 F-17.3)
+
+  async insertProofOfDelivery(
+    input: { shipmentId: string; receivedByName: string; receivedAt: Date; deliveredTo: SiteSnapshot; packagesReceived: number; remarks: PodRemarks; remarksNote: string; documentVersionIds: string[]; source: PodRow['source']; by: string },
+    tx: Queryable,
+  ): Promise<void> {
+    await tx.query(
+      `INSERT INTO logistics.proof_of_delivery (shipment_id, received_by_name, received_at, delivered_to_snapshot, packages_received, remarks, remarks_note, document_version_ids, source, recorded_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [input.shipmentId, input.receivedByName, input.receivedAt, JSON.stringify(input.deliveredTo), input.packagesReceived, input.remarks, input.remarksNote, input.documentVersionIds, input.source, input.by],
+    );
+  }
+
+  async proofOfDelivery(shipmentId: string, tx?: Queryable): Promise<PodRow | null> {
+    const res = await this.q(tx).query<PodRow>(
+      `SELECT received_by_name AS "receivedByName", received_at AS "receivedAt", delivered_to_snapshot AS "deliveredTo", packages_received AS "packagesReceived",
+              remarks, remarks_note AS "remarksNote", document_version_ids AS "documentVersionIds", source
+         FROM logistics.proof_of_delivery WHERE shipment_id = $1`,
+      [shipmentId],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  async insertAcceptance(input: { shipmentId: string; basis: 'explicit' | 'deemed'; by: string | null; policyVersionId: string; warrantyStatement: string; note: string }, tx: Queryable): Promise<void> {
+    await tx.query(
+      `INSERT INTO logistics.delivery_acceptance (shipment_id, basis, accepted_by, policy_version_id, warranty_statement, note) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [input.shipmentId, input.basis, input.by, input.policyVersionId, input.warrantyStatement, input.note],
+    );
+  }
+
+  async acceptance(shipmentId: string, tx?: Queryable): Promise<{ basis: 'explicit' | 'deemed'; acceptedAt: Date; warrantyStatement: string; note: string } | null> {
+    const res = await this.q(tx).query<{ basis: 'explicit' | 'deemed'; acceptedAt: Date; warrantyStatement: string; note: string }>(
+      `SELECT basis, accepted_at AS "acceptedAt", warranty_statement AS "warrantyStatement", note FROM logistics.delivery_acceptance WHERE shipment_id = $1`,
+      [shipmentId],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  async insertDeliveryException(
+    input: {
+      number: string;
+      shipmentId: string;
+      kind: DeliveryExceptionKind;
+      party: 'customer' | 'jobwork' | 'carrier';
+      by: string | null;
+      lotMarking: string;
+      quantity: string;
+      description: string;
+      evidence: string[];
+      warrantyClaim: boolean;
+      requestedSiteId: string | null;
+      requestedSnapshot: SiteSnapshot | null;
+    },
+    tx: Queryable,
+  ): Promise<string> {
+    const res = await tx.query<{ id: string }>(
+      `INSERT INTO logistics.delivery_exception (number, shipment_id, kind, raised_by_party, raised_by, lot_marking, quantity, description, evidence_document_version_ids, warranty_claim, requested_site_id, requested_snapshot)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+      [input.number, input.shipmentId, input.kind, input.party, input.by, input.lotMarking, input.quantity, input.description, input.evidence, input.warrantyClaim, input.requestedSiteId, input.requestedSnapshot ? JSON.stringify(input.requestedSnapshot) : null],
+    );
+    return res.rows[0]!.id;
+  }
+
+  async deliveryExceptions(shipmentId: string, tx?: Queryable): Promise<DeliveryExceptionRow[]> {
+    const res = await this.q(tx).query<DeliveryExceptionRow>(`SELECT ${EXCEPTION_COLUMNS} FROM logistics.delivery_exception WHERE shipment_id = $1 ORDER BY created_at, number`, [shipmentId]);
+    return res.rows;
+  }
+
+  async findDeliveryException(id: string, tx?: Queryable, forUpdate = false): Promise<DeliveryExceptionRow | null> {
+    const res = await this.q(tx).query<DeliveryExceptionRow>(`SELECT ${EXCEPTION_COLUMNS} FROM logistics.delivery_exception WHERE id = $1 ${forUpdate ? 'FOR UPDATE' : ''}`, [id]);
+    return res.rows[0] ?? null;
+  }
+
+  async resolveDeliveryException(id: string, input: { resolution: DeliveryExceptionResolution; note: string; caseReference: string; carrierChargeNote: string; by: string }, tx: Queryable): Promise<void> {
+    await tx.query(
+      `UPDATE logistics.delivery_exception SET status = 'resolved', resolution = $2, resolution_note = $3, case_reference = $4, carrier_charge_note = $5, resolved_by = $6, resolved_at = now() WHERE id = $1`,
+      [id, input.resolution, input.note, input.caseReference, input.carrierChargeNote, input.by],
+    );
+  }
+
+  /** Doc 06 §7: what of an order was handed over (has a POD) and what was accepted, on leg 2. */
+  async deliveredAndAccepted(salesOrderId: string, tx?: Queryable): Promise<{ delivered: string; accepted: string }> {
+    const res = await this.q(tx).query<{ delivered: string; accepted: string }>(
+      `SELECT
+         (SELECT COALESCE(SUM(i.quantity), 0) FROM logistics.shipment_item i JOIN logistics.shipment s ON s.id = i.shipment_id
+            JOIN logistics.proof_of_delivery d ON d.shipment_id = s.id WHERE s.sales_order_id = $1 AND s.leg = 'jobwork_to_customer')::text AS delivered,
+         (SELECT COALESCE(SUM(i.quantity), 0) FROM logistics.shipment_item i JOIN logistics.shipment s ON s.id = i.shipment_id
+            JOIN logistics.delivery_acceptance a ON a.shipment_id = s.id WHERE s.sales_order_id = $1 AND s.leg = 'jobwork_to_customer')::text AS accepted`,
+      [salesOrderId],
+    );
+    return res.rows[0]!;
+  }
+
+  /** Leg-2 deliveries awaiting acceptance whose window has closed (FR-905). */
+  async pastWindow(now: Date, tx?: Queryable): Promise<string[]> {
+    const res = await this.q(tx).query<{ id: string }>(
+      `SELECT id FROM logistics.shipment WHERE leg = 'jobwork_to_customer' AND status = 'receiving_check' AND acceptance_due_at < $1 ORDER BY acceptance_due_at LIMIT 500`,
+      [now],
+    );
+    return res.rows.map((r) => r.id);
+  }
+
+  /** The return leg bringing a refused delivery back. */
+  async returnLeg(outboundId: string, tx?: Queryable): Promise<string | null> {
+    const res = await this.q(tx).query<{ id: string }>(`SELECT id FROM logistics.shipment WHERE returns_shipment_id = $1`, [outboundId]);
+    return res.rows[0]?.id ?? null;
   }
 }

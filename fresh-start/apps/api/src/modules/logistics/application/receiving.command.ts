@@ -167,9 +167,18 @@ export class ReceivingCommand {
             );
           }
 
-          // The custody ledger: a lot for each lot code that entered JobWork's hands (doc 05 §17).
+          // The custody ledger: a lot for each lot code that entered JobWork's hands (doc 05 §17). A
+          // return leg (IN-17) brings dispatched stock back onto the lots it left on: no second lot.
           const ownership = s.leg === 'customer_to_jobwork' ? 'customer_material' : 'jobwork';
-          for (const [lotCode, lot] of lots) {
+          if (s.returnsShipmentId) {
+            for (const item of items) {
+              const l = byItem.get(item.id)!;
+              const evidence = { shipment: s.number, receivingId, returnOf: s.returnsShipmentId };
+              if (q(l.acceptedQuantity).compare(ZERO) > 0) await this.repo.move({ lotId: item.stockLotId!, from: 'OUT-DISPATCHED', to: 'JW-STOCK', quantity: l.acceptedQuantity, type: 'return', source: 'logistics.receive-shipment', evidence, by: actor.userId }, tx);
+              if (q(l.quarantinedQuantity).compare(ZERO) > 0) await this.repo.move({ lotId: item.stockLotId!, from: 'OUT-DISPATCHED', to: 'JW-QUARANTINE', quantity: l.quarantinedQuantity, type: 'return', source: 'logistics.receive-shipment', evidence, by: actor.userId }, tx);
+            }
+          }
+          for (const [lotCode, lot] of s.returnsShipmentId ? [] : lots) {
             const custody = lot.accepted.add(lot.quarantined);
             if (custody.compare(ZERO) === 0) continue;
             const lotId = await this.repo.insertStockLot({ lotCode, serials: [...new Set(lot.serials)], salesOrderId: s.salesOrderId, workPackageId: s.workPackageId, sourceShipmentId: s.id, receivedQuantity: show(custody), unit: lot.unit, ownership, by: actor.userId }, tx);
@@ -187,7 +196,14 @@ export class ReceivingCommand {
             outbox.push(this.event(s, s.aggregateVersion, 'logistics.receiving_discrepancy_opened.v1', { discrepancyNumber: number, kind: f.kind, discrepancyLabel: `${LABEL[f.kind]}${f.lotCode ? ` on ${f.lotCode}` : ''}` }));
           }
           const version = await this.repo.update(s.id, { status: findings.length === 0 ? 'accepted' : 'discrepancy_hold' }, tx);
-          const received = findings.length === 0 ? await this.orderReceived(s, tx) : [];
+          const received: AuditSpec[] = findings.length === 0 ? await this.orderReceived(s, tx) : [];
+          // The refusal that sent it back is closed by the goods being back in JobWork's custody.
+          if (s.returnsShipmentId) {
+            for (const x of (await this.repo.deliveryExceptions(s.returnsShipmentId, tx)).filter((e) => e.kind === 'refused' && e.status === 'open')) {
+              await this.repo.resolveDeliveryException(x.id, { resolution: 'returned_to_stock', note: `Received back on ${s.number}.`, caseReference: '', carrierChargeNote: '', by: actor.userId }, tx);
+              received.push({ action: 'logistics.delivery_exception_resolved', subjectType: 'shipment', subjectId: s.returnsShipmentId, data: { exception: x.number, kind: x.kind, resolution: 'returned_to_stock', returnShipment: s.number } });
+            }
+          }
           return {
             result: undefined,
             audit: [this.audit(s, version, 'logistics.shipment_received', { decision, accepted: show(accepted), quarantined: show(quarantined), refused: show(refused), discrepancies: findings.length }), ...audit.map((a) => ({ ...a, subjectVersion: version })), ...received],

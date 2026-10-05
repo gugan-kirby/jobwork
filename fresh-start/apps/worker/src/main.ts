@@ -13,6 +13,7 @@ import { fileFinalizedHandler } from './outbox/handlers/file-finalized';
 import { emailVerificationHandler } from './outbox/handlers/email-verification';
 import { invitationIssuedHandler } from './outbox/handlers/invitation-issued';
 import { rfqDeadlineScan } from './outbox/handlers/rfq-deadline';
+import { deliveryAcceptanceScan } from './outbox/handlers/delivery-acceptance';
 import { paymentReconcileScan } from './outbox/handlers/payment-reconcile';
 import { verificationExpiryScan } from './outbox/handlers/verification-expiry';
 import { slaEscalator } from './sla/escalator';
@@ -57,6 +58,8 @@ const envSchema = z.object({
   OUTBOX_POLL_MS: z.coerce.number().int().min(200).default(2_000),
   PAYMENT_SWEEP_MS: z.coerce.number().int().min(1000).default(5 * 60_000),
   SLA_SWEEP_MS: z.coerce.number().int().min(1000).default(60_000),
+  /** IN-17: how often to ask whether a delivery's acceptance window has closed. */
+  DELIVERY_SWEEP_MS: z.coerce.number().int().min(1000).default(15 * 60_000),
   /** F-11.3: Prometheus metrics on their own port; 0 serves none. */
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(0),
   METRICS_HOST: z.string().default('127.0.0.1'),
@@ -156,6 +159,9 @@ async function main(): Promise<void> {
   const slaSweep = slaEscalator(internalApi, logger.child({ module: 'platform.sla' }), metrics.sweep('sla'));
   void slaSweep();
   const slaTimer = setInterval(() => void slaSweep(), env.SLA_SWEEP_MS);
+  // IN-17: a delivery's window closes at the end of an IST day; a quarter-hour is resolution enough.
+  const deliverySweep = deliveryAcceptanceScan(internalApi, logger.child({ module: 'logistics.delivery' }), metrics.sweep('delivery_acceptance'));
+  const deliveryTimer = setInterval(() => void deliverySweep(), env.DELIVERY_SWEEP_MS);
 
   const heartbeat = setInterval(() => {
     void pool
@@ -182,6 +188,7 @@ async function main(): Promise<void> {
     clearInterval(deadlineTimer);
     clearInterval(paymentTimer);
     clearInterval(slaTimer);
+    clearInterval(deliveryTimer);
     poller.stop();
     metricsServer?.close();
     logger.info({ signal }, 'worker stopping');
