@@ -46,6 +46,28 @@ export class ReleaseRepository {
     return res.rows[0]!.total;
   }
 
+  /**
+   * Released pieces that never reached JobWork's stock (IN-16): shipped on a received leg-1
+   * shipment, less what entered stock and what quarantine still holds — short, refused, scrapped
+   * or returned. The supplier still owes them, so they may be released again for a replacement.
+   */
+  async notDelivered(workPackageId: string, tx?: Queryable): Promise<string> {
+    const res = await this.q(tx).query<{ lost: string }>(
+      `SELECT GREATEST(
+         (SELECT COALESCE(SUM(i.quantity), 0) FROM logistics.shipment_item i JOIN logistics.shipment s ON s.id = i.shipment_id
+           WHERE s.work_package_id = $1 AND s.leg = 'supplier_to_jobwork' AND s.status IN ('receiving_check', 'accepted', 'discrepancy_hold'))
+         - (SELECT COALESCE(SUM(m.quantity), 0) FROM logistics.stock_movement m JOIN logistics.stock_lot t ON t.id = m.lot_id
+              JOIN logistics.custody_location c ON c.id = m.to_location_id
+             WHERE t.work_package_id = $1 AND t.ownership = 'jobwork' AND c.code = 'JW-STOCK' AND m.from_location_id IS DISTINCT FROM c.id)
+         - (SELECT COALESCE(SUM(b.quantity), 0) FROM logistics.stock_balance b JOIN logistics.stock_lot t ON t.id = b.lot_id
+              JOIN logistics.custody_location c ON c.id = b.location_id
+             WHERE t.work_package_id = $1 AND t.ownership = 'jobwork' AND c.code = 'JW-QUARANTINE'),
+         0)::text AS lost`,
+      [workPackageId],
+    );
+    return res.rows[0]!.lost;
+  }
+
   /** Standing failed results of an inspection, with whether an approved deviation covers each. */
   async failing(inspectionId: string, tx?: Queryable): Promise<Array<{ characteristic: string; sampleNo: number; deviationExpiresAt: Date | null }>> {
     const res = await this.q(tx).query<{ characteristic: string; sampleNo: number; deviationExpiresAt: Date | null }>(

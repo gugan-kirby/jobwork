@@ -67,6 +67,7 @@ export class QualityReleaseCommand {
       activeDeviations: deviations.map((d) => ({ id: d.id, number: d.number, ncrNumber: d.ncrNumber, lots: d.lots, quantity: d.quantity, releasedUnder: sum(history.filter((r) => r.deviationIds.includes(d.id))) })),
       orderedQuantity: await this.releases.orderedQuantity(wp.purchaseOrderId, tx),
       releasedQuantity: sum(history),
+      notDeliveredQuantity: await this.releases.notDelivered(wp.id, tx),
       scope: { quantity: scope.quantity, lots: scope.lots, serials: scope.serials },
       releaser: { userId: releaser.userId, isQuality: releaser.isInternal && releaser.roles.includes('jobwork_quality') },
     };
