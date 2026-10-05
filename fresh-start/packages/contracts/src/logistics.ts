@@ -39,7 +39,16 @@ export const packageInputSchema = z.object({
   heightMm: z.number().int().positive().max(100_000).nullable().default(null),
   weightG: z.number().int().positive().max(100_000_000).nullable().default(null),
   items: z
-    .array(z.object({ lotCode: z.string().trim().max(60).default(''), serials: z.array(z.string().trim().min(1).max(60)).max(500).default([]), quantity, description: z.string().trim().max(200).default('') }))
+    .array(
+      z.object({
+        lotCode: z.string().trim().max(60).default(''),
+        serials: z.array(z.string().trim().min(1).max(60)).max(500).default([]),
+        quantity,
+        /** Pieces for made parts; kg, m or sheets for customer-supplied material. */
+        unit: z.string().trim().min(1).max(20).default('piece'),
+        description: z.string().trim().max(200).default(''),
+      }),
+    )
     .min(1)
     .max(50),
 });
@@ -178,6 +187,44 @@ export const shippableLotSchema = z.object({
   heldBy: z.array(z.string()),
 });
 
+// ----------------------------------------------------------------- customer-supplied material (D-15; FR-307)
+
+/** Material the customer sends JobWork for the job, recorded as it arrives or is announced; received as any inbound shipment. */
+export const registerCustomerMaterialRequestSchema = z.object({
+  salesOrderId: z.uuid(),
+  /** One of the customer's own addresses; when omitted, the order's delivery address, else the customer's first active one. */
+  originSiteId: z.uuid().optional(),
+  /** The customer's delivery challan. */
+  documents: shipmentDocumentsSchema.default({ challanNumber: '', invoiceNumber: '', eWaybillNumber: '' }),
+  carrierMode: carrierModeSchema,
+  carrierName: z.string().trim().max(120).default(''),
+  trackingReference: reference.default(''),
+  packages: z.array(packageInputSchema).min(1).max(100),
+});
+
+/** JobWork issues customer material from its stock to the supplier making the part, on JobWork's own challan. */
+export const issueMaterialRequestSchema = z.object({
+  purchaseOrderId: z.uuid(),
+  /** One of the supplier's works or pickup addresses; its first active works address when omitted. */
+  destinationSiteId: z.uuid().optional(),
+  documents: shipmentDocumentsSchema,
+  lots: z.array(z.object({ lotId: z.uuid(), quantity })).min(1).max(50),
+});
+
+/** The supplier confirms the issued material arrived. */
+export const acknowledgeMaterialRequestSchema = z.object({ ...versioned, note: z.string().trim().max(500).default('') });
+
+export const materialLotSchema = z.object({
+  lotId: z.uuid(),
+  lotCode: z.string(),
+  unit: z.string(),
+  sourceShipmentNumber: z.string(),
+  receivedQuantity: z.string(),
+  inStock: z.string(),
+  quarantined: z.string(),
+  issued: z.string(),
+});
+
 export const shipmentGuardSchema = z.object({ key: z.string(), label: z.string(), pass: z.boolean(), reasons: z.array(z.string()) });
 
 export const siteSnapshotSchema = z.object({
@@ -200,7 +247,8 @@ export const shipmentSchema = z.object({
   purchaseOrderId: z.uuid().nullable(),
   purchaseOrderNumber: z.string(),
   workPackageId: z.uuid().nullable(),
-  salesOrderId: z.uuid(),
+  /** Null outside JobWork: the order is JobWork's, not the supplier's. */
+  salesOrderId: z.uuid().nullable(),
   /** Empty for anyone outside JobWork who is not the shipper. */
   supplierDisplayName: z.string(),
   origin: siteSnapshotSchema.nullable(),
@@ -255,3 +303,7 @@ export type ReceivingDiscrepancy = z.infer<typeof receivingDiscrepancySchema>;
 export type Receiving = z.infer<typeof receivingSchema>;
 export type WorkPackageLogistics = z.infer<typeof workPackageLogisticsSchema>;
 export type ShippableLot = z.infer<typeof shippableLotSchema>;
+export type RegisterCustomerMaterialRequest = z.infer<typeof registerCustomerMaterialRequestSchema>;
+export type IssueMaterialRequest = z.infer<typeof issueMaterialRequestSchema>;
+export type AcknowledgeMaterialRequest = z.infer<typeof acknowledgeMaterialRequestSchema>;
+export type MaterialLot = z.infer<typeof materialLotSchema>;
