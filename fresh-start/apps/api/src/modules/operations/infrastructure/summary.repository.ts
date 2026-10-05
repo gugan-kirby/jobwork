@@ -62,6 +62,19 @@ export class PortalSummaryRepository {
     );
   }
 
+  /** IN-17: deliveries waiting on the customer — an address to confirm before it leaves, or a handover to accept or report. */
+  deliveriesAwaitingYou(organizationId: string): Promise<QueueCount> {
+    return this.count(
+      `SELECT count(*)::int AS n, min(s.updated_at) AS oldest
+         FROM logistics.shipment s
+        WHERE s.consignee_organization_id = $1 AND s.leg = 'jobwork_to_customer'
+          AND (s.status = 'receiving_check'
+               OR (s.status IN ('planned', 'ready_for_release')
+                   AND NOT EXISTS (SELECT 1 FROM logistics.address_confirmation c WHERE c.shipment_id = s.id AND c.site_id = s.destination_site_id)))`,
+      [organizationId],
+    );
+  }
+
   invoicesUnpaid(organizationId: string): Promise<QueueCount> {
     return this.count(
       `SELECT count(*)::int AS n, min(due_at) AS oldest

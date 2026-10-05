@@ -28,13 +28,14 @@ export class PortalSummaryController {
       throw new DomainError('NOT_AUTHORIZED', 403, 'Customer organizations only');
     }
     const organizationId = actor.organizationId;
-    const [questions, drafts, inProgress, quotations, orders, invoices] = await Promise.all([
+    const [questions, drafts, inProgress, quotations, orders, invoices, deliveries] = await Promise.all([
       this.repo.questionsAwaitingAnswer(organizationId),
       this.repo.draftsUnfinished(organizationId),
       this.repo.enquiriesInProgress(organizationId),
       this.repo.quotationsAwaitingDecision(organizationId),
       this.repo.ordersInProgress(organizationId),
       this.repo.invoicesUnpaid(organizationId),
+      this.repo.deliveriesAwaitingYou(organizationId),
     ]);
 
     const queue = (
@@ -97,6 +98,13 @@ export class PortalSummaryController {
           'Issued by JobWork and not yet settled.',
           '/invoices',
           invoices,
+        ),
+        queue(
+          'deliveries_awaiting_you',
+          'Deliveries waiting on you',
+          'Confirm where a delivery goes before it leaves, and accept or report one that arrived.',
+          '/orders',
+          deliveries,
         ),
       ],
       generatedAt: new Date().toISOString(),
