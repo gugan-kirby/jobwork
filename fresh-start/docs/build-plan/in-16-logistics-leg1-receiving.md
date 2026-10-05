@@ -206,7 +206,7 @@ What `receiving.api.spec.ts` covers:
   - Scrap, release to stock and overage acceptance need something in quarantine.
   - A return with nothing in quarantine covers refused pieces and moves nothing; the return leg is IN-18's.
 - **Order received at JobWork.** The order becomes `received_jobwork` when every work package's accepted quantity (everything that ever entered `JW-STOCK`) reaches its ordered quantity and no other inbound shipment of the order is in `receiving_check` or `discrepancy_hold`. A released-but-short order stays in transit, and its shortfall shows as `outstanding`.
-- **Hand-off to IN-18: replacement capacity.** Quality release is capped at ordered less released (IN-15). Replacement pieces for an accepted shortage or a scrap therefore cannot be released until the cap counts what never arrived. Returns, replacements and that cap change are IN-18's.
+- **Replacement capacity (found here, fixed in F-16.6).** Quality release was capped at ordered less released (IN-15), so pieces short or scrapped could never be replaced. F-16.6 makes the cap count what never arrived. Returns to the supplier remain IN-18's.
 - **Pilot driver helpers.** `inspection`, `calibratedGauge`, `releasedLots` and `shippedToJobWork` replace the setup the dispatch spec carried; scenario 10 reuses them.
 
 **Verification (2026-10-05, F-16.3).** `receiving.api.spec.ts` (6) covers:
@@ -345,6 +345,25 @@ Scenario 10:
 3. The damage is scrapped, and the shortage resolved by a replacement shipment received in full.
 4. The order reaches `received_jobwork`, and quantities reconcile: received = on hand + scrapped.
 
+**Deviations (2026-10-05, F-16.6):**
+
+- **Replacement capacity counts what never arrived.** Step 3 cannot happen under IN-15's cap (released ≤ ordered): all 100 ordered were released, and the 9 short or scrapped could not be released again.
+  - `ReleaseRepository.notDelivered(workPackageId)` reads the logistics ledger: what received leg-1 shipments carried, less what entered `JW-STOCK`, less what quarantine still holds. That is the pieces short, refused, scrapped or returned.
+  - The release checklist's quantity rule becomes ordered − released + not delivered. Its refusal names the not-delivered part ("Only 9 of 100 remain to release, including 9 released but never delivered"), and the evidence records it.
+  - The ordered quantity in that message is now shown without trailing zeros.
+- **Scenario quantities.** 100 ordered: LOT-A 60 and LOT-B 40 released, shipped in three packages (30, 30, 40). Package 2 is counted 25; package 3 is damaged, with 4 quarantined and then scrapped; the shortage is set to "replacement expected"; LOT-C 9 is released and received in full.
+- **UAT.** Scenario 10 is added to the UAT checklist (10.1–10.12), and its scope line names IN-16.
+
+**Verification (2026-10-05, F-16.6).** `scenario-10-partial-damaged-receipt.api.spec.ts` (4) covers:
+
+- the three-package shipment and the signed carrier "delivered", which moves the leg and leaves the ledger empty;
+- the short and damaged receipt: hold, two discrepancies, 91 accepted, 4 quarantined, 9 outstanding, and the supplier told twice;
+- scrap by quality and "replacement expected" by logistics, with the order still in transit, then the release of 10 refused and of 9 allowed, and the replacement received in full;
+- `received_jobwork`: ordered 100, released 109, shipped 109, counted 104, accepted 100, scrapped 4, outstanding 0;
+- the ledger: received 104 = on hand 100 + scrapped 4, with the audit trails on the shipment and the order.
+
+Scenarios 7 and 8 and `quality-release.api.spec.ts` stay green on the new cap. Full verify green: api 450, database 96, ui 171, worker 39, portal-web 21.
+
 ## Decisions taken on the owner's behalf
 
 Taken as safe defaults so the build can proceed; each is reversible and recorded here for review.
@@ -361,6 +380,14 @@ Taken as safe defaults so the build can proceed; each is reversible and recorded
 
 ## Increment exit
 
-- [ ] Pilot scenario 10 (short and damaged supplier shipment → receiving hold → resolution) green.
-- [ ] Stock ledger live: every received quantity traceable lot → movement → location; the conservation property suite is green and the database refuses an over-draw.
-- [ ] No carrier event, on its own, makes anything received or accepted.
+- [x] Pilot scenario 10 (short and damaged supplier shipment → receiving hold → resolution) green (`scenario-10-partial-damaged-receipt.api.spec.ts`).
+- [x] Stock ledger live: every received quantity traceable lot → movement → location (`/logistics/work-packages/:id`, `stock_balance`). The conservation property suite is green (`logistics.db.spec.ts`), and the database refuses an over-draw (`guard_movement`). Scenario 10 and the receiving and material specs each reconcile received = on hand + sinks.
+- [x] No carrier event, on its own, makes anything received or accepted. "Delivered" stops at `delivered_to_destination`, with no receiving record and no stock (`dispatch.api.spec.ts`, scenario 10). Only `receive` enters the ledger.
+
+**IN-16 build closed 2026-10-05** (PRs #36–#42). Owner items carried:
+- the defaults above for review: supplier dispatch roles, the e-way bill threshold and its consignment value, the single Chennai hub, who resolves which discrepancy, and the set-aside reason rule;
+- `T-05`: no carrier aggregator chosen; the dev carrier and manual events stand in;
+- legal and tax review of challan practice (CGST Rule 138 and §143);
+- UAT scenario 10 with the owner's UAT on staging.
+
+Handed to IN-18: returns to the supplier, supplier cases from discrepancies, and challan reconciliation of issued material.
