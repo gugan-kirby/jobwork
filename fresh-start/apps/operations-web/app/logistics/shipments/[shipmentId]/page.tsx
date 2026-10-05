@@ -10,6 +10,17 @@ import { CARRIER_MODE, DISCREPANCY, QUALITY_RESOLUTIONS, RECEIVABLE, RESOLUTION,
 import { ReceivingForm } from './receiving-form';
 
 const pieces = (q: string): string => `${q} ${q === '1' ? 'piece' : 'pieces'}`;
+/** Made parts count in pieces; customer material may be in kg, m or sheets. */
+const amount = (s: Shipment): string => {
+  const units = [...new Set(s.packages.flatMap((p) => p.items.map((i) => i.unit)))];
+  return units.length === 1 && units[0] !== 'piece' ? `${s.totalQuantity} ${units[0]}` : pieces(s.totalQuantity);
+};
+const LEG: Record<Shipment['leg'], string> = {
+  supplier_to_jobwork: '',
+  customer_to_jobwork: 'Customer material',
+  jobwork_to_supplier: 'Material issued to the supplier',
+  jobwork_to_customer: 'To the customer',
+};
 const address = (s: SiteSnapshot | null): string => (s ? `${s.label}, ${s.addressLine1}, ${s.city} ${s.postalCode}` : '—');
 const CARRIER_STATUSES: Array<{ value: CarrierStatus; label: string }> = [
   { value: 'in_transit', label: 'In transit' },
@@ -89,7 +100,7 @@ export default function LogisticsShipmentPage(): React.JSX.Element {
       title={`${s.number} — ${s.supplierDisplayName}`}
       breadcrumb={<Link href="/logistics">← Logistics</Link>}
       meta={<StatusChip tone={SHIPMENT_STATUS[s.status].tone}>{SHIPMENT_STATUS[s.status].label}</StatusChip>}
-      description={`${s.purchaseOrderNumber} · ${s.totalQuantity} pieces in ${s.packages.length} package${s.packages.length === 1 ? '' : 's'}`}
+      description={[LEG[s.leg], s.purchaseOrderNumber, `${amount(s)} in ${s.packages.length} package${s.packages.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
     >
       <Stack gap={4}>
         {s.status === 'ready_for_release' || s.status === 'planned' ? (
@@ -111,7 +122,7 @@ export default function LogisticsShipmentPage(): React.JSX.Element {
         {RECEIVABLE.includes(s.status) ? <ReceivingForm shipment={s} onReceive={(body) => post('/receive', body)} /> : null}
 
         {s.status === 'released' ? (
-          <Card title="Record the pickup" description="When the supplier has not, or JobWork arranged the vehicle.">
+          <Card title={s.leg === 'jobwork_to_supplier' ? 'Hand over the material' : 'Record the pickup'} description="When the supplier has not, or JobWork arranged the vehicle.">
             <Stack gap={2}>
               <Select label="How it travels" placeholder="Choose" value={pickup.carrierMode} onChange={(e) => setPickup({ ...pickup, carrierMode: e.target.value as CarrierMode })} options={(Object.keys(CARRIER_MODE) as CarrierMode[]).map((m) => ({ value: m, label: CARRIER_MODE[m] }))} />
               <TextInput label="Carrier" value={pickup.carrierName} onChange={(e) => setPickup({ ...pickup, carrierName: e.target.value })} />

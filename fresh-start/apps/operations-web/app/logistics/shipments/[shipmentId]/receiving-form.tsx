@@ -70,6 +70,7 @@ export function ReceivingForm({ shipment, onReceive }: { shipment: Shipment; onR
     if (accepted > shipped) problems.push(`${name}: no more than the ${shipped} shipped goes to stock.`);
     if (c.identity !== 'ok' && accepted > 0) problems.push(`${name}: doubtful pieces are not accepted.`);
     if (c.damaged && quarantined + refused === 0) problems.push(`${name}: quarantine or refuse the damaged pieces.`);
+    if (quarantined + refused > 0 && !c.damaged && c.identity === 'ok' && counted <= shipped) problems.push(`${name}: say why pieces are set aside — damaged or doubtful.`);
     if (counted < shipped) preview.push(`${DISCREPANCY.shortage} of ${shipped - counted} on ${name}`);
     if (counted > shipped) preview.push(`${DISCREPANCY.overage} of ${counted - shipped} on ${name}`);
     if (c.damaged) preview.push(`${DISCREPANCY.damage} on ${name}`);
