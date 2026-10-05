@@ -29,14 +29,15 @@ export class DispatchFinance {
   ) {}
 
   /**
-   * Issue every pending instalment whose trigger is met: `before_dispatch` when the first dispatch is
-   * planned; `on_delivery` and `net_30` once the goods are handed over.
+   * Issue every pending instalment whose trigger is met. When a dispatch is planned, everything due
+   * before goods leave: the `before_dispatch` balance, and anything due on acceptance still pending
+   * (a change's price delta, IN-13). Once the goods are handed over, `on_delivery` and `net_30`.
    */
   async issueDue(salesOrderId: string, at: 'dispatch_planned' | 'delivered', issuedBy: string, correlationId: string, tx: PoolClient): Promise<SideEffects & { invoiceNumbers: string[] }> {
     const order = await this.orders.findSalesOrder(salesOrderId, tx);
     if (!order) return { audit: [], outbox: [], invoiceNumbers: [] };
-    const triggers: readonly BalanceTrigger[] = at === 'dispatch_planned' ? ['before_dispatch'] : ['on_delivery', 'net_30'];
-    const due = (await this.finance.listInstallments(salesOrderId, tx)).filter((i) => i.status === 'pending' && i.kind === 'balance' && triggers.includes(i.trigger));
+    const triggers: readonly BalanceTrigger[] = at === 'dispatch_planned' ? DUE_BEFORE_DISPATCH : ['on_delivery', 'net_30'];
+    const due = (await this.finance.listInstallments(salesOrderId, tx)).filter((i) => i.status === 'pending' && triggers.includes(i.trigger));
     const out: SideEffects & { invoiceNumbers: string[] } = { audit: [], outbox: [], invoiceNumbers: [] };
     for (const installment of due) {
       const issued = await this.money.issueInstallmentInvoice({ order, installment, issuedBy, correlationId, now: new Date() }, tx);

@@ -331,7 +331,7 @@ export class CustomerDispatchCommand {
     await this.executor.execute(
       {
         operation: 'logistics.replan-customer-dispatch',
-        handler: async (tx, _ctx, cmd: ReplanCustomerDispatchRequest) => {
+        handler: async (tx, ctx, cmd: ReplanCustomerDispatchRequest) => {
           const s = await this.locked(shipmentId, cmd.expectedVersion, tx);
           if (!PREPARING.includes(s.status)) throw new LogisticsRefused('SHIPMENT_NOT_EDITABLE', 'A released delivery keeps its packages, address and documents', `It is ${s.status.replace(/_/g, ' ')}.`);
           const order = await this.order(s.salesOrderId, tx);
@@ -340,10 +340,12 @@ export class CustomerDispatchCommand {
           if (s.status === 'ready_for_release') await this.repo.update(s.id, { status: 'planned' }, tx);
           await this.repo.replaceContents(s.id, contents.packages, tx, contents.lotIds);
           const version = await this.repo.update(s.id, { destinationSiteId, documents: cmd.documents, packingCheck: cmd.packingCheck }, tx);
+          // Anything that fell due since the plan (a change priced meanwhile) is invoiced now too.
+          const due = await this.finance.issueDue(s.salesOrderId, 'dispatch_planned', actor.userId, ctx.correlationId, tx);
           return {
             result: undefined,
-            audit: [this.audit(s, version, 'logistics.customer_dispatch_replanned', { packages: cmd.packages.length, destinationChanged: destinationSiteId !== s.destinationSiteId })],
-            outbox: [this.event(s, version, 'logistics.shipment_planned.v1')],
+            audit: [this.audit(s, version, 'logistics.customer_dispatch_replanned', { packages: cmd.packages.length, destinationChanged: destinationSiteId !== s.destinationSiteId, invoicesIssued: due.invoiceNumbers }), ...due.audit],
+            outbox: [this.event(s, version, 'logistics.shipment_planned.v1'), ...due.outbox],
           };
         },
       },
