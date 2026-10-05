@@ -48,6 +48,7 @@ export type Actor =
   | 'quality'
   | 'quality2'
   | 'logistics'
+  | 'support'
   | 'admin';
 
 const PEOPLE: Record<Actor, { email: string; org: 'customer' | 'outsider' | 'supplierA' | 'supplierB' | 'internal'; roles: string[]; mfa: boolean }> = {
@@ -66,6 +67,7 @@ const PEOPLE: Record<Actor, { email: string; org: 'customer' | 'outsider' | 'sup
   quality: { email: 'quality@jobwork.test', org: 'internal', roles: ['jobwork_quality'], mfa: true },
   quality2: { email: 'quality2@jobwork.test', org: 'internal', roles: ['jobwork_quality'], mfa: true },
   logistics: { email: 'logistics@jobwork.test', org: 'internal', roles: ['jobwork_logistics'], mfa: true },
+  support: { email: 'support@jobwork.test', org: 'internal', roles: ['jobwork_support'], mfa: true },
   admin: { email: 'admin@jobwork.test', org: 'internal', roles: ['platform_admin', 'security_admin'], mfa: true },
 };
 
