@@ -1,7 +1,7 @@
 'use client';
 
 import { Icon, type IconName } from '../primitives/Icon';
-import { isActivePath } from './paths';
+import { activeHref } from './paths';
 import { UiLink } from '../primitives/Link';
 
 /**
@@ -45,8 +45,9 @@ export function TabBar({ items, currentPath, primary }: TabBarProps): React.JSX.
   const leading = items.slice(0, splitAt);
   const trailing = items.slice(splitAt);
 
+  const activeTab = activeHref(currentPath, items.map((i) => i.href));
   const renderItem = (item: TabItem): React.JSX.Element => {
-    const active = isActivePath(currentPath, item.href);
+    const active = item.href === activeTab;
     return (
       <UiLink
         key={item.href}
