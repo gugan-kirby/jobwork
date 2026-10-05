@@ -7,6 +7,7 @@ export const PUBLIC_DEV_VALUES: ReadonlySet<string> = new Set([
   'dev-only-change-me',
   'dev-service-token-secret',
   'dev-payment-webhook-secret',
+  'dev-carrier-webhook-secret',
   'test-secret-value',
   'test-service-token-secret',
   'test-payment-webhook-secret',

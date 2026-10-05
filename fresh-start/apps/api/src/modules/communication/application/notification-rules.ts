@@ -181,6 +181,18 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
   'quality.rework_approved.v1': async (e) => ncrDisposition(e),
   'quality.ncr_rejected.v1': async (e) => ncrDisposition(e),
   'quality.deviation_approved.v1': async (e) => ncrDisposition(e),
+  // IN-16: the supplier hands a released shipment to its carrier.
+  'logistics.shipment_released.v1': async (e) =>
+    e.data['leg'] === 'supplier_to_jobwork'
+      ? [
+          {
+            templateKey: 'supplier.shipment_released',
+            audience: suppliers([str(e.data['shipperOrganizationId'])]),
+            variables: { shipmentNumber: str(e.data['number']), purchaseOrderNumber: str(e.data['purchaseOrderNumber']) },
+            link: `/supplier/shipments/${e.aggregateId}`,
+          },
+        ]
+      : [],
   'quality.deviation_customer_decision_requested.v1': async (e) => [
     {
       templateKey: 'customer.deviation_decision_needed',

@@ -278,6 +278,45 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
        WHERE n.status <> 'closed'`,
   },
   {
+    // IN-16: supplier shipments submitted with green guards, waiting for JobWork to release them.
+    key: 'shipments_to_release',
+    label: 'Supplier shipments to release',
+    detail: 'The supplier has packed and submitted; release checks the guards again and freezes the addresses.',
+    href: '/logistics',
+    roles: ['jobwork_logistics'],
+    subjectType: 'shipment',
+    membership: `
+      SELECT s.id AS subject_id, s.number AS reference, s.number AS title, '/logistics/shipments/' || s.id AS href, s.updated_at AS waiting_since
+        FROM logistics.shipment s
+       WHERE s.status = 'ready_for_release'`,
+  },
+  {
+    // A carrier's "delivered" is not a receipt: until JobWork receives it, it waits here.
+    key: 'shipments_awaiting_receiving',
+    label: 'Shipments awaiting receiving',
+    detail: 'Released to the carrier and not yet received at JobWork. A carrier delivery with no receipt needs looking into.',
+    href: '/logistics',
+    roles: ['jobwork_logistics'],
+    subjectType: 'shipment',
+    membership: `
+      SELECT s.id AS subject_id, s.number AS reference, s.number AS title, '/logistics/shipments/' || s.id AS href,
+             coalesce(s.carrier_delivered_at, s.picked_up_at, s.released_at) AS waiting_since
+        FROM logistics.shipment s
+       WHERE s.status IN ('released', 'picked_up', 'in_transit', 'delivered_to_destination') AND s.leg IN ('supplier_to_jobwork', 'customer_to_jobwork')`,
+  },
+  {
+    key: 'receiving_discrepancies_open',
+    label: 'Receiving discrepancies',
+    detail: 'Short, damaged or wrong at receiving: the shipment is on hold until each is resolved.',
+    href: '/logistics',
+    roles: ['jobwork_logistics', 'jobwork_quality'],
+    subjectType: 'receiving_discrepancy',
+    membership: `
+      SELECT d.id AS subject_id, d.number AS reference, d.kind || ' on ' || s.number AS title, '/logistics/shipments/' || d.shipment_id AS href, d.created_at AS waiting_since
+        FROM logistics.receiving_discrepancy d JOIN logistics.shipment s ON s.id = d.shipment_id
+       WHERE d.status = 'open'`,
+  },
+  {
     // Messages held by the contact-leakage gate, invisible to their readers until decided (F-10.4).
     key: 'leakage_reviews_open',
     label: 'Messages held for review',

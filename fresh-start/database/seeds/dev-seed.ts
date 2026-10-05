@@ -88,6 +88,20 @@ async function main(): Promise<void> {
       );
     }
 
+    // IN-16: JobWork's single Chennai receiving hub, where leg-1 shipments are addressed.
+    const hub = await client.query(
+      `SELECT 1 FROM iam.organization_site WHERE organization_id = $1 AND kind = 'works' AND status = 'active'`,
+      [orgId],
+    );
+    if (hub.rowCount === 0) {
+      await client.query(
+        `INSERT INTO iam.organization_site (organization_id, label, kind, address_line1, city, state, postal_code, contact_name, contact_phone)
+         VALUES ($1, 'JobWork receiving hub', 'works', 'Unit 4, SIDCO Industrial Estate, Guindy', 'Chennai', 'Tamil Nadu', '600032', 'Receiving desk', '+91 44 0000 0000')`,
+        [orgId],
+      );
+      console.log('created receiving hub site');
+    }
+
     await seedInternalMember(client, orgId, {
       email: sourcingEmail,
       password: sourcingPassword,

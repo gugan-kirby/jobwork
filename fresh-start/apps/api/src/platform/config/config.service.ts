@@ -24,6 +24,9 @@ const envSchema = z.object({
   /** `T-03`: the payment provider behind the gateway port. `dev` is the simulated gateway. */
   PAYMENT_PROVIDER: z.enum(['dev']).default('dev'),
   PAYMENT_WEBHOOK_SECRET: z.string().min(8).default('dev-payment-webhook-secret'),
+  /** `T-05`: the carrier behind the carrier port. `dev` is the simulated carrier (manual events and a signed webhook). */
+  CARRIER_PROVIDER: z.enum(['dev']).default('dev'),
+  CARRIER_WEBHOOK_SECRET: z.string().min(8).default('dev-carrier-webhook-secret'),
   PAYMENT_INTENT_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
   /** F-11.2: rate-limit counters. Empty keeps them in this process only. */
   REDIS_URL: z.string().default('redis://localhost:6379'),
@@ -60,7 +63,7 @@ export class ConfigService {
     }
     // F-12.3: production never starts on a secret or credential this repository publishes.
     const problems = productionConfigProblems(parsed.data, {
-      secrets: ['SESSION_SECRET', 'SERVICE_TOKEN_SECRET', 'PAYMENT_WEBHOOK_SECRET'],
+      secrets: ['SESSION_SECRET', 'SERVICE_TOKEN_SECRET', 'PAYMENT_WEBHOOK_SECRET', 'CARRIER_WEBHOOK_SECRET'],
       credentials: ['OBJECT_STORE_ACCESS_KEY', 'OBJECT_STORE_SECRET_KEY'],
       replaced: { DATABASE_URL: 'postgres://localhost:5432/jobwork_dev' },
     });

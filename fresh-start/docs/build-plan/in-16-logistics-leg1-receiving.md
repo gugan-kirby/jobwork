@@ -113,6 +113,28 @@ What `dispatch.api.spec.ts` covers:
 - a carrier "delivered" event leaves receiving and stock untouched;
 - the other supplier and the customer see nothing.
 
+**Deviations (2026-10-05, F-16.2):**
+
+- **`replan` added.** A planned or submitted shipment's packages, pickup site and documents are replaced whole (`expectedVersion`); a submitted one drops back to `planned`. Once released, the contents are frozen.
+- **Guard grouping.** The doc 10 §12 list is six guards, each with its reasons: eligibility, quantity, holds (NCR lots, interim stop, supplier status), packing, documents, addresses. The carrier is not a release guard: a named carrier with its tracking or LR number is required at `recordPickup` for `carrier` and `courier` modes, because the carrier is often booked after release.
+- **Consignment value for the e-way bill.** It is the shipped quantity at the purchase order's average unit price (PO total ÷ ordered quantity), which is what the supplier invoices JobWork.
+- **Release facts are read inside the transaction.** `QualityReleaseCommand.factsFor(workPackageId, tx)` gives logistics the same facts as the quality release screen, and release locks the work package row so two releases cannot both take the last released pieces. An NCR stops holding its lots when it is `accepted_under_deviation` with an active deviation, as in IN-15.
+- **Carrier feed.** `POST /webhooks/carriers/:provider` is public, rate-limited, HMAC-signed over `timestamp.body` and idempotent by the provider's event id. It runs as the service principal `carrier-feed`. Unmapped codes are acknowledged and ignored. Logistics can also record an event by hand. A carrier `picked_up` on a released shipment counts as the pickup.
+- **Order status.** The first pickup moves the sales order from `ready_supplier_dispatch` to `in_supplier_to_jobwork_transit`. Earlier statuses are left alone, since another work package may still be in production.
+- **Readers.** Supplier shipments are visible to the shipper's production, quality, estimator and admin roles. Internally, logistics, quality, sourcing, engineering, sales and platform admin can read them. Only `jobwork_logistics` releases shipments and records carrier events.
+
+**Verification (2026-10-05, F-16.2).** `dispatch.api.spec.ts` (7) covers:
+
+- over-shipment, an unreleased lot and missing documents each turn their guard red, and submit is refused;
+- release by logistics only, with the snapshots unchanged after the supplier's site is edited, and the supplier notified;
+- pickup requiring a named carrier and reference, and the order moving into transit;
+- the carrier webhook: a bad signature gets 401, a repeat is a duplicate and an unmapped code is ignored, while "delivered" moves the leg to `delivered_to_destination` with no receiving record and no stock;
+- the earlier shipment counted against the release, and a lot held by an NCR;
+- the same lot shipping once a customer-approved deviation accepts the NCR;
+- isolation for the other supplier and the customer.
+
+The dev seed creates the hub site and the pilot driver gains the hub, the supplier works sites and a `logistics` actor. The audit inventory gains eight operations. Production now refuses the default `CARRIER_WEBHOOK_SECRET`. Full verify green: api 435, database 96, ui 170, worker 39, web-kit 22, portal-web 21.
+
 ## F-16.3 JobWork receiving
 
 | File | Action | Contents |

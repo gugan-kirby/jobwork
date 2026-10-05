@@ -138,15 +138,20 @@ export class QualityReleaseCommand {
   /** Release facts for the dispatch gate (IN-16/17): what is released, what is held, what came after. */
   async facts(actor: Actor, workPackageId: string): Promise<ReleaseFactsView> {
     requireInternal(actor, QUALITY_READERS);
-    const wp = await this.quality.workPackage(workPackageId);
+    return this.factsFor(workPackageId);
+  }
+
+  /** The same facts for another module's guard (IN-16 leg-1 dispatch), read in its transaction. */
+  async factsFor(workPackageId: string, tx?: PoolClient): Promise<ReleaseFactsView> {
+    const wp = await this.quality.workPackage(workPackageId, tx);
     if (!wp) throw new DomainError('WORK_PACKAGE_NOT_FOUND', 404, 'Work package not found');
-    const history = await this.releases.releases(wp.id);
-    const ncrs = await this.releases.ncrs(wp.id);
-    const deviations = await this.releases.activeDeviations(wp.id);
+    const history = await this.releases.releases(wp.id, tx);
+    const ncrs = await this.releases.ncrs(wp.id, tx);
+    const deviations = await this.releases.activeDeviations(wp.id, tx);
     const last = history.at(-1)?.releasedAt ?? null;
     return {
       workPackageId: wp.id,
-      orderedQuantity: await this.releases.orderedQuantity(wp.purchaseOrderId),
+      orderedQuantity: await this.releases.orderedQuantity(wp.purchaseOrderId, tx),
       releasedQuantity: history.reduce((t, r) => t.add(Rational.parse(r.quantity)), Rational.of(0)).toDisplay(4),
       releases: history.map((r) => ({ number: r.number, quantity: r.quantity, lots: r.lots, serials: r.serials, snapshotSha256: r.snapshotSha256, releasedAt: r.releasedAt.toISOString() })),
       openNcrs: ncrs
