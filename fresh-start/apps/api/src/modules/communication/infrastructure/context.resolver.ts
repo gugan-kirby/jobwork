@@ -159,7 +159,11 @@ export class ContextResolver {
   ): Promise<Registry> {
     const reader =
       audience === 'customer' ? [context.customerOrganizationId] : audience === 'supplier' && counterpartOrganizationId ? [counterpartOrganizationId] : [];
+    return this.registryExcluding(reader, client);
+  }
 
+  /** The registry for a reader belonging to `reader` organizations: every other customer and supplier is shielded. */
+  async registryExcluding(reader: readonly string[], client: Db = this.db.pool): Promise<Registry> {
     const orgs = await client.query<{
       type: 'customer' | 'supplier'; legal_name: string; display_name: string; trade_name: string | null;
       website: string | null; primary_contact_name: string | null; primary_contact_email: string | null; primary_contact_phone: string | null;
