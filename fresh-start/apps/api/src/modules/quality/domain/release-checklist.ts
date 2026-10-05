@@ -42,6 +42,8 @@ export interface ReleaseFacts {
   activeDeviations: Array<{ id: string; number: string; ncrNumber: string; lots: string[]; quantity: string; releasedUnder: string }>;
   orderedQuantity: string;
   releasedQuantity: string;
+  /** Released but never reached JobWork's stock (short, refused, scrapped, returned): owed again. */
+  notDeliveredQuantity: string;
   scope: { quantity: string; lots: string[]; serials: string[] };
   releaser: { userId: string; isQuality: boolean };
 }
@@ -90,8 +92,11 @@ export function computeChecklist(f: ReleaseFacts): { items: ChecklistItem[]; dev
   // 7. Quantity and identity: within what was ordered, never a held lot, a deviation's lots only on their own.
   const quantity: string[] = [];
   const want = Rational.parse(f.scope.quantity);
-  const left = Rational.parse(f.orderedQuantity).sub(Rational.parse(f.releasedQuantity));
-  if (want.compare(left) > 0) quantity.push(`Only ${left.toDisplay(4)} of ${f.orderedQuantity} remain to release.`);
+  const lost = Rational.parse(f.notDeliveredQuantity);
+  const left = Rational.parse(f.orderedQuantity).sub(Rational.parse(f.releasedQuantity)).add(lost);
+  if (want.compare(left) > 0) {
+    quantity.push(`Only ${left.toDisplay(4)} of ${Rational.parse(f.orderedQuantity).toDisplay(4)} remain to release${lost.compare(Rational.of(0)) > 0 ? `, including ${lost.toDisplay(4)} released but never delivered` : ''}.`);
+  }
   const held = new Set<string>();
   for (const n of f.ncrs) {
     if (n.path === 'rework' && (n.status === 'closed' || n.status === 'verified')) continue;
@@ -122,7 +127,7 @@ export function computeChecklist(f: ReleaseFacts): { items: ChecklistItem[]; dev
     item('inspections', 'First article and final inspections complete', inspections, { inspections: counted.map((i) => `${i.number} ${i.stage} ${i.status}`) }),
     item('calibrations', 'Calibrations valid or dispositioned', calibrations.map((c) => `${c} was measured past calibration without acceptance.`), { flagged: calibrations.length }),
     item('ncrs', 'NCRs closed or under an active deviation', ncrs, { ncrs: f.ncrs.map((n) => `${n.number} ${n.status}`) }),
-    item('quantity', 'Quantity and lots match', quantity, { quantity: f.scope.quantity, lots: f.scope.lots, ordered: f.orderedQuantity, alreadyReleased: f.releasedQuantity }),
+    item('quantity', 'Quantity and lots match', quantity, { quantity: f.scope.quantity, lots: f.scope.lots, ordered: f.orderedQuantity, alreadyReleased: f.releasedQuantity, notDelivered: f.notDeliveredQuantity }),
     item('packaging', 'Packing evidence verified', packing.filter((m) => m.status !== 'verified' && m.status !== 'waived').map((m) => `${m.title} is ${m.status.replace(/_/g, ' ')}.`), { packingMilestones: packing.length }),
     item('releaser', 'Releaser independent and authorized', releaser, { releaser: f.releaser.userId }),
   ];

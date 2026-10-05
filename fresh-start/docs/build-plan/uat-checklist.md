@@ -1,6 +1,6 @@
 # Phase 1 UAT checklist (IN-12 F-12.1)
 
-Human acceptance of the pilot scenarios (doc 19 §10: 1–5, 9, 12 for Phase 1; 6 from IN-13; 7 from IN-14–15; 8 from IN-15) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
+Human acceptance of the pilot scenarios (doc 19 §10: 1–5, 9, 12 for Phase 1; 6 from IN-13; 7 from IN-14–15; 8 from IN-15; 10 from IN-16) by the people who will run them. The automated scenarios (`apps/api/test/pilot/scenario-*.api.spec.ts`) prove the rules hold. This checklist proves the screens let each role do the job without help.
 
 **Where and with what.** On staging, with approved anonymized fixtures (doc 13, UAT row). Never use production data, real customer or supplier identities, real CAD, or real payment credentials (`ES-39`). Each tester uses their own account with only the roles listed below, and MFA is enrolled where the role requires it. The payment provider is in sandbox mode.
 
@@ -139,6 +139,25 @@ Start from an order in production with an approved plan, a passed first article,
 | 9.2 | Customer approver | `/invoices/[id]` → pay | Pay through the sandbox | Payment "pending" until the provider confirms | ☐ |
 | 9.3 | Finance (with the provider sandbox) | — | Replay the same success callback twice; send one late | One payment recorded; the invoice is paid once; the duplicates are logged | ☐ |
 | 9.4 | Finance | `/finance` | Open the reconciliation queue | Nothing left unmatched; the replayed callbacks did not create a second receipt | ☐ |
+
+## Scenario 10: short and damaged supplier shipment (IN-16)
+
+Start from an order in production with two lots released by quality (e.g. LOT-A 60 and LOT-B 40 of 100 ordered), and a JobWork logistics member signed in with MFA.
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 10.1 | Supplier A production | `/supplier/orders/[id]` → Plan a shipment | Pack LOT-A in two packages of 30 and LOT-B in one of 40; leave the challan blank and save | Released lots show what is available; the documents guard is red with its reason; submit is disabled | ☐ |
+| 10.2 | Supplier A production | `/supplier/shipments/[id]` | Add the challan (and an e-way bill if over ₹50,000); submit | Every guard green; "With JobWork" | ☐ |
+| 10.3 | JobWork logistics | `/logistics` → To release | Open it and release | Guards re-checked; addresses frozen; the supplier is told to hand it over | ☐ |
+| 10.4 | Supplier A production | `/supplier/shipments/[id]` | Record pickup with the transporter and LR number | Without the LR number it is refused; then "on the way"; the order shows in transit | ☐ |
+| 10.5 | JobWork logistics | `/logistics/shipments/[id]` → Carrier update | Record "delivered" (or let the carrier feed send it) | "Carrier delivered — receive it"; nothing is in stock yet | ☐ |
+| 10.6 | JobWork logistics (phone) | `/logistics/shipments/[id]` → Receive | Count package 2 as 25, mark package 3 damaged with 4 quarantined, add a photo; check the preview; record | Shortage and damage previewed, then opened as RD-…; shipment on hold; ordered and shipped unchanged; the supplier is told | ☐ |
+| 10.7 | JobWork logistics | Same screen → Discrepancies | Try to scrap the damage; then mark the shortage "replacement expected" | Scrap is refused (quality's); the shortage resolves | ☐ |
+| 10.8 | JobWork quality | Same screen | Scrap the quarantined pieces | The shipment is received; the work package shows 9 outstanding | ☐ |
+| 10.9 | JobWork quality | `/quality/releases/[workPackageId]` | Release 10 of a replacement lot after its final inspection; then 9 | 10 is refused, naming the 9 released but never delivered; 9 releases | ☐ |
+| 10.10 | Supplier A, then JobWork logistics | Plan, release, pick up, receive | Ship the 9 and receive them in full | The order reaches "received at JobWork" | ☐ |
+| 10.11 | JobWork logistics | `/logistics/work-packages/[id]` | Read the reconciliation and the lots | Ordered 100, shipped 109, counted 104, accepted 100, scrapped 4, outstanding 0; every lot's received quantity = stock + scrapped | ☐ |
+| 10.12 | Supplier A | `/supplier/shipments/[id]` | Read the first shipment | JobWork's counts and both discrepancies with their resolutions; no stock locations, no internal split | ☐ |
 
 ## Scenario 12: suspension and cross-party access
 
