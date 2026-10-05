@@ -41,7 +41,7 @@ export { AppShell, type AppShellProps, type NavItem } from './layout/AppShell';
 export { Card, Page, type CardProps, type PageProps } from './layout/Page';
 export { TabBar, type TabBarProps, type TabItem, type TabPrimaryAction } from './layout/TabBar';
 export { Hero, type HeroProps } from './layout/Hero';
-export { isActivePath } from './layout/paths';
+export { activeHref, isActivePath } from './layout/paths';
 export { Inline, SplitPane, Stack, type InlineProps, type StackProps } from './layout/Stack';
 
 // ---------------------------------------------------------------- data display

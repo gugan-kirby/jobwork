@@ -8,3 +8,12 @@ export function isActivePath(currentPath: string | undefined, href: string): boo
   if (href === '/') return currentPath === '/';
   return currentPath === href || currentPath.startsWith(`${href}/`);
 }
+
+/**
+ * The one item to light among several: the most specific match. A section home such as
+ * `/supplier` prefixes its own pages (`/supplier/orders`), so prefix matching alone would
+ * light both.
+ */
+export function activeHref(currentPath: string | undefined, hrefs: readonly string[]): string | undefined {
+  return hrefs.filter((href) => isActivePath(currentPath, href)).sort((a, b) => b.length - a.length)[0];
+}

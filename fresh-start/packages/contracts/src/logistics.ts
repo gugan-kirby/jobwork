@@ -167,6 +167,17 @@ export const workPackageLogisticsSchema = z.object({
   ),
 });
 
+/** What a supplier may still ship of each quality-released lot on a purchase order (IN-16 F-16.4). */
+export const shippableLotSchema = z.object({
+  lotCode: z.string(),
+  released: z.string(),
+  /** On the work package's released, moving or received leg-1 shipments. */
+  shipped: z.string(),
+  available: z.string(),
+  /** Open NCRs that hold the lot. */
+  heldBy: z.array(z.string()),
+});
+
 export const shipmentGuardSchema = z.object({ key: z.string(), label: z.string(), pass: z.boolean(), reasons: z.array(z.string()) });
 
 export const siteSnapshotSchema = z.object({
@@ -243,3 +254,4 @@ export type ResolveDiscrepancyRequest = z.infer<typeof resolveDiscrepancyRequest
 export type ReceivingDiscrepancy = z.infer<typeof receivingDiscrepancySchema>;
 export type Receiving = z.infer<typeof receivingSchema>;
 export type WorkPackageLogistics = z.infer<typeof workPackageLogisticsSchema>;
+export type ShippableLot = z.infer<typeof shippableLotSchema>;

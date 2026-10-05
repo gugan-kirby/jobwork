@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { Icon } from '../primitives/Icon';
 import { UiLink } from '../primitives/Link';
-import { isActivePath } from './paths';
+import { activeHref } from './paths';
 import { TabBar, type TabItem, type TabPrimaryAction } from './TabBar';
 
 /**
@@ -64,6 +64,7 @@ export function AppShell({
   children,
 }: AppShellProps): React.JSX.Element {
   const [navOpen, setNavOpen] = useState(false);
+  const activeNav = activeHref(currentPath, navigation.map((item) => item.href));
   const bellCount = notifications?.count ?? 0;
 
   return (
@@ -145,7 +146,7 @@ export function AppShell({
             className={navOpen ? 'jw-nav jw-nav-open' : 'jw-nav'}
           >
             {navigation.map((item) => {
-              const active = isActivePath(currentPath, item.href);
+              const active = item.href === activeNav;
               return (
                 <UiLink
                   key={item.href}

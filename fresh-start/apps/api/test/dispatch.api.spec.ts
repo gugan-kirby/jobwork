@@ -97,6 +97,10 @@ describe('Leg 1 dispatch (F-16.2)', () => {
   });
 
   it('counts earlier shipments against the release, and holds a lot an NCR names', async () => {
+    const shippable = (actor: 'supplierA' | 'supplierB' = 'supplierA') => p.as[actor].get(`/api/v1/supplier/shipments/shippable?purchaseOrderId=${deal.purchaseOrderId}`);
+    expect(ok(await shippable(), 200, 'shippable')).toEqual([{ lotCode: 'LOT-A', released: '20', shipped: '12', available: '8', heldBy: [] }]);
+    expect((await shippable('supplierB')).status).toBe(404);
+    expect((await p.as.supplierA.get('/api/v1/supplier/shipments/shippable?purchaseOrderId=nope')).status).toBe(400);
     const tooMany = ok(await plan(packages('LOT-A', 10)), 201, 'second');
     expect((tooMany['guards'] as Body[]).find((g) => g['key'] === 'quantity')!['reasons']).toEqual(['LOT-A: 22 would ship against 20 released.', '22 would ship against 20 released in all.']);
     // A later inspection of LOT-A fails and an NCR holds the lot.
@@ -105,6 +109,7 @@ describe('Leg 1 dispatch (F-16.2)', () => {
     ncrId = ok(await p.as.quality.post('/api/v1/ncrs', { inspectionId: failed['inspectionId'], resultIds: [bore['resultId']], title: 'LOT-A bore oversize', description: 'Found at a repeat final', severity: 'major', affectedQuantity: '20', lots: ['LOT-A'] }), 201, 'NCR')['ncrId'] as string;
     const held = ok(await p.as.supplierA.post(`/api/v1/supplier/shipments/${tooMany['shipmentId']}/replan`, { expectedVersion: tooMany['aggregateVersion'], originSiteId: p.sites.supplierA, packages: packages('LOT-A', 8), documents }), 201, 'replan');
     expect(red(held)).toEqual(['holds']);
+    expect((ok(await shippable(), 200, 'shippable') as unknown as Body[])[0]!['heldBy']).toEqual([expect.stringMatching(/^NCR-/)]);
     expect(((held['guards'] as Body[]).find((g) => g['key'] === 'holds')!['reasons'] as string[])[0]).toMatch(/^NCR-\d{4}-\d{4} holds LOT-A\.$/);
     second = held;
   });

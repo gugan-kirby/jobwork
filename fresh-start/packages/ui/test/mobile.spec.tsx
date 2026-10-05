@@ -5,7 +5,7 @@ import { TabBar } from '../src/layout/TabBar';
 import { AppShell } from '../src/layout/AppShell';
 import { Page } from '../src/layout/Page';
 import { Hero } from '../src/layout/Hero';
-import { isActivePath } from '../src/layout/paths';
+import { activeHref, isActivePath } from '../src/layout/paths';
 import { QuickAction, QuickActionGrid } from '../src/status/QuickAction';
 import { FilterChips } from '../src/data/FilterChips';
 import { RecordCard } from '../src/data/RecordCard';
@@ -35,6 +35,13 @@ describe('isActivePath', () => {
     expect(isActivePath('/enquiries/abc', '/enquiries')).toBe(true);
     expect(isActivePath('/enquiries-old', '/enquiries')).toBe(false);
     expect(isActivePath(undefined, '/enquiries')).toBe(false);
+  });
+
+  it('lights only the most specific item when a section home prefixes its pages', () => {
+    const hrefs = ['/supplier', '/supplier/orders', '/supplier/shipments'];
+    expect(activeHref('/supplier/shipments/abc', hrefs)).toBe('/supplier/shipments');
+    expect(activeHref('/supplier', hrefs)).toBe('/supplier');
+    expect(activeHref('/rfqs', hrefs)).toBeUndefined();
   });
 });
 

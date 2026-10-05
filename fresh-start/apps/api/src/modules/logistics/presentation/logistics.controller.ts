@@ -1,5 +1,6 @@
 import { Controller, Get, HttpCode, Param, Post, Query, Req, type RawBodyRequest } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import {
   cancelShipmentRequestSchema,
   planShipmentRequestSchema,
@@ -10,6 +11,7 @@ import {
   resolveDiscrepancyRequestSchema,
   shipmentStatusSchema,
   shipmentVersionRequestSchema,
+  type ShippableLot,
   type Shipment,
   type WorkPackageLogistics,
 } from '@jobwork/contracts';
@@ -38,6 +40,11 @@ export class SupplierShipmentController {
   @Get()
   list(@CurrentActor() actor: Actor, @Query('workPackageId') workPackageId?: string): Promise<Shipment[]> {
     return this.dispatch.list(actor, workPackageId ? { workPackageId } : {});
+  }
+
+  @Get('shippable')
+  shippable(@CurrentActor() actor: Actor, @Query() query: unknown): Promise<ShippableLot[]> {
+    return this.dispatch.shippable(actor, parseBody(z.object({ purchaseOrderId: z.uuid() }), query ?? {}).purchaseOrderId);
   }
 
   @Post()

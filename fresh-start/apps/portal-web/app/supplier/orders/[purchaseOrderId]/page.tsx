@@ -22,6 +22,7 @@ import { ThreadPanel } from '../../../thread-panel';
 import { SupplierChangesPanel } from './changes-panel';
 import { InspectionsPanel } from './inspections-panel';
 import { ProductionPanel } from './production-panel';
+import { ShipmentsPanel } from './shipments-panel';
 
 /**
  * One purchase order, supplier view (`FR-502`): the frozen lines and the bid versions
@@ -142,6 +143,7 @@ export default function SupplierPurchaseOrderPage() {
         <SupplierChangesPanel purchaseOrderId={purchaseOrderId} />
         <ProductionPanel purchaseOrderId={purchaseOrderId} />
         <InspectionsPanel purchaseOrderId={purchaseOrderId} />
+        <ShipmentsPanel purchaseOrderId={purchaseOrderId} acknowledged={po.status === 'acknowledged'} />
         <ThreadPanel contextType="purchase_order" contextId={purchaseOrderId} description="Anything about this purchase order, between you and JobWork." />
       </Stack>
     </Page>

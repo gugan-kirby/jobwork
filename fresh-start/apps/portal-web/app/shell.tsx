@@ -52,6 +52,7 @@ const SUPPLIER_NAVIGATION: NavItem[] = [
   { href: '/rfqs', label: 'RFQs' },
   { href: '/supplier/orders', label: 'Orders' },
   { href: '/supplier/quality', label: 'Quality' },
+  { href: '/supplier/shipments', label: 'Shipments' },
   { href: '/supplier/company', label: 'Company' },
   { href: '/supplier/compliance', label: 'Compliance' },
   { href: '/capabilities', label: 'Capabilities' },
