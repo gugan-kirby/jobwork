@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { CustomerDelivery, CustomerDeliveryStatus, ShipmentStatus } from '@jobwork/contracts';
+import type { CustomerDelivery, CustomerDeliveryStatus, CustomerOrderDocument, ShipmentStatus } from '@jobwork/contracts';
 import type { Actor } from '../../iam';
-import { OrdersRepository } from '../../orders';
-import { Rational } from '../../quality';
+import { FinanceRepository, OrdersRepository } from '../../orders';
+import { ConformityView, type ConformitySummary, Rational } from '../../quality';
 import { DomainError } from '../../../platform/http/domain-error';
 import { LogisticsRepository, type ShipmentRow } from '../infrastructure/logistics.repository';
 import { siteHash, snapshot } from './dispatch.command';
@@ -48,6 +48,8 @@ export class CustomerDeliveries {
   constructor(
     private readonly repo: LogisticsRepository,
     private readonly orders: OrdersRepository,
+    private readonly finance: FinanceRepository,
+    private readonly conformityView: ConformityView,
   ) {}
 
   /** A member of the consignee organization; "not yours" and "does not exist" are one answer (doc 11 §5). */
@@ -65,6 +67,43 @@ export class CustomerDeliveries {
     if (!actor.roles.some((r) => CUSTOMER_READERS.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');
     const rows = await this.repo.customerDeliveries(order.customerOrganizationId, order.id);
     return Promise.all(rows.map((s) => this.project(s)));
+  }
+
+  /**
+   * The order's documents for the customer's own record (IN-17 F-17.4): the quotation it accepted,
+   * JobWork's invoices, and for each delivery that left, its delivery note, its POD and its
+   * conformity certificate. Each is rendered on request from the customer's own projection.
+   */
+  async documents(actor: Actor, salesOrderId: string): Promise<CustomerOrderDocument[]> {
+    const order = await this.orders.findSalesOrder(salesOrderId);
+    if (!order || actor.isInternal || actor.organizationId !== order.customerOrganizationId) throw new DomainError('ORDER_NOT_FOUND', 404, 'Order not found');
+    if (!actor.roles.some((r) => CUSTOMER_READERS.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');
+    const out: CustomerOrderDocument[] = [
+      { kind: 'quotation', title: `Quotation ${order.quoteReference ?? ''} v${order.acceptedQuoteVersionNo}`.trim(), reference: order.quoteReference ?? '', date: order.acceptance.acceptedAt.toISOString(), path: `/quotations/${order.customerQuoteId}/document` },
+    ];
+    for (const i of await this.finance.listInvoicesForOrder(order.id)) {
+      if (i.status === 'void') continue;
+      out.push({ kind: 'invoice', title: `Tax invoice ${i.number}`, reference: i.number, date: i.issuedAt.toISOString(), path: `/invoices/${i.id}/document` });
+    }
+    for (const s of await this.repo.customerDeliveries(order.customerOrganizationId, order.id)) {
+      if (['planned', 'ready_for_release'].includes(s.status)) continue;
+      out.push({ kind: 'delivery_note', title: `Delivery note ${s.number}`, reference: s.number, date: (s.pickedUpAt ?? s.releasedAt)?.toISOString() ?? null, path: `/deliveries/${s.id}/delivery-note` });
+      out.push({ kind: 'conformity_certificate', title: `Certificate of conformance ${s.number}`, reference: s.number, date: s.releasedAt?.toISOString() ?? null, path: `/deliveries/${s.id}/conformity` });
+      const pod = await this.repo.proofOfDelivery(s.id);
+      if (pod) out.push({ kind: 'proof_of_delivery', title: `Proof of delivery ${s.number}`, reference: s.number, date: pod.receivedAt.toISOString(), path: `/deliveries/${s.id}/pod` });
+    }
+    return out;
+  }
+
+  /** The released quality record of what a delivery carries, by JobWork's markings (doc 03 §3). Once it has left, never before. */
+  async conformity(s: ShipmentRow): Promise<ConformitySummary> {
+    if (['planned', 'ready_for_release'].includes(s.status)) throw new DomainError('NOT_YET_RELEASED', 409, 'The certificate is issued when the delivery leaves JobWork');
+    const lots = [];
+    for (const item of await this.repo.items(s.id)) {
+      const lot = item.stockLotId ? await this.repo.lotDetail(item.stockLotId) : null;
+      if (lot?.workPackageId) lots.push({ workPackageId: lot.workPackageId, lotCode: lot.lotCode, marking: item.lotCode });
+    }
+    return this.conformityView.forLots(lots);
   }
 
   async get(actor: Actor, shipmentId: string): Promise<CustomerDelivery> {

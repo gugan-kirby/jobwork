@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { CustomerDelivery, SiteSnapshot } from '@jobwork/contracts';
+import type { ConformitySummary } from '../../quality';
 
 /**
  * Customer-facing logistics documents (IN-17; `R-08`; doc 11 "identity leakage"): the shipping
@@ -106,5 +107,36 @@ ${
 }
 <table><thead><tr><th>Package</th><th>Item</th><th>Lot</th><th class="n">Quantity</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="box">A proof of delivery records the handover only. Accepting the delivery is a separate step in the JobWork portal${d.acceptanceDueAt ? `, open until ${escape(d.acceptanceDueAt.slice(0, 10))}` : ''}.</div>
+</body></html>`);
+}
+
+const STAGE: Record<string, string> = { fai: 'First article', final: 'Final inspection', jobwork_incoming: 'JobWork incoming inspection' };
+
+/**
+ * The certificate of conformance for a delivery (IN-17 F-17.4): the quality releases that cover its
+ * lots, the inspections that passed them and each characteristic against the drawing's own limits,
+ * all by JobWork's lot markings. Who made or measured the parts is not in its inputs.
+ */
+export function renderConformityCertificate(d: CustomerDelivery, c: ConformitySummary, from: Consignor): RenderedDocument {
+  const markings = [...new Set(d.packages.flatMap((p) => p.items.map((i) => i.lotMarking)))];
+  const releases = c.releases.map((r) => `<tr><td>${escape(r.number)}</td><td>${escape(r.releasedAt.slice(0, 10))}</td><td class="n">${escape(r.quantity)}</td><td>${r.markings.map(escape).join(', ')}</td></tr>`).join('');
+  const inspections = c.inspections.map((i) => `<tr><td>${escape(i.number)}</td><td>${escape(STAGE[i.stage] ?? i.stage)}</td><td>${escape(i.marking)}</td><td class="n">${i.samples}</td><td>${escape(i.decidedAt?.slice(0, 10) ?? '')}</td></tr>`).join('');
+  const characteristics = c.characteristics
+    .map((x) => `<tr><td>${escape(x.reference)}</td><td>${escape(x.name)}</td><td>${escape(x.criticality)}</td><td>${escape(x.requirement)}</td><td class="n">${x.samples}</td><td>${escape(x.measured)}</td><td>${x.result === 'pass' ? 'Conforming' : 'Not conforming'}</td></tr>`)
+    .join('');
+  const deviations = c.deviations.length > 0 ? `<div class="box">Accepted under deviation: ${c.deviations.map((v) => `${escape(v.number)} (${v.markings.map(escape).join(', ')})`).join('; ')}. The deviation's scope and your decision on it are on the order.</div>` : '';
+  return done(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Certificate of conformance ${escape(d.number)}</title><style>${STYLE}</style></head><body>
+<h1>${escape(from.name)} — Certificate of conformance ${escape(d.number)}</h1>
+<p class="muted">Order ${escape(d.orderNumber)} · lots ${markings.map(escape).join(', ')} · ${escape(d.totalQuantity)} in this delivery</p>
+<p>${escape(from.name)} certifies that the parts in this delivery were inspected against the released drawing and quality plan, reviewed and released by JobWork quality${c.deviations.length > 0 ? ', and conform except as accepted under the deviation below' : ', and conform'}.</p>
+<h2>Quality releases</h2>
+<table><thead><tr><th>Release</th><th>Date</th><th class="n">Quantity</th><th>Lots</th></tr></thead><tbody>${releases || '<tr><td colspan="4">None on record.</td></tr>'}</tbody></table>
+<h2>Inspections</h2>
+<table><thead><tr><th>Inspection</th><th>Stage</th><th>Lot</th><th class="n">Samples</th><th>Decided</th></tr></thead><tbody>${inspections}</tbody></table>
+<h2>Characteristics</h2>
+<table><thead><tr><th>Ref.</th><th>Characteristic</th><th>Class</th><th>Requirement</th><th class="n">Samples</th><th>Measured</th><th>Result</th></tr></thead><tbody>${characteristics}</tbody></table>
+${deviations}
+<p class="muted">Issued by ${escape(from.name)}, ${escape(from.city)}, for delivery ${escape(d.number)}.</p>
 </body></html>`);
 }
