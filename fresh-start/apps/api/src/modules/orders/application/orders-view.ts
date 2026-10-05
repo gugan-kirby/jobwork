@@ -12,7 +12,7 @@ import type {
   SalesOrder,
   SupplierPurchaseOrder,
 } from '@jobwork/contracts';
-import { CUSTOMER_STATUS_LABEL, customerStatusOf, nextStepFor, timelineFor } from '../domain/customer-status';
+import { CUSTOMER_STATUS_LABEL, customerStatusOf, type DeliveryFact, nextStepFor, timelineFor } from '../domain/customer-status';
 import {
   FinanceRepository,
   type InstallmentRecord,
@@ -224,6 +224,23 @@ export class OrdersView {
     };
   }
 
+  /** Leg 2 as the customer's timeline reads it (IN-17). */
+  private async deliveryFacts(orderId: string): Promise<Array<DeliveryFact & { shipmentId: string }>> {
+    const iso = (d: Date | null): string | null => (d ? d.toISOString() : null);
+    return (await this.orders.customerDeliveryFacts(orderId)).map((d) => ({
+      shipmentId: d.shipmentId,
+      status: d.status,
+      dispatchedAt: iso(d.dispatchedAt),
+      carrier: d.carrier,
+      tracking: d.tracking,
+      deliveredAt: iso(d.deliveredAt),
+      dueAt: iso(d.dueAt),
+      acceptedAt: iso(d.acceptedAt),
+      basis: d.basis,
+      addressNeeded: d.addressNeeded,
+    }));
+  }
+
   private expectedDelivery(row: SalesOrderRecord): string | null {
     // A date is only promised once the order is released; before that it would be a guess (doc 06 §13).
     if (!row.commercialReleasedAt) return null;
@@ -234,6 +251,9 @@ export class OrdersView {
     const status = customerStatusOf(row.status);
     const invoices = await this.finance.listInvoicesForOrder(row.id);
     const open = invoices.find((i) => i.status === 'issued' || i.status === 'partially_paid');
+    const deliveries = await this.deliveryFacts(row.id);
+    const address = deliveries.find((d) => d.addressNeeded);
+    const confirm = deliveries.find((d) => d.status === 'receiving_check');
     return {
       orderId: row.id,
       number: row.number,
@@ -245,17 +265,22 @@ export class OrdersView {
       acceptedAt: row.acceptance.acceptedAt.toISOString(),
       expectedDeliveryAt: this.expectedDelivery(row),
       actionNeeded: open
-        ? { kind: open.kind === 'advance' ? 'pay_advance' : 'pay_balance', label: open.kind === 'advance' ? 'Pay the advance' : 'Pay the balance', invoiceId: open.id }
-        : null,
+        ? { kind: open.kind === 'advance' ? 'pay_advance' : 'pay_balance', label: open.kind === 'advance' ? 'Pay the advance' : 'Pay the balance', invoiceId: open.id, shipmentId: null }
+        : address
+          ? { kind: 'confirm_address', label: 'Confirm the delivery address', invoiceId: null, shipmentId: address.shipmentId }
+          : confirm
+            ? { kind: 'confirm_delivery', label: 'Confirm the delivery', invoiceId: null, shipmentId: confirm.shipmentId }
+            : null,
     };
   }
 
   async customerOrder(row: SalesOrderRecord): Promise<CustomerOrder> {
     const status = customerStatusOf(row.status);
-    const [installments, invoices, production] = await Promise.all([
+    const [installments, invoices, production, deliveries] = await Promise.all([
       this.finance.listInstallments(row.id),
       this.finance.listInvoicesForOrder(row.id),
       this.production.customerProgress(row.id),
+      this.deliveryFacts(row.id),
     ]);
     const advance = installments.find((i) => i.kind === 'advance');
     const advanceInvoice = advance?.invoiceId ? invoices.find((i) => i.id === advance.invoiceId) : undefined;
@@ -288,10 +313,11 @@ export class OrdersView {
         baselineReleasedAt: production.baselineReleasedAt ? production.baselineReleasedAt.toISOString() : null,
         progress: production.progress,
         scheduleUnderReview: production.slipped,
+        deliveries,
       }),
       progress: production.progress,
       scheduleUnderReview: production.slipped,
-      nextStep: nextStepFor({ status, openInvoice: open ? { number: open.number, kind: open.kind } : null }),
+      nextStep: nextStepFor({ status, openInvoice: open ? { number: open.number, kind: open.kind } : null, deliveries }),
       aggregateVersion: row.aggregateVersion,
     };
   }
