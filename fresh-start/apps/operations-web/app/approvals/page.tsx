@@ -35,6 +35,7 @@ const KIND_LABEL: Record<ApprovalRequest['kind'], string> = {
   quote: 'Quotation',
   allocation: 'Cash allocation',
   change: 'Engineering change',
+  deviation: 'Deviation',
 };
 
 const STATUS_TONE: Record<ApprovalRequest['status'], Tone> = {

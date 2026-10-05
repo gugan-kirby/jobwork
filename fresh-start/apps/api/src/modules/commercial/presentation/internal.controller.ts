@@ -48,7 +48,7 @@ function requireReader(actor: Actor): void {
 
 const approvalListQuerySchema = z.object({
   status: z.enum(['pending', 'approved', 'rejected', 'returned', 'superseded']).optional(),
-  kind: z.enum(['award', 'cost_sheet', 'quote', 'allocation', 'change']).optional(),
+  kind: z.enum(['award', 'cost_sheet', 'quote', 'allocation', 'change', 'deviation']).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
 });
 
