@@ -242,6 +242,39 @@ What `delivery.api.spec.ts` covers:
 | `apps/api/src/modules/logistics/presentation/customer-documents.ts` | edit | Conformity certificate document |
 | `apps/api/test/customer-deliveries.api.spec.ts` | new | Timeline rows per stage, the documents list and each document's audience, the leak suite over the order, deliveries and documents JSON |
 
+**Deviations (2026-10-05, F-17.4):**
+
+- **Where the timeline's facts come from.** `OrdersRepository.customerDeliveryFacts` reads the order's leg-2 shipments, their POD and acceptance. It is a query, not an import: logistics already imports orders, so orders cannot import logistics. It writes nothing.
+- **Timeline rows.**
+  - Final checks: "confirm the delivery address" while a packed delivery waits on it, dated at the first dispatch once done.
+  - On the way: dispatch date, carrier and tracking, how many are on the way and how many delivered.
+  - Delivery confirmation: the handover date and the date to accept or report by; "JobWork is handling the issue you reported" while a report holds it; once done, "accepted on" or "taken as accepted on".
+  - Next steps: "Confirm the delivery address", "Confirm delivery" with the due date and the warranty wording, and "Issue being handled".
+- **The order list's action** gains `confirm_address` and `confirm_delivery`, carrying the shipment. An open invoice still comes first. The action's invoice id is now nullable.
+- **Portal home.** The summary gains `deliveries_awaiting_you`: deliveries to accept, and packed ones with no confirmation for their address. An edit made after a confirmation shows on the delivery page and in the gate, not in this count.
+- **Documents live in logistics.** `GET /orders/:id/documents` and the certificate are served by logistics, which reads orders, finance's invoices and quality's `ConformityView`. The list:
+  - the accepted quotation;
+  - the order's invoices;
+  - for each delivery that left: its delivery note, its certificate and, once handed over, its POD.
+- **The conformity certificate** (`GET /deliveries/:id/conformity`, and `/customer-dispatches/:id/conformity` for JobWork) draws on quality's new `ConformityView`:
+  - the releases covering the delivery's lots;
+  - the passed first-article, final and JobWork-incoming inspections;
+  - each characteristic from its latest results (corrections supersede), against the drawing's limits;
+  - approved deviations.
+
+  It speaks only in JobWork's markings, never the inspecting organization, instrument or inspector. It is issued once the delivery has left (409 before).
+
+**Verification (2026-10-05, F-17.4).** `customer-deliveries.api.spec.ts` (6) walks one order and covers:
+
+- the address request appearing on the timeline, next step, order list (after the balance is paid) and portal count, and clearing on confirmation;
+- dispatch with carrier and tracking;
+- the confirmation due date after the POD, then "taken as accepted" and `completed` after the sweep;
+- six documents listed and each rendered for the customer, while another customer, the supplier and JobWork get 404;
+- the certificate's release, first-article and final inspections, the bore against "12 mm, ≥ 11.98, ≤ 12.02 mm", and the same hash JobWork sees;
+- the leak suite over the order, deliveries and documents JSON, and the delivery note, POD and certificate HTML: no supplier name, lot code, purchase order, city, contact, instrument kind or asset tag.
+
+API suite 507 green.
+
 ## F-17.5 UX
 
 | File | Action | Contents |
