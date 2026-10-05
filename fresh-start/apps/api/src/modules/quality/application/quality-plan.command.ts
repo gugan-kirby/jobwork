@@ -22,7 +22,7 @@ import { type CharacteristicRow, type PlanRow, QualityRepository, type WorkPacka
 type Opts = { idempotencyKey?: string | undefined };
 
 export const QUALITY = ['jobwork_quality'];
-export const QUALITY_READERS = ['jobwork_quality', 'jobwork_engineering', 'jobwork_sourcing', 'jobwork_sales', 'platform_admin'];
+export const QUALITY_READERS = ['jobwork_quality', 'jobwork_engineering', 'jobwork_sourcing', 'jobwork_sales', 'jobwork_logistics', 'platform_admin'];
 
 export function requireInternal(actor: Actor, roles: readonly string[]): void {
   if (!actor.isInternal || !actor.roles.some((r) => roles.includes(r))) {

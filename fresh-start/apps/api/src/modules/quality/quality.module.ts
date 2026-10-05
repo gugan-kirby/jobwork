@@ -26,6 +26,7 @@ import {
 @Module({
   imports: [IamModule, CommercialModule],
   controllers: [QualityPlanController, InspectionController, SupplierInspectionController, InstrumentController, NcrController, SupplierNcrController, DeviationController, CustomerDeviationController, QualityReleaseController],
+  exports: [QualityReleaseCommand],
   providers: [QualityRepository, NcrRepository, ReleaseRepository, QualityReleaseCommand, QualityPlanCommand, InstrumentCommand, InspectionCommand, NcrCommand, DeviationCommand],
 })
 export class QualityModule {}
