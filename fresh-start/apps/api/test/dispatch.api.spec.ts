@@ -2,8 +2,6 @@ import { createHmac } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type Body, CARRIER_SECRET, ok, Pilot, type SourcedDeal } from './pilot/driver';
 
-const daysAgo = (n: number): string => new Date(Date.now() - n * 86_400_000).toISOString();
-
 /**
  * Leg 1, supplier to JobWork, over HTTP (IN-16 F-16.2; doc 06 §11; doc 10 §§11–12; BR-LOG-01, BR-LOG-02).
  * Only quality-released lots ship, never more than released less what already went; release by
@@ -26,32 +24,7 @@ describe('Leg 1 dispatch (F-16.2)', () => {
   const plan = (pkgs: Body[], docs: Body = documents) => p.as.supplierA.post('/api/v1/supplier/shipments', { purchaseOrderId: deal.purchaseOrderId, originSiteId: p.sites.supplierA, packages: pkgs, documents: docs });
   const red = (s: Body): string[] => (s['guards'] as Body[]).filter((g) => !g['pass']).map((g) => g['key'] as string);
 
-  async function inspect(stage: 'fai' | 'final', bore: string, lot: string): Promise<Body> {
-    let i = ok(await p.as.quality.post('/api/v1/inspections', { workPackageId: prod.workPackageId, stage, lot }), 201, `plan ${stage}`);
-    i = ok(await p.as.supplierA.post(`/api/v1/supplier/inspections/${i['inspectionId']}/start`, { expectedVersion: i['aggregateVersion'] }), 201, 'start');
-    const samples = Array.from({ length: i['sampleSize'] as number }, (_, k) => k + 1);
-    const value = (name: string) =>
-      name.startsWith('Visual')
-        ? { measurement: { value: 'conforming', unit: null, declaredPrecision: null } }
-        : name.startsWith('Surface')
-          ? { measurement: { value: '1.6', unit: 'um', declaredPrecision: 1 }, instrumentId: gauge }
-          : name === 'Bore diameter'
-            ? { measurement: { value: bore, unit: 'mm', declaredPrecision: 3 }, instrumentId: gauge }
-            : { measurement: { value: '80.00', unit: 'mm', declaredPrecision: 2 }, instrumentId: gauge };
-    i = ok(
-      await p.as.supplierA.post(`/api/v1/supplier/inspections/${i['inspectionId']}/results`, {
-        expectedVersion: i['aggregateVersion'],
-        inspectedAt: new Date().toISOString(),
-        samples: samples.map((n) => ({ sampleNo: n, lot })),
-        results: samples.flatMap((n) => (i['characteristics'] as Body[]).map((c) => ({ sampleNo: n, characteristicId: c['characteristicId'], ...value(c['name'] as string) }))),
-      }),
-      201,
-      'submit',
-    );
-    i = ok(await p.as.quality.post(`/api/v1/inspections/${i['inspectionId']}/review`, { expectedVersion: i['aggregateVersion'] }), 201, 'review');
-    const pass = Number(bore) <= 12.02;
-    return ok(await p.as.quality.post(`/api/v1/inspections/${i['inspectionId']}/decide`, { expectedVersion: i['aggregateVersion'], decision: pass ? 'passed' : 'failed', reason: pass ? '' : 'Bore oversize' }), 201, 'decide');
-  }
+  const inspect = (stage: 'fai' | 'final', bore: string, lot: string): Promise<Body> => p.inspection(prod.workPackageId, stage, lot, gauge, bore);
 
   function webhook(body: Body, secret = CARRIER_SECRET) {
     const raw = JSON.stringify(body);
@@ -68,19 +41,7 @@ describe('Leg 1 dispatch (F-16.2)', () => {
     const { enquiryId } = await p.approvedEnquiry();
     deal = await p.sourceToPurchaseOrder(enquiryId);
     prod = await p.intoProduction(deal);
-    const made = ok(await p.as.supplierA.post('/api/v1/supplier/instruments', { assetTag: 'BG-01', kind: 'Bore gauge', unit: 'mm' }), 201, 'instrument');
-    ok(await p.as.supplierA.post(`/api/v1/supplier/instruments/${made['instrumentId']}/calibrations`, { performedAt: daysAgo(10), dueAt: daysAgo(-300), outcome: 'pass', certificateDocumentVersionId: await p.cleanDrawing(p.orgs.supplierA) }), 201, 'calibrate');
-    gauge = made['instrumentId'] as string;
-    await inspect('fai', '12.004', 'LOT-A');
-    await inspect('final', '12.006', 'LOT-A');
-    for (;;) {
-      const wp = ((await p.productionView(deal.orderId))['workPackages'] as Body[]).find((w) => w['workPackageId'] === prod.workPackageId)!;
-      const m = (wp['milestones'] as Body[]).find((x) => x['status'] !== 'verified' && x['status'] !== 'waived');
-      if (!m) break;
-      if (m['status'] === 'evidence_submitted') ok(await p.as.quality.post(`/api/v1/milestones/${m['milestoneId']}/verify`, { expectedVersion: m['aggregateVersion'], decision: 'verified' }), 201, 'verify');
-      else ok(await p.as.quality.post(`/api/v1/milestones/${m['milestoneId']}/waive`, { expectedVersion: m['aggregateVersion'], reason: 'Covered by the final inspection on record.' }), 201, 'waive');
-    }
-    ok(await p.as.quality.post('/api/v1/quality-releases', { workPackageId: prod.workPackageId, quantity: '20', lots: ['LOT-A'], serials: [] }), 201, 'release LOT-A');
+    gauge = await p.releasedLots(deal, prod.workPackageId, [{ lot: 'LOT-A', quantity: '20' }]);
   }, 240_000);
 
   afterAll(async () => {
