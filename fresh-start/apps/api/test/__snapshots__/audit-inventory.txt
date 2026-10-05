@@ -73,6 +73,7 @@ quality.close-ncr  modules/quality/application/ncr.command.ts
 quality.contain-ncr  modules/quality/application/ncr.command.ts
 quality.correct-result  modules/quality/application/inspection.command.ts
 quality.create-plan  modules/quality/application/quality-plan.command.ts
+quality.customer-decide-deviation  modules/quality/application/deviation.command.ts
 quality.decide-inspection  modules/quality/application/inspection.command.ts
 quality.disposition-calibration  modules/quality/application/inspection.command.ts
 quality.invalidate-inspection  modules/quality/application/inspection.command.ts
@@ -84,6 +85,7 @@ quality.record-calibration  modules/quality/application/instrument.command.ts
 quality.record-rework  modules/quality/application/ncr.command.ts
 quality.register-instrument  modules/quality/application/instrument.command.ts
 quality.reject-lot  modules/quality/application/ncr.command.ts
+quality.request-deviation  modules/quality/application/deviation.command.ts
 quality.respond-corrective-action  modules/quality/application/ncr.command.ts
 quality.retire-instrument  modules/quality/application/instrument.command.ts
 quality.review-corrective-action  modules/quality/application/ncr.command.ts
@@ -93,6 +95,7 @@ quality.start-inspection  modules/quality/application/inspection.command.ts
 quality.start-review  modules/quality/application/inspection.command.ts
 quality.submit-results  modules/quality/application/inspection.command.ts
 quality.verify-corrective-action  modules/quality/application/ncr.command.ts
+quality.withdraw-deviation  modules/quality/application/deviation.command.ts
 sourcing.acknowledge-rfq  modules/sourcing/application/bid.command.ts
 sourcing.approve-for-sourcing  modules/sourcing/application/approve-for-sourcing.command.ts
 sourcing.cancel-enquiry  modules/sourcing/application/cancel-enquiry.command.ts
