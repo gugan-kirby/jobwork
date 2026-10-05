@@ -317,6 +317,44 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
        WHERE d.status = 'open'`,
   },
   {
+    key: 'customer_dispatches_to_release',
+    label: 'Customer dispatches to release',
+    detail: 'Packed and submitted with every guard green or overridden; release re-runs the gate and moves the stock out.',
+    href: '/logistics',
+    roles: ['jobwork_logistics'],
+    subjectType: 'shipment',
+    membership: `
+      SELECT s.id AS subject_id, s.number AS reference, s.number AS title, '/logistics/shipments/' || s.id AS href, s.updated_at AS waiting_since
+        FROM logistics.shipment s
+       WHERE s.leg = 'jobwork_to_customer' AND s.status = 'ready_for_release'`,
+  },
+  {
+    // POD is not acceptance, and a carrier's "delivered" is not a POD (BR-LOG-05): until one is recorded, it waits here.
+    key: 'deliveries_awaiting_pod',
+    label: 'Deliveries awaiting proof of delivery',
+    detail: 'On the way to the customer, or reported delivered by the carrier, with no proof of delivery yet.',
+    href: '/logistics',
+    roles: ['jobwork_logistics'],
+    subjectType: 'shipment',
+    membership: `
+      SELECT s.id AS subject_id, s.number AS reference, s.number AS title, '/logistics/shipments/' || s.id AS href,
+             coalesce(s.carrier_delivered_at, s.picked_up_at) AS waiting_since
+        FROM logistics.shipment s
+       WHERE s.leg = 'jobwork_to_customer' AND s.status IN ('picked_up', 'in_transit', 'delivered_to_destination')`,
+  },
+  {
+    key: 'delivery_exceptions_open',
+    label: 'Delivery exceptions',
+    detail: 'Address changes, refusals and the customer’s reports: the delivery is held until each is resolved or handed to a case.',
+    href: '/logistics',
+    roles: ['jobwork_support', 'jobwork_logistics'],
+    subjectType: 'delivery_exception',
+    membership: `
+      SELECT x.id AS subject_id, x.number AS reference, replace(x.kind, '_', ' ') || ' on ' || s.number AS title, '/logistics/shipments/' || x.shipment_id AS href, x.created_at AS waiting_since
+        FROM logistics.delivery_exception x JOIN logistics.shipment s ON s.id = x.shipment_id
+       WHERE x.status = 'open'`,
+  },
+  {
     // Messages held by the contact-leakage gate, invisible to their readers until decided (F-10.4).
     key: 'leakage_reviews_open',
     label: 'Messages held for review',

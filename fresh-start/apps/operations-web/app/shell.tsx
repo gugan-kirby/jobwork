@@ -55,7 +55,7 @@ const BADGE_SOURCES: Record<string, ReadonlyArray<string>> = {
   '/sales-orders': ['orders_awaiting_release', 'purchase_orders_to_issue', 'baselines_to_release', 'work_packages_to_release'],
   '/production': ['milestones_to_verify'],
   '/quality': ['inspections_awaiting_review', 'ncrs_open'],
-  '/logistics': ['shipments_to_release', 'shipments_awaiting_receiving', 'receiving_discrepancies_open'],
+  '/logistics': ['shipments_to_release', 'shipments_awaiting_receiving', 'receiving_discrepancies_open', 'customer_dispatches_to_release', 'deliveries_awaiting_pod', 'delivery_exceptions_open'],
   '/finance': ['payments_unmatched'],
 };
 

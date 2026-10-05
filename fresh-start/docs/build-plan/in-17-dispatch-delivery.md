@@ -59,6 +59,25 @@ What `0026_customer_dispatch.sql` changes:
 - **Queues** with SLA: `customer_dispatches_to_release` (leg 2 `ready_for_release`), `deliveries_awaiting_pod` (leg 2 picked up or later, no POD), `delivery_exceptions_open`.
 - **Templates** (in-app and email): `customer.delivery_address_confirmation`, `customer.delivery_dispatched`, `customer.delivery_confirmation_needed`, `customer.delivery_accepted`, `jobwork.delivery_exception_opened`.
 
+**Deviations (2026-10-05, F-17.1):**
+
+- **Evidence at the constraint.** The transition trigger refuses a leg-2 move to `receiving_check` without a `proof_of_delivery` row, and to `accepted` without a `delivery_acceptance` row. `BR-LOG-05` holds even against a command that forgets it.
+- **Template keys.** A key's prefix is its audience (IN-10), so the internal one is `internal.delivery_exception_opened`. The customer is told when a delivery is deemed accepted (`customer.delivery_deemed_accepted`); an explicit acceptance is the customer's own act and needs no notice.
+- **Override decisions.** `returned` from the approval rail is kept as its own status; like `rejected`, it covers nothing.
+- **Queues.** The three queues join the queue registry with their membership: leg-2 `ready_for_release`; leg 2 picked up, in transit or carrier-delivered; open delivery exceptions (support and logistics).
+
+**Verification (2026-10-05, F-17.1).** `customer-dispatch.db.spec.ts` (7) covers:
+
+- the seeds: policy v1 (7 days, deemed acceptance), the override approver roles per guard, three queues, ten template rows;
+- POD before awaiting acceptance and an acceptance record before accepted, each once and immutable, with the acceptance's actor matching its basis;
+- refusal, "not received" and a withdrawn report on leg 2 only, with leg 1's machine unchanged;
+- the packing check frozen at release;
+- address confirmations immutable; one pending override per guard, decided once, with its reasons fixed;
+- exceptions resolved once with a note, an address change carrying its own snapshot while the shipment's stays frozen;
+- a return leg, one per outbound shipment, moving dispatched stock back onto the same lot within what was dispatched.
+
+The approval-policy seed assertion gains `dispatch_override`, and the template pin moves to 36. Database suite 103 green.
+
 ## F-17.2 Dispatch gate and customer dispatch
 
 | File | Action | Contents |
