@@ -43,7 +43,8 @@ function operations(): Operation[] {
     });
     // IN-13: transitions run through the change command's `move()`, which always returns
     // one audit row for its transition; they are listed, and their body is that helper.
-    for (const hit of text.matchAll(/this\.move\(\s*actor,\s*\w+,\s*'([a-z0-9._-]+)'/g)) {
+    // Helpers that run one executor command per call and write its audit themselves: `move` (IN-13, IN-15) and `correctiveCommand` (IN-15).
+    for (const hit of text.matchAll(/this\.(?:move|correctiveCommand)\(\s*actor,\s*\w+,\s*'([a-z0-9._-]+)'/g)) {
       found.push({ name: hit[1]!, file: relative(SRC, path), body: 'audit: [this.audit(change, version, plan.action)]' });
     }
   }
