@@ -38,7 +38,7 @@ const sum = (xs: Array<{ quantity: string }>): Rational => xs.reduce((t, x) => t
 const show = (r: Rational): string => r.toDisplay(4);
 
 export function legOneGuards(f: LegOneFacts): ShipmentGuard[] {
-  const guard = (key: string, label: string, reasons: string[]): ShipmentGuard => ({ key, label, pass: reasons.length === 0, reasons });
+  const guard = (key: string, label: string, reasons: string[]): ShipmentGuard => ({ key, label, pass: reasons.length === 0, reasons, overridable: false, override: null });
 
   const eligible: string[] = [];
   if (f.purchaseOrder.status !== 'acknowledged') eligible.push(`${f.purchaseOrder.number} is ${f.purchaseOrder.status}: the supplier acknowledges it first.`);
