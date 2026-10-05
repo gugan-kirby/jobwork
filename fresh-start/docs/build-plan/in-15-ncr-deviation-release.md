@@ -52,6 +52,19 @@ The tables:
   - Decisions: the approval request, the customer decision (mirroring `change.customer_decision` with an authority snapshot), and status.
 - **`quality_release`**: work package; quantity; lots and serials; the deviations relied on; checklist snapshot (jsonb); `snapshot_sha256`; released by and at. Immutable.
 
+**Verification (2026-10-05, F-15.1).** `ncr.db.spec.ts` (6) covers:
+
+- the doc 06 §10 NCR machine, with scope and attempts that never shrink;
+- closure that needs a note and refuses the disposition decider (`BR-QLT-06`), plus branch lineage;
+- defects and containment immutable, and the failed result untouched;
+- a disposition decided once, its rework, reinspection and outcome each recorded once;
+- a corrective action that needs occurrence and escape causes and is verified last;
+- a deviation decided exactly as requested, within 180 days, with an immutable customer decision;
+- the `deviation` approval policy;
+- an immutable release with a SHA-256.
+
+Database suite 91 green; the template pin moved to 29 and the policy pin gains `deviation`.
+
 ## F-15.2 NCR and corrective action
 
 | File | Action | Contents |
