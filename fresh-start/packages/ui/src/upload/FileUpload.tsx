@@ -335,9 +335,11 @@ export function FileUpload({
         borderRadius: 'var(--radius-md)',
         padding: 'var(--space-4)',
         background: 'var(--color-surface)',
+        minWidth: 0,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+      {/* Wraps and shrinks at phone width: the native file control is otherwise wider than a 390 px card. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-1) var(--space-3)' }}>
         <label style={{ font: 'var(--text-body-strong)' }} htmlFor={inputId}>
           {policy.label}
         </label>
@@ -356,7 +358,7 @@ export function FileUpload({
           const file = e.target.files?.[0];
           if (file) void upload(file);
         }}
-        style={{ marginTop: 'var(--space-3)', font: 'var(--text-body)' }}
+        style={{ display: 'block', maxWidth: '100%', marginTop: 'var(--space-3)', font: 'var(--text-body)' }}
       />
 
       <p
