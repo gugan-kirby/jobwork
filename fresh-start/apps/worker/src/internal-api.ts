@@ -86,6 +86,11 @@ export class InternalApiClient {
     return this.post<{ expired: number }>('/api/v1/internal/payments/reconcile-sweep', undefined, ctx);
   }
 
+  /** Acceptance window (IN-17): deliveries past their window with nothing holding them are deemed accepted. */
+  sweepDeliveryAcceptance(ctx: { correlationId: string; idempotencyKey: string }): Promise<{ deemed: number }> {
+    return this.post<{ deemed: number }>('/api/v1/internal/deliveries/acceptance-sweep', undefined, ctx);
+  }
+
   /** SLA sweep (F-11.1): open/close stays, move deadlines, fire due steps once each. */
   sweepSla(ctx: { correlationId: string; idempotencyKey: string }): Promise<SlaSweepResult> {
     return this.post<SlaSweepResult>('/api/v1/internal/sla/sweep', undefined, ctx);
