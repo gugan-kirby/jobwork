@@ -20,6 +20,7 @@ import { currentResults, InspectionNotFound, nonMandatoryFailures, passBlockers,
 import { type CharacteristicRule, type ConversionTable, evaluate, MeasurementRefused } from '../domain/measurement';
 import { type CharacteristicRow, type InspectionRow, QualityRepository } from '../infrastructure/quality.repository';
 import { calibrationStanding, SUPPLIER_INSPECTORS } from './instrument.command';
+import { NcrCommand } from './ncr.command';
 import { characteristicView, QUALITY, QUALITY_READERS, requireInternal } from './quality-plan.command';
 
 type Opts = { idempotencyKey?: string | undefined };
@@ -52,6 +53,7 @@ export class InspectionCommand {
   constructor(
     private readonly repo: QualityRepository,
     private readonly executor: CommandExecutor,
+    private readonly ncrs: NcrCommand,
   ) {}
 
   // ----------------------------------------------------------------- helpers
@@ -449,10 +451,13 @@ export class InspectionCommand {
             salesOrderId: wp.salesOrderId,
           };
           const passed = status === 'passed';
+          // A reinspection under an NCR carries the NCR with it (IN-15).
+          const ncr = await this.ncrs.onReinspectionConcluded(row.id, status, tx);
           return {
             result: undefined,
-            audit: [this.audit(row, version, passed ? 'quality.inspection_passed' : 'quality.inspection_failed', { failures: failures.length }, cmd.reason || undefined)],
+            audit: [this.audit(row, version, passed ? 'quality.inspection_passed' : 'quality.inspection_failed', { failures: failures.length }, cmd.reason || undefined), ...ncr.audit],
             outbox: [
+              ...ncr.outbox,
               {
                 eventType: passed ? 'quality.inspection_passed.v1' : 'quality.inspection_failed.v1',
                 aggregateType: 'inspection',
@@ -481,10 +486,11 @@ export class InspectionCommand {
           const row = await this.locked(inspectionId, cmd.expectedVersion, tx);
           this.requireStatus(row, ['planned', 'in_progress', 'results_submitted', 'under_review', 'passed', 'failed'], 'be invalidated');
           const version = await this.repo.updateInspection(row.id, { status: 'invalidated', invalidatedAt: new Date(), invalidationReason: cmd.reason }, tx);
+          const ncr = await this.ncrs.onReinspectionConcluded(row.id, 'invalidated', tx);
           return {
             result: undefined,
-            audit: [this.audit(row, version, 'quality.inspection_invalidated', { from: row.status }, cmd.reason)],
-            outbox: [this.event(row, version, 'quality.inspection_invalidated.v1', { from: row.status })],
+            audit: [this.audit(row, version, 'quality.inspection_invalidated', { from: row.status }, cmd.reason), ...ncr.audit],
+            outbox: [this.event(row, version, 'quality.inspection_invalidated.v1', { from: row.status }), ...ncr.outbox],
           };
         },
       },
