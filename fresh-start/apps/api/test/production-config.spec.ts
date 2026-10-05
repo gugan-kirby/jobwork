@@ -16,7 +16,7 @@ describe('API production configuration', () => {
 
   it('refuses to start in production on the repository defaults', () => {
     process.env = { NODE_ENV: 'production', SESSION_SECRET: 'dev-only-change-me' };
-    expect(() => new ConfigService()).toThrow(/refusing to start in production: SESSION_SECRET.*SERVICE_TOKEN_SECRET.*PAYMENT_WEBHOOK_SECRET.*OBJECT_STORE_ACCESS_KEY.*OBJECT_STORE_SECRET_KEY.*DATABASE_URL/);
+    expect(() => new ConfigService()).toThrow(/refusing to start in production: SESSION_SECRET.*SERVICE_TOKEN_SECRET.*PAYMENT_WEBHOOK_SECRET.*CARRIER_WEBHOOK_SECRET.*OBJECT_STORE_ACCESS_KEY.*OBJECT_STORE_SECRET_KEY.*DATABASE_URL/);
   });
 
   it('starts in production once every secret and credential is real', () => {
@@ -25,6 +25,7 @@ describe('API production configuration', () => {
       SESSION_SECRET: strong('session'),
       SERVICE_TOKEN_SECRET: strong('service'),
       PAYMENT_WEBHOOK_SECRET: strong('webhook'),
+      CARRIER_WEBHOOK_SECRET: strong('carrier'),
       OBJECT_STORE_ACCESS_KEY: 'AKPRODEXAMPLE0001',
       OBJECT_STORE_SECRET_KEY: strong('store'),
       DATABASE_URL: 'postgres://db.internal:5432/jobwork',
