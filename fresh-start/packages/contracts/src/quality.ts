@@ -441,6 +441,52 @@ export const customerDeviationSchema = z.object({
   aggregateVersion: z.number().int().positive(),
 });
 
+// ----------------------------------------------------------------- quality release (IN-15)
+
+export const releaseScopeSchema = z.object({ workPackageId: z.uuid(), quantity, lots: tags, serials: tags });
+export const authorizeReleaseRequestSchema = releaseScopeSchema;
+
+export const checklistItemSchema = z.object({
+  key: z.enum(['baseline', 'milestones', 'certificates', 'inspections', 'calibrations', 'ncrs', 'quantity', 'packaging', 'releaser']),
+  label: z.string(),
+  pass: z.boolean(),
+  reasons: z.array(z.string()),
+  evidence: z.record(z.string(), z.unknown()),
+});
+
+export const releaseChecklistSchema = z.object({
+  workPackageId: z.uuid(),
+  items: z.array(checklistItemSchema),
+  allGreen: z.boolean(),
+  deviationsReliedOn: z.array(z.string()),
+});
+
+export const qualityReleaseSchema = z.object({
+  releaseId: z.uuid(),
+  number: z.string(),
+  workPackageId: z.uuid(),
+  quantity: z.string(),
+  lots: z.array(z.string()),
+  serials: z.array(z.string()),
+  /** The snapshot exactly as frozen; its canonical JSON hashes to `snapshotSha256`. */
+  snapshot: z.record(z.string(), z.unknown()),
+  snapshotSha256: z.string(),
+  releasedAt: z.string(),
+});
+
+/** What the dispatch gate (IN-16/17) reads: facts, never a flag. */
+export const releaseFactsSchema = z.object({
+  workPackageId: z.uuid(),
+  orderedQuantity: z.string(),
+  releasedQuantity: z.string(),
+  releases: z.array(z.object({ number: z.string(), quantity: z.string(), lots: z.array(z.string()), serials: z.array(z.string()), snapshotSha256: z.string(), releasedAt: z.string() })),
+  /** NCRs not closed and not resolved under an active deviation: they hold whatever they scope. */
+  openNcrs: z.array(z.object({ number: z.string(), status: ncrStatusSchema, lots: z.array(z.string()) })),
+  /** Opened after the latest release: a new hold that never rewrites that release (doc 09 §14). */
+  ncrsSinceLastRelease: z.array(z.object({ number: z.string(), status: ncrStatusSchema })),
+  activeDeviations: z.array(z.object({ number: z.string(), lots: z.array(z.string()), quantity: z.string(), expiresAt: z.string() })),
+});
+
 export type InspectionStage = z.infer<typeof inspectionStageSchema>;
 export type InspectionStatus = z.infer<typeof inspectionStatusSchema>;
 export type CharacteristicInput = z.infer<typeof characteristicInputSchema>;
@@ -485,3 +531,9 @@ export type WithdrawDeviationRequest = z.infer<typeof withdrawDeviationRequestSc
 export type CustomerDeviationDecision = z.infer<typeof customerDeviationDecisionSchema>;
 export type Deviation = z.infer<typeof deviationSchema>;
 export type CustomerDeviation = z.infer<typeof customerDeviationSchema>;
+export type ReleaseScope = z.infer<typeof releaseScopeSchema>;
+export type AuthorizeReleaseRequest = z.infer<typeof authorizeReleaseRequestSchema>;
+export type ChecklistItem = z.infer<typeof checklistItemSchema>;
+export type ReleaseChecklist = z.infer<typeof releaseChecklistSchema>;
+export type QualityRelease = z.infer<typeof qualityReleaseSchema>;
+export type ReleaseFactsView = z.infer<typeof releaseFactsSchema>;
