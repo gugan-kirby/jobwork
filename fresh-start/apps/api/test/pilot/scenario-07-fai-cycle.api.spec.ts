@@ -19,6 +19,8 @@ describe('Pilot 7: first-article inspection on the launch template', () => {
   let gauge: string;
   let caliper: string;
   let first: Body;
+  let second: Body;
+  let ncr: Body;
 
   const characteristic = (i: Body, name: string): string => ((i['characteristics'] as Body[]).find((c) => c['name'] === name)!['characteristicId']) as string;
   const standing = (i: Body, name: string): Body => (i['results'] as Body[]).find((r) => r['characteristicId'] === characteristic(i, name) && r['supersededByResultId'] === null)!;
@@ -57,6 +59,29 @@ describe('Pilot 7: first-article inspection on the launch template', () => {
       201,
       'submit FAI',
     );
+  }
+
+  /** The supplier measures an inspection JobWork already planned (a reinspection), and JobWork decides it. */
+  async function measureExisting(planned: Body, bore: string): Promise<Body> {
+    let i = ok(await p.as.supplierA.post(`/api/v1/supplier/inspections/${planned['inspectionId']}/start`, { expectedVersion: planned['aggregateVersion'] }), 201, 'start reinspection');
+    const decimals = (v: string): number => (v.includes('.') ? v.split('.')[1]!.length : 0);
+    i = ok(
+      await p.as.supplierA.post(`/api/v1/supplier/inspections/${i['inspectionId']}/results`, {
+        expectedVersion: i['aggregateVersion'],
+        inspectedAt: new Date().toISOString(),
+        samples: [{ sampleNo: 1, serial: 'FA-002' }],
+        results: [
+          { sampleNo: 1, characteristicId: characteristic(i, 'Visual: free of burrs and sharp edges'), measurement: { value: 'conforming', unit: null, declaredPrecision: null } },
+          { sampleNo: 1, characteristicId: characteristic(i, 'Surface roughness Ra'), measurement: { value: '1.6', unit: 'um', declaredPrecision: 1 }, instrumentId: gauge },
+          { sampleNo: 1, characteristicId: characteristic(i, 'Bore diameter'), measurement: { value: bore, unit: 'mm', declaredPrecision: decimals(bore) }, instrumentId: gauge },
+          { sampleNo: 1, characteristicId: characteristic(i, 'Overall length'), measurement: { value: '80.00', unit: 'mm', declaredPrecision: 2 }, instrumentId: gauge },
+        ],
+      }),
+      201,
+      'submit reinspection',
+    );
+    i = ok(await p.as.quality2.post(`/api/v1/inspections/${i['inspectionId']}/review`, { expectedVersion: i['aggregateVersion'] }), 201, 'review reinspection');
+    return ok(await p.as.quality2.post(`/api/v1/inspections/${i['inspectionId']}/decide`, { expectedVersion: i['aggregateVersion'], decision: 'passed' }), 201, 'pass reinspection');
   }
 
   beforeAll(async () => {
@@ -131,7 +156,7 @@ describe('Pilot 7: first-article inspection on the launch template', () => {
   });
 
   it('fails a first article with an oversize critical bore, and says what an NCR needs', async () => {
-    let second = await measure('Second setup after tool change', { visual: 'conforming', ra: '1.6', bore: '12.031', length: '80.00' });
+    second = await measure('Second setup after tool change', { visual: 'conforming', ra: '1.6', bore: '12.031', length: '80.00' });
     second = ok(await p.as.quality.post(`/api/v1/inspections/${second['inspectionId']}/review`, { expectedVersion: second['aggregateVersion'] }), 201, 'review');
     const refused = await p.as.quality.post(`/api/v1/inspections/${second['inspectionId']}/decide`, { expectedVersion: second['aggregateVersion'], decision: 'passed' });
     expect(refused.body['code']).toBe('INSPECTION_CANNOT_PASS');
@@ -154,5 +179,77 @@ describe('Pilot 7: first-article inspection on the launch template', () => {
     expect((await p.as.buyer.get(`/api/v1/supplier/inspections/${first['inspectionId']}`)).status).toBe(403);
     expect((await p.as.supplierB.get('/api/v1/supplier/inspections')).body).toEqual([]);
     expect((await p.as.supplierB.get(`/api/v1/supplier/inspections/${first['inspectionId']}`)).status).toBe(404);
+  });
+
+  it('takes the failed first article through an NCR, a rework and a reinspection to an independent closure (doc 19 §10 scenario 7)', async () => {
+    const bore = standing(second, 'Bore diameter');
+    ncr = ok(
+      await p.as.quality.post('/api/v1/ncrs', { inspectionId: second['inspectionId'], resultIds: [bore['resultId']], title: 'Bore oversize after the tool change', description: 'Bore 12.031 mm against 11.98–12.02 mm', severity: 'critical', affectedQuantity: '40', lots: ['LOT-2'], costResponsibility: 'supplier' }),
+      201,
+      'open NCR',
+    );
+    ncr = ok(await p.as.supplierA.post(`/api/v1/supplier/ncrs/${ncr['ncrId']}/containment`, { action: 'LOT-2 tagged red and held', location: 'Hold rack' }), 201, 'contain');
+    ncr = ok(await p.as.quality.post(`/api/v1/ncrs/${ncr['ncrId']}/to-disposition`, { expectedVersion: ncr['aggregateVersion'] }), 201, 'to disposition');
+    ncr = ok(await p.as.quality.post(`/api/v1/ncrs/${ncr['ncrId']}/approve-rework`, { expectedVersion: ncr['aggregateVersion'], disposition: 'rework', plan: 'Re-bore LOT-2 to 12.000 with a new insert' }), 201, 'approve rework');
+    ncr = ok(await p.as.supplierA.post(`/api/v1/supplier/ncrs/${ncr['ncrId']}/rework`, { expectedVersion: ncr['aggregateVersion'], note: 'LOT-2 re-bored' }), 201, 'record rework');
+    ncr = ok(await p.as.quality.post(`/api/v1/ncrs/${ncr['ncrId']}/reinspection`, { expectedVersion: ncr['aggregateVersion'] }), 201, 'plan reinspection');
+    const reinspection = ok(await p.as.supplierA.get(`/api/v1/supplier/inspections/${((ncr['dispositions'] as Body[])[0]!['reinspection'] as Body)['inspectionId']}`), 200, 'reinspection');
+    expect(reinspection['reinspectionOf']).toBe(second['inspectionId']);
+    await measureExisting(reinspection, '12.003');
+    ncr = ok(await p.as.quality.get(`/api/v1/ncrs/${ncr['ncrId']}`), 200, 'ncr');
+    expect(ncr['status']).toBe('verified');
+
+    const ca = () => ncr['correctiveAction'] as Body;
+    ncr = ok(
+      await p.as.supplierA.post(`/api/v1/supplier/ncrs/${ncr['ncrId']}/corrective-action`, {
+        expectedVersion: ca()['aggregateVersion'],
+        problemDefinition: 'Bores oversize after an insert change',
+        occurrenceCause: 'New insert set 0.01 mm out; no offset check after an insert change',
+        escapeCause: 'First-off after an insert change was not gauged',
+        actions: [{ action: 'Gauge the first bore after every insert change', owner: 'Setter', dueDate: '2026-10-12' }],
+      }),
+      201,
+      'corrective action',
+    );
+    ncr = ok(await p.as.quality2.post(`/api/v1/ncrs/${ncr['ncrId']}/corrective-action/review`, { expectedVersion: ca()['aggregateVersion'], decision: 'accept' }), 201, 'accept CA');
+    ncr = ok(await p.as.quality2.post(`/api/v1/ncrs/${ncr['ncrId']}/corrective-action/verify`, { expectedVersion: ca()['aggregateVersion'], evidence: 'Next first article after an insert change gauged at 12.004 mm' }), 201, 'verify CA');
+    // The person who approved the rework cannot close; another quality member does.
+    expect((await p.as.quality.post(`/api/v1/ncrs/${ncr['ncrId']}/close`, { expectedVersion: ncr['aggregateVersion'], note: 'Done' })).body['code']).toBe('NCR_CANNOT_CLOSE');
+    ncr = ok(await p.as.quality2.post(`/api/v1/ncrs/${ncr['ncrId']}/close`, { expectedVersion: ncr['aggregateVersion'], note: 'Reworked lot passed reinspection; corrective action effective' }), 201, 'close');
+    expect(ncr['status']).toBe('closed');
+    // The failed result is still failed; the reinspection is a separate record (BR-QLT-04).
+    expect(standing(ok(await p.as.quality.get(`/api/v1/inspections/${second['inspectionId']}`), 200, 'second'), 'Bore diameter')['outcome']).toBe('fail');
+  });
+
+  it('then releases the work package on a computed checklist', async () => {
+    // A final inspection, and every milestone verified or waived.
+    let fin = ok(await p.as.quality.post('/api/v1/inspections', { workPackageId: prod.workPackageId, stage: 'final', lot: 'LOT-2' }), 201, 'plan final');
+    fin = ok(await p.as.supplierA.post(`/api/v1/supplier/inspections/${fin['inspectionId']}/start`, { expectedVersion: fin['aggregateVersion'] }), 201, 'start final');
+    fin = ok(
+      await p.as.supplierA.post(`/api/v1/supplier/inspections/${fin['inspectionId']}/results`, {
+        expectedVersion: fin['aggregateVersion'],
+        inspectedAt: new Date().toISOString(),
+        samples: [1, 2, 3, 4, 5].map((n) => ({ sampleNo: n, lot: 'LOT-2' })),
+        results: [1, 2, 3, 4, 5].flatMap((n) => [
+          { sampleNo: n, characteristicId: characteristic(fin, 'Visual: free of burrs and sharp edges'), measurement: { value: 'conforming', unit: null, declaredPrecision: null } },
+          { sampleNo: n, characteristicId: characteristic(fin, 'Bore diameter'), measurement: { value: '12.002', unit: 'mm', declaredPrecision: 3 }, instrumentId: gauge },
+        ]),
+      }),
+      201,
+      'submit final',
+    );
+    fin = ok(await p.as.quality.post(`/api/v1/inspections/${fin['inspectionId']}/review`, { expectedVersion: fin['aggregateVersion'] }), 201, 'review final');
+    ok(await p.as.quality.post(`/api/v1/inspections/${fin['inspectionId']}/decide`, { expectedVersion: fin['aggregateVersion'], decision: 'passed' }), 201, 'pass final');
+    for (;;) {
+      const wp = ((await p.productionView(deal.orderId))['workPackages'] as Body[]).find((w) => w['workPackageId'] === prod.workPackageId)!;
+      const m = (wp['milestones'] as Body[]).find((x) => x['status'] !== 'verified' && x['status'] !== 'waived');
+      if (!m) break;
+      if (m['status'] === 'evidence_submitted') ok(await p.as.quality.post(`/api/v1/milestones/${m['milestoneId']}/verify`, { expectedVersion: m['aggregateVersion'], decision: 'verified' }), 201, 'verify');
+      else ok(await p.as.quality.post(`/api/v1/milestones/${m['milestoneId']}/waive`, { expectedVersion: m['aggregateVersion'], reason: 'Covered by the final inspection on record.' }), 201, 'waive');
+    }
+    const release = ok(await p.as.quality.post('/api/v1/quality-releases', { workPackageId: prod.workPackageId, quantity: '40', lots: ['LOT-2'], serials: [] }), 201, 'release');
+    expect(release['quantity']).toBe('40.0000');
+    const facts = ok(await p.as.quality.get(`/api/v1/work-packages/${prod.workPackageId}/release-facts`), 200, 'facts');
+    expect(facts).toMatchObject({ releasedQuantity: '40', openNcrs: [] });
   });
 });
