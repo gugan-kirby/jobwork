@@ -16,6 +16,25 @@ export const SHIPMENT_STATUS: Record<ShipmentStatus, { label: string; tone: Tone
   cancelled: { label: 'cancelled', tone: 'neutral' },
 };
 
+/** Material JobWork issues to the supplier reads from the receiving side (D-15). */
+export const ISSUE_STATUS: Partial<Record<ShipmentStatus, { label: string; tone: Tone }>> = {
+  released: { label: 'JobWork dispatching', tone: 'progress' },
+  picked_up: { label: 'on its way to you', tone: 'attention' },
+  in_transit: { label: 'on its way to you', tone: 'attention' },
+  delivered_to_destination: { label: 'delivered — confirm receipt', tone: 'attention' },
+  accepted: { label: 'received', tone: 'positive' },
+};
+
+export function statusOf(s: { leg: string; status: ShipmentStatus }): { label: string; tone: Tone } {
+  return (s.leg === 'jobwork_to_supplier' ? ISSUE_STATUS[s.status] : undefined) ?? SHIPMENT_STATUS[s.status];
+}
+
+/** Pieces for made parts; the unit itself for material in kg, m or sheets. */
+export function amount(s: { totalQuantity: string; packages: ReadonlyArray<{ items: ReadonlyArray<{ unit: string }> }> }): string {
+  const units = [...new Set(s.packages.flatMap((p) => p.items.map((i) => i.unit)))];
+  return units.length === 1 && units[0] !== 'piece' ? `${s.totalQuantity} ${units[0]}` : `${s.totalQuantity} pcs`;
+}
+
 export const CARRIER_MODE: Record<CarrierMode, string> = {
   carrier: 'Transporter (LR)',
   courier: 'Courier',

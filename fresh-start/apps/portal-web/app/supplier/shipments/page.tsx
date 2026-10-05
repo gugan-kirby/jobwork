@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Shipment } from '@jobwork/contracts';
 import { ButtonLink, Card, EmptyState, ErrorState, LoadingState, Page, RecordCard, RecordList, Stack, StatusChip } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
-import { day, SHIPMENT_STATUS } from './labels';
+import { amount, day, statusOf } from './labels';
 
 /** The supplier's shipments to JobWork (IN-16 F-16.4; doc 10 §11), newest first. */
 export default function SupplierShipmentsPage(): React.JSX.Element {
@@ -42,10 +42,10 @@ export default function SupplierShipmentsPage(): React.JSX.Element {
                 key={s.shipmentId}
                 href={`/supplier/shipments/${s.shipmentId}`}
                 reference={s.number}
-                title={`${s.purchaseOrderNumber} · ${s.packages.length} package${s.packages.length === 1 ? '' : 's'}`}
+                title={s.leg === 'jobwork_to_supplier' ? `${s.purchaseOrderNumber} · material from JobWork` : `${s.purchaseOrderNumber} · ${s.packages.length} package${s.packages.length === 1 ? '' : 's'}`}
                 caption={s.carrier.trackingReference ? `${s.carrier.name} ${s.carrier.trackingReference}` : `planned ${day(s.createdAt)}`}
-                figure={<span className="numeric">{s.totalQuantity} pcs</span>}
-                status={<StatusChip tone={SHIPMENT_STATUS[s.status].tone}>{SHIPMENT_STATUS[s.status].label}</StatusChip>}
+                figure={<span className="numeric">{amount(s)}</span>}
+                status={<StatusChip tone={statusOf(s).tone}>{statusOf(s).label}</StatusChip>}
               />
             ))}
           </RecordList>

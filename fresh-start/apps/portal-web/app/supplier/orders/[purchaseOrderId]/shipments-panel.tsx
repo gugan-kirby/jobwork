@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { Shipment } from '@jobwork/contracts';
 import { ButtonLink, Card, Inline, Stack, StatusChip, useCommandTick } from '@jobwork/ui';
 import { api } from '../../../../lib/api';
-import { SHIPMENT_STATUS } from '../../shipments/labels';
+import { amount, statusOf } from '../../shipments/labels';
 
 /** Shipments to JobWork on this purchase order (IN-16 F-16.4), and where to plan the next one. */
 export function ShipmentsPanel({ purchaseOrderId, acknowledged }: { purchaseOrderId: string; acknowledged: boolean }): React.JSX.Element | null {
@@ -30,8 +30,9 @@ export function ShipmentsPanel({ purchaseOrderId, acknowledged }: { purchaseOrde
             <Link href={`/supplier/shipments/${s.shipmentId}`} className="mono">
               {s.number}
             </Link>
-            <span className="numeric">{s.totalQuantity} pcs</span>
-            <StatusChip tone={SHIPMENT_STATUS[s.status].tone}>{SHIPMENT_STATUS[s.status].label}</StatusChip>
+            <span className="numeric">{amount(s)}</span>
+            {s.leg === 'jobwork_to_supplier' ? <span>material from JobWork</span> : null}
+            <StatusChip tone={statusOf(s).tone}>{statusOf(s).label}</StatusChip>
           </Inline>
         ))}
         <div>
