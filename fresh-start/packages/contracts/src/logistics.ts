@@ -66,6 +66,107 @@ export const recordCarrierEventRequestSchema = z.object({
   occurredAt: z.iso.datetime(),
 });
 
+// ----------------------------------------------------------------- receiving (doc 10 §13; BR-LOG-04)
+
+export const packageConditionSchema = z.enum(['ok', 'damaged', 'missing']);
+export const itemIdentitySchema = z.enum(['ok', 'mismatch', 'wrong_item']);
+export const discrepancyKindSchema = z.enum(['shortage', 'overage', 'damage', 'wrong_item', 'document_mismatch', 'identity']);
+export const discrepancyResolutionSchema = z.enum(['accept_shortage', 'replacement_expected', 'scrapped', 'released_to_stock', 'return_to_supplier', 'overage_accepted', 'document_corrected']);
+export const receivingDecisionSchema = z.enum(['accept', 'partial', 'quarantine', 'reject']);
+
+/** Every counted piece goes somewhere: accepted to stock, quarantined, or refused at the dock. */
+export const receivingLineInputSchema = z.object({
+  itemId: z.uuid(),
+  countedQuantity: quantity,
+  acceptedQuantity: quantity,
+  quarantinedQuantity: quantity.default('0'),
+  refusedQuantity: quantity.default('0'),
+  identity: itemIdentitySchema.default('ok'),
+  damaged: z.boolean().default(false),
+  note: z.string().trim().max(500).default(''),
+});
+
+export const receiveShipmentRequestSchema = z.object({
+  ...versioned,
+  sealIntact: z.boolean(),
+  /** The challan or invoice in the box matches the shipment's. */
+  documentsMatch: z.boolean().default(true),
+  packages: z.array(z.object({ packageNo: z.number().int().min(1).max(999), condition: packageConditionSchema, note: z.string().trim().max(500).default('') })).min(1).max(100),
+  lines: z.array(receivingLineInputSchema).min(1).max(500),
+  photoDocumentVersionIds: z.array(z.uuid()).max(20).default([]),
+  note: z.string().trim().max(1000).default(''),
+});
+
+export const resolveDiscrepancyRequestSchema = z.object({
+  resolution: discrepancyResolutionSchema,
+  note: z.string().trim().min(3).max(1000),
+  /** A carrier claim or supplier case reference. */
+  caseReference: reference.default(''),
+});
+
+export const receivingDiscrepancySchema = z.object({
+  discrepancyId: z.uuid(),
+  number: z.string(),
+  kind: discrepancyKindSchema,
+  lotCode: z.string(),
+  quantity: z.string(),
+  description: z.string(),
+  status: z.enum(['open', 'resolved']),
+  resolution: discrepancyResolutionSchema.nullable(),
+  resolutionNote: z.string(),
+  caseReference: z.string(),
+  resolvedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const receivingSchema = z.object({
+  receivedAt: z.string(),
+  sealIntact: z.boolean(),
+  decision: receivingDecisionSchema,
+  packagesReceived: z.number().int(),
+  packages: z.array(z.object({ packageNo: z.number().int(), condition: packageConditionSchema, note: z.string() })),
+  lines: z.array(
+    z.object({
+      itemId: z.uuid(),
+      lotCode: z.string(),
+      shippedQuantity: z.string(),
+      countedQuantity: z.string(),
+      /** JobWork's own disposition of what arrived; null outside JobWork. */
+      split: z.object({ accepted: z.string(), quarantined: z.string(), refused: z.string() }).nullable(),
+      identity: itemIdentitySchema,
+      damaged: z.boolean(),
+      note: z.string(),
+    }),
+  ),
+  note: z.string(),
+});
+
+/** What happened to one work package's quantity, end to end (doc 19 §8: remaining commitment visible). JobWork only. */
+export const workPackageLogisticsSchema = z.object({
+  workPackageId: z.uuid(),
+  workPackageNumber: z.string(),
+  ordered: z.string(),
+  released: z.string(),
+  shipped: z.string(),
+  received: z.string(),
+  accepted: z.string(),
+  quarantined: z.string(),
+  scrapped: z.string(),
+  returned: z.string(),
+  /** Ordered less accepted: what the supplier still owes. */
+  outstanding: z.string(),
+  lots: z.array(
+    z.object({
+      lotId: z.uuid(),
+      lotCode: z.string(),
+      sourceShipmentNumber: z.string(),
+      receivedQuantity: z.string(),
+      ownership: z.enum(['jobwork', 'customer_material']),
+      balances: z.array(z.object({ locationCode: z.string(), label: z.string(), onHand: z.boolean(), quantity: z.string() })),
+    }),
+  ),
+});
+
 export const shipmentGuardSchema = z.object({ key: z.string(), label: z.string(), pass: z.boolean(), reasons: z.array(z.string()) });
 
 export const siteSnapshotSchema = z.object({
@@ -112,6 +213,8 @@ export const shipmentSchema = z.object({
   releasedAt: z.string().nullable(),
   pickedUpAt: z.string().nullable(),
   carrierDeliveredAt: z.string().nullable(),
+  receiving: receivingSchema.nullable(),
+  discrepancies: z.array(receivingDiscrepancySchema),
   createdAt: z.string(),
   aggregateVersion: z.number().int().positive(),
 });
@@ -130,3 +233,13 @@ export type RecordCarrierEventRequest = z.infer<typeof recordCarrierEventRequest
 export type ShipmentGuard = z.infer<typeof shipmentGuardSchema>;
 export type SiteSnapshot = z.infer<typeof siteSnapshotSchema>;
 export type Shipment = z.infer<typeof shipmentSchema>;
+export type PackageCondition = z.infer<typeof packageConditionSchema>;
+export type ItemIdentity = z.infer<typeof itemIdentitySchema>;
+export type DiscrepancyKind = z.infer<typeof discrepancyKindSchema>;
+export type DiscrepancyResolution = z.infer<typeof discrepancyResolutionSchema>;
+export type ReceivingDecision = z.infer<typeof receivingDecisionSchema>;
+export type ReceiveShipmentRequest = z.infer<typeof receiveShipmentRequestSchema>;
+export type ResolveDiscrepancyRequest = z.infer<typeof resolveDiscrepancyRequestSchema>;
+export type ReceivingDiscrepancy = z.infer<typeof receivingDiscrepancySchema>;
+export type Receiving = z.infer<typeof receivingSchema>;
+export type WorkPackageLogistics = z.infer<typeof workPackageLogisticsSchema>;
