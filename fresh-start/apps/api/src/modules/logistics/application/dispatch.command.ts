@@ -12,12 +12,13 @@ import type {
   ShipmentVersionRequest,
   SiteSnapshot,
 } from '@jobwork/contracts';
-import { type Actor, requireTransactionalStrength } from '../../iam';
+import type { Actor } from '../../iam';
 import { OrdersRepository, ProductionRepository } from '../../orders';
 import { QualityReleaseCommand, Rational } from '../../quality';
 import { type CommandContext, contextFromActor, contextFromService, type AuditSpec, type OutboxSpec } from '../../../platform/commands/command';
 import { CommandExecutor } from '../../../platform/commands/execute';
 import { DomainError } from '../../../platform/http/domain-error';
+import { LOGISTICS, requireJobWork, requireLogisticsReader } from './access';
 import { carrierTarget, legOneGuards, LogisticsRefused } from '../domain/shipment';
 import { CarrierPort, type CarrierEvent } from '../infrastructure/carrier.port';
 import { LogisticsRepository, type ShipmentRow } from '../infrastructure/logistics.repository';
@@ -30,9 +31,8 @@ export const CARRIER_PRINCIPAL = { name: 'carrier-feed', id: '00000000-0000-4000
 /** Doc 03 has no supplier logistics role: production already owns the work package (owner default). */
 export const SUPPLIER_DISPATCHERS = ['supplier_production', 'org_admin'];
 const SUPPLIER_READERS = ['supplier_production', 'org_admin', 'supplier_quality', 'supplier_estimator'];
-export const LOGISTICS = ['jobwork_logistics'];
-export const LOGISTICS_READERS = ['jobwork_logistics', 'jobwork_quality', 'jobwork_sourcing', 'jobwork_engineering', 'jobwork_sales', 'platform_admin'];
 const PREPARING: readonly ShipmentStatus[] = ['draft', 'planned', 'ready_for_release'];
+const show = (q: string): string => Rational.parse(q).toDisplay(4);
 
 const snapshot = (s: SiteSnapshot): SiteSnapshot => ({
   label: s.label,
@@ -93,8 +93,7 @@ export class DispatchCommand {
   }
 
   private requireLogistics(actor: Actor): void {
-    if (!actor.isInternal || !actor.roles.some((r) => LOGISTICS.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted', 'Requires jobwork_logistics.');
-    requireTransactionalStrength(actor);
+    requireJobWork(actor, LOGISTICS);
   }
 
   /** The doc 10 §12 guards for one leg-1 shipment as it stands, read in `tx`. */
@@ -384,7 +383,7 @@ export class DispatchCommand {
 
   private scope(actor: Actor): string | null {
     if (actor.isInternal) {
-      if (!actor.roles.some((r) => LOGISTICS_READERS.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');
+      requireLogisticsReader(actor);
       return null;
     }
     if (actor.organizationType !== 'supplier' || !actor.organizationId || !actor.roles.some((r) => SUPPLIER_READERS.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');
@@ -405,7 +404,7 @@ export class DispatchCommand {
   }
 
   private async view(actor: Actor, s: ShipmentRow): Promise<Shipment> {
-    const [packages, items, events] = [await this.repo.packages(s.id), await this.repo.items(s.id), await this.repo.carrierEvents(s.id)];
+    const [packages, items, events, receiving, discrepancies] = [await this.repo.packages(s.id), await this.repo.items(s.id), await this.repo.carrierEvents(s.id), await this.repo.receiving(s.id), await this.repo.discrepancies(s.id)];
     const live = !PREPARING.includes(s.status);
     const guards = live
       ? (((s.releaseSnapshot as { guards?: ShipmentGuard[] } | null)?.guards ?? []) as ShipmentGuard[])
@@ -434,7 +433,7 @@ export class DispatchCommand {
         widthMm: p.widthMm,
         heightMm: p.heightMm,
         weightG: p.weightG,
-        items: items.filter((i) => i.packageId === p.id).map((i) => ({ itemId: i.id, lotCode: i.lotCode, serials: i.serials, quantity: i.quantity, unit: i.unit, description: i.description })),
+        items: items.filter((i) => i.packageId === p.id).map((i) => ({ itemId: i.id, lotCode: i.lotCode, serials: i.serials, quantity: show(i.quantity), unit: i.unit, description: i.description })),
       })),
       totalQuantity: items.reduce((t, i) => t.add(Rational.parse(i.quantity)), Rational.of(0)).toDisplay(4),
       guards,
@@ -442,6 +441,41 @@ export class DispatchCommand {
       releasedAt: s.releasedAt ? s.releasedAt.toISOString() : null,
       pickedUpAt: s.pickedUpAt ? s.pickedUpAt.toISOString() : null,
       carrierDeliveredAt: s.carrierDeliveredAt ? s.carrierDeliveredAt.toISOString() : null,
+      receiving: receiving
+        ? {
+            receivedAt: receiving.record.receivedAt.toISOString(),
+            sealIntact: receiving.record.sealIntact,
+            decision: receiving.record.decision,
+            packagesReceived: receiving.record.packagesReceived,
+            packages: receiving.record.packageConditions,
+            lines: receiving.lines.map((l) => ({
+              itemId: l.itemId,
+              lotCode: l.lotCode,
+              shippedQuantity: show(l.shippedQuantity),
+              countedQuantity: show(l.countedQuantity),
+              // Where JobWork put each piece is its own business (doc 05 §17).
+              split: actor.isInternal ? { accepted: show(l.acceptedQuantity), quarantined: show(l.quarantinedQuantity), refused: show(l.refusedQuantity) } : null,
+              identity: l.identityOk ? 'ok' : discrepancies.some((d) => d.kind === 'wrong_item' && d.lotCode === l.lotCode) ? 'wrong_item' : 'mismatch',
+              damaged: l.damaged,
+              note: l.note,
+            })),
+            note: actor.isInternal ? receiving.record.note : '',
+          }
+        : null,
+      discrepancies: discrepancies.map((d) => ({
+        discrepancyId: d.id,
+        number: d.number,
+        kind: d.kind,
+        lotCode: d.lotCode,
+        quantity: show(d.quantity),
+        description: d.description,
+        status: d.status,
+        resolution: d.resolution,
+        resolutionNote: d.resolutionNote ?? '',
+        caseReference: d.caseReference,
+        resolvedAt: d.resolvedAt ? d.resolvedAt.toISOString() : null,
+        createdAt: d.createdAt.toISOString(),
+      })),
       createdAt: s.createdAt.toISOString(),
       aggregateVersion: s.aggregateVersion,
     };

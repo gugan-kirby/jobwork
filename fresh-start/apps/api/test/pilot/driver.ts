@@ -615,6 +615,81 @@ export class Pilot {
   }
 
   /**
+   * IN-14: one inspection of `lot` by supplier A, reviewed and decided by JobWork quality. Every
+   * characteristic measures in tolerance except the bore, which is `bore` mm (passes to 12.02).
+   */
+  async inspection(workPackageId: string, stage: 'fai' | 'final', lot: string, instrumentId: string, bore = '12.006'): Promise<Body> {
+    let i = ok(await this.as.quality.post('/api/v1/inspections', { workPackageId, stage, lot }), 201, `plan ${stage}`);
+    i = ok(await this.as.supplierA.post(`/api/v1/supplier/inspections/${i['inspectionId']}/start`, { expectedVersion: i['aggregateVersion'] }), 201, 'start inspection');
+    const samples = Array.from({ length: i['sampleSize'] as number }, (_, k) => k + 1);
+    const value = (name: string): Body =>
+      name.startsWith('Visual')
+        ? { measurement: { value: 'conforming', unit: null, declaredPrecision: null } }
+        : name.startsWith('Surface')
+          ? { measurement: { value: '1.6', unit: 'um', declaredPrecision: 1 }, instrumentId }
+          : name === 'Bore diameter'
+            ? { measurement: { value: bore, unit: 'mm', declaredPrecision: 3 }, instrumentId }
+            : { measurement: { value: '80.00', unit: 'mm', declaredPrecision: 2 }, instrumentId };
+    i = ok(
+      await this.as.supplierA.post(`/api/v1/supplier/inspections/${i['inspectionId']}/results`, {
+        expectedVersion: i['aggregateVersion'],
+        inspectedAt: new Date().toISOString(),
+        samples: samples.map((n) => ({ sampleNo: n, lot })),
+        results: samples.flatMap((n) => (i['characteristics'] as Body[]).map((c) => ({ sampleNo: n, characteristicId: c['characteristicId'], ...value(c['name'] as string) }))),
+      }),
+      201,
+      'submit results',
+    );
+    i = ok(await this.as.quality.post(`/api/v1/inspections/${i['inspectionId']}/review`, { expectedVersion: i['aggregateVersion'] }), 201, 'review');
+    const pass = Number(bore) <= 12.02;
+    return ok(await this.as.quality.post(`/api/v1/inspections/${i['inspectionId']}/decide`, { expectedVersion: i['aggregateVersion'], decision: pass ? 'passed' : 'failed', reason: pass ? '' : 'Bore oversize' }), 201, 'decide');
+  }
+
+  /** IN-14: a calibrated bore gauge of supplier A's. */
+  async calibratedGauge(): Promise<string> {
+    const made = ok(await this.as.supplierA.post('/api/v1/supplier/instruments', { assetTag: `BG-${randomUUID().slice(0, 8)}`, kind: 'Bore gauge', unit: 'mm' }), 201, 'instrument');
+    ok(
+      await this.as.supplierA.post(`/api/v1/supplier/instruments/${made['instrumentId']}/calibrations`, { performedAt: new Date(Date.now() - 10 * 86_400_000).toISOString(), dueAt: new Date(Date.now() + 300 * 86_400_000).toISOString(), outcome: 'pass', certificateDocumentVersionId: await this.cleanDrawing(this.orgs.supplierA) }),
+      201,
+      'calibrate',
+    );
+    return made['instrumentId'] as string;
+  }
+
+  /**
+   * IN-15: lots of a work package in production inspected (FAI on the first), its milestones
+   * verified or waived, and each lot quality released on its own. Returns the gauge.
+   */
+  async releasedLots(deal: SourcedDeal, workPackageId: string, lots: Array<{ lot: string; quantity: string }>): Promise<string> {
+    const gauge = await this.calibratedGauge();
+    for (const [n, { lot }] of lots.entries()) {
+      if (n === 0) await this.inspection(workPackageId, 'fai', lot, gauge);
+      await this.inspection(workPackageId, 'final', lot, gauge);
+    }
+    for (;;) {
+      const wp = ((await this.productionView(deal.orderId))['workPackages'] as Body[]).find((w) => w['workPackageId'] === workPackageId)!;
+      const m = (wp['milestones'] as Body[]).find((x) => x['status'] !== 'verified' && x['status'] !== 'waived');
+      if (!m) break;
+      if (m['status'] === 'evidence_submitted') ok(await this.as.quality.post(`/api/v1/milestones/${m['milestoneId']}/verify`, { expectedVersion: m['aggregateVersion'], decision: 'verified' }), 201, 'verify milestone');
+      else ok(await this.as.quality.post(`/api/v1/milestones/${m['milestoneId']}/waive`, { expectedVersion: m['aggregateVersion'], reason: 'Covered by the final inspection on record.' }), 201, 'waive milestone');
+    }
+    for (const { lot, quantity } of lots) ok(await this.as.quality.post('/api/v1/quality-releases', { workPackageId, quantity, lots: [lot], serials: [] }), 201, `release ${lot}`);
+    return gauge;
+  }
+
+  /** IN-16: a leg-1 shipment from supplier A planned, submitted, released by logistics and picked up. */
+  async shippedToJobWork(purchaseOrderId: string, packages: Body[], trackingReference = `LR-${randomUUID().slice(0, 8)}`): Promise<Body> {
+    let s = ok(
+      await this.as.supplierA.post('/api/v1/supplier/shipments', { purchaseOrderId, originSiteId: this.sites.supplierA, packages, documents: { challanNumber: 'DC-201', eWaybillNumber: '1811 0000 0001' } }),
+      201,
+      'plan shipment',
+    );
+    s = ok(await this.as.supplierA.post(`/api/v1/supplier/shipments/${s['shipmentId']}/submit`, { expectedVersion: s['aggregateVersion'] }), 201, 'submit shipment');
+    s = ok(await this.as.logistics.post(`/api/v1/shipments/${s['shipmentId']}/release`, { expectedVersion: s['aggregateVersion'] }), 201, 'release shipment');
+    return ok(await this.as.supplierA.post(`/api/v1/supplier/shipments/${s['shipmentId']}/pickup`, { expectedVersion: s['aggregateVersion'], carrierMode: 'carrier', carrierName: 'Safe Carriers', trackingReference }), 201, 'pickup');
+  }
+
+  /**
    * A new version of an existing document, uploaded and scanned the way the product does
    * it: initiate with the document id, PUT the bytes, finalize, then the scanner's verdict.
    * Needs the object store.

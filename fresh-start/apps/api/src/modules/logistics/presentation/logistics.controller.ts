@@ -4,11 +4,14 @@ import {
   cancelShipmentRequestSchema,
   planShipmentRequestSchema,
   recordCarrierEventRequestSchema,
+  receiveShipmentRequestSchema,
   recordPickupRequestSchema,
   replanShipmentRequestSchema,
+  resolveDiscrepancyRequestSchema,
   shipmentStatusSchema,
   shipmentVersionRequestSchema,
   type Shipment,
+  type WorkPackageLogistics,
 } from '@jobwork/contracts';
 import type { Actor } from '../../iam';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
@@ -17,6 +20,8 @@ import { Public } from '../../../platform/http/public.decorator';
 import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
 import { parseBody } from '../../../platform/http/validation';
 import { DispatchCommand } from '../application/dispatch.command';
+import { LogisticsView } from '../application/logistics-view';
+import { ReceivingCommand } from '../application/receiving.command';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -69,7 +74,10 @@ export class SupplierShipmentController {
 /** JobWork logistics: release, record the carrier, and see every leg. */
 @Controller('shipments')
 export class ShipmentController {
-  constructor(private readonly dispatch: DispatchCommand) {}
+  constructor(
+    private readonly dispatch: DispatchCommand,
+    private readonly receiving: ReceivingCommand,
+  ) {}
 
   @Get()
   list(@CurrentActor() actor: Actor, @Query('workPackageId') workPackageId?: string, @Query('salesOrderId') salesOrderId?: string, @Query('status') status?: string): Promise<Shipment[]> {
@@ -100,6 +108,33 @@ export class ShipmentController {
   @Post(':shipmentId/cancel')
   cancel(@CurrentActor() actor: Actor, @Param('shipmentId') id: string, @Req() request: FastifyRequest): Promise<Shipment> {
     return this.dispatch.cancel(actor, id, parseBody(cancelShipmentRequestSchema, request.body), opts(request));
+  }
+
+  @Post(':shipmentId/receive')
+  receive(@CurrentActor() actor: Actor, @Param('shipmentId') id: string, @Req() request: FastifyRequest): Promise<Shipment> {
+    return this.receiving.receive(actor, id, parseBody(receiveShipmentRequestSchema, request.body), opts(request));
+  }
+}
+
+/** Receiving discrepancies are resolved once each (BR-LOG-04). */
+@Controller('receiving-discrepancies')
+export class DiscrepancyController {
+  constructor(private readonly receiving: ReceivingCommand) {}
+
+  @Post(':discrepancyId/resolve')
+  resolve(@CurrentActor() actor: Actor, @Param('discrepancyId') id: string, @Req() request: FastifyRequest): Promise<Shipment> {
+    return this.receiving.resolveDiscrepancy(actor, id, parseBody(resolveDiscrepancyRequestSchema, request.body), opts(request));
+  }
+}
+
+/** JobWork's view of a work package's quantities and stock (doc 19 §8). */
+@Controller('logistics')
+export class LogisticsViewController {
+  constructor(private readonly view: LogisticsView) {}
+
+  @Get('work-packages/:workPackageId')
+  workPackage(@CurrentActor() actor: Actor, @Param('workPackageId') id: string): Promise<WorkPackageLogistics> {
+    return this.view.workPackage(actor, id);
   }
 }
 

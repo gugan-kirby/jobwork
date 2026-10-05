@@ -193,6 +193,18 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
           },
         ]
       : [],
+  // Only the shipper hears of a discrepancy on a supplier's leg; customer legs are IN-18's.
+  'logistics.receiving_discrepancy_opened.v1': async (e) =>
+    e.data['leg'] === 'supplier_to_jobwork'
+      ? [
+          {
+            templateKey: 'supplier.receiving_discrepancy',
+            audience: suppliers([str(e.data['shipperOrganizationId'])]),
+            variables: { shipmentNumber: str(e.data['number']), discrepancyLabel: str(e.data['discrepancyLabel']) },
+            link: `/supplier/shipments/${e.aggregateId}`,
+          },
+        ]
+      : [],
   'quality.deviation_customer_decision_requested.v1': async (e) => [
     {
       templateKey: 'customer.deviation_decision_needed',
