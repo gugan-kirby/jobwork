@@ -24,6 +24,7 @@ import {
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
 import { ThreadPanel } from '../../thread-panel';
+import { MaterialCard } from './material-card';
 import { ShipmentsCard } from './shipments-card';
 
 /**
@@ -183,6 +184,7 @@ export default function SalesOrderPage(): React.JSX.Element {
         </Card>
 
         <ShipmentsCard salesOrderId={salesOrderId} />
+        <MaterialCard salesOrderId={salesOrderId} purchaseOrders={order.purchaseOrders} />
 
         <Card title="Acceptance evidence">
           <DescriptionList

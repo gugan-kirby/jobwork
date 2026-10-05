@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import type { CarrierMode, Shipment, SiteSnapshot } from '@jobwork/contracts';
 import { Button, Callout, Card, CommandButton, DataTable, DescriptionList, ErrorState, GateMatrix, LoadingState, Page, Select, Stack, StatusChip, TextArea, TextInput } from '@jobwork/ui';
 import { api, ApiError } from '../../../../lib/api';
-import { CARRIER_MODE, day, DISCREPANCY, RESOLUTION, SHIPMENT_STATUS } from '../labels';
+import { amount, CARRIER_MODE, day, DISCREPANCY, RESOLUTION, statusOf } from '../labels';
 import { ShipmentEditor } from '../shipment-editor';
 
 const address = (s: SiteSnapshot | null): string => (s ? `${s.label}, ${s.addressLine1}, ${s.city} ${s.postalCode}` : '—');
@@ -23,6 +23,7 @@ export default function SupplierShipmentPage(): React.JSX.Element {
   const [editing, setEditing] = useState(false);
   const [pickup, setPickup] = useState<{ carrierMode: CarrierMode | ''; carrierName: string; trackingReference: string }>({ carrierMode: '', carrierName: '', trackingReference: '' });
   const [cancelReason, setCancelReason] = useState('');
+  const [receiptNote, setReceiptNote] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -48,16 +49,17 @@ export default function SupplierShipmentPage(): React.JSX.Element {
   const post = async (path: string, body: Record<string, unknown>): Promise<void> => {
     setS(await api<Shipment>(`/supplier/shipments/${s.shipmentId}${path}`, { method: 'POST', body, idempotencyKey: crypto.randomUUID() }));
   };
-  const preparing = s.status === 'planned' || s.status === 'ready_for_release';
+  const issued = s.leg === 'jobwork_to_supplier';
+  const preparing = !issued && (s.status === 'planned' || s.status === 'ready_for_release');
   const green = s.guards.every((g) => g.pass);
   const lines = s.packages.flatMap((p) => p.items.map((i) => ({ ...i, packageNo: p.packageNo })));
   const carrierNeedsReference = pickup.carrierMode === 'carrier' || pickup.carrierMode === 'courier';
 
   return (
     <Page
-      title={`${s.number} — ${s.purchaseOrderNumber}`}
+      title={issued ? `${s.number} — material from JobWork` : `${s.number} — ${s.purchaseOrderNumber}`}
       breadcrumb={<Link href={s.purchaseOrderId ? `/supplier/orders/${s.purchaseOrderId}` : '/supplier/shipments'}>← {s.purchaseOrderNumber || 'Shipments'}</Link>}
-      meta={<StatusChip tone={SHIPMENT_STATUS[s.status].tone}>{SHIPMENT_STATUS[s.status].label}</StatusChip>}
+      meta={<StatusChip tone={statusOf(s).tone}>{statusOf(s).label}</StatusChip>}
     >
       <Stack gap={4}>
         {s.status === 'discrepancy_hold' ? <Callout tone="blocked" title="JobWork found a discrepancy at receiving">The shipment is on hold until each one below is resolved. JobWork will contact you about anything to replace or take back.</Callout> : null}
@@ -93,7 +95,18 @@ export default function SupplierShipmentPage(): React.JSX.Element {
           </Card>
         ) : null}
 
-        {s.status === 'released' ? (
+        {issued && ['picked_up', 'in_transit', 'delivered_to_destination'].includes(s.status) ? (
+          <Card title="Confirm the material arrived" description={`Material for ${s.purchaseOrderNumber}, sent on JobWork’s challan ${s.documents.challanNumber}. Confirm once it is with you; tell JobWork at once if anything is short or damaged.`}>
+            <Stack gap={2}>
+              <TextInput label="Note (optional)" value={receiptNote} onChange={(e) => setReceiptNote(e.target.value)} />
+              <CommandButton receiptLabel="Confirmed" onCommand={() => post('/acknowledge-receipt', { expectedVersion: s.aggregateVersion, note: receiptNote.trim() })}>
+                Material received
+              </CommandButton>
+            </Stack>
+          </Card>
+        ) : null}
+
+        {!issued && s.status === 'released' ? (
           <Card title="Hand it to the carrier" description="Record who took it and their tracking or LR number; JobWork follows it from there.">
             <Stack gap={2}>
               <Select label="How it travels" placeholder="Choose" value={pickup.carrierMode} onChange={(e) => setPickup({ ...pickup, carrierMode: e.target.value as CarrierMode })} options={(['carrier', 'courier', 'supplier_vehicle'] as const).map((m) => ({ value: m, label: CARRIER_MODE[m] }))} />
@@ -125,7 +138,7 @@ export default function SupplierShipmentPage(): React.JSX.Element {
           />
         </Card>
 
-        <Card title={`Contents — ${s.totalQuantity} pieces`}>
+        <Card title={`Contents — ${amount(s)}`}>
           <DataTable
             caption="Packages and lots"
             rows={lines}
@@ -133,13 +146,17 @@ export default function SupplierShipmentPage(): React.JSX.Element {
             columns={[
               { key: 'package', header: 'Package', render: (l) => l.packageNo },
               { key: 'lot', header: 'Lot', render: (l) => <span className="mono">{l.lotCode || '—'}</span> },
-              { key: 'pieces', header: 'Pieces', numeric: true, render: (l) => l.quantity },
-              {
-                key: 'counted',
-                header: 'Counted by JobWork',
-                numeric: true,
-                render: (l) => s.receiving?.lines.find((r) => r.itemId === l.itemId)?.countedQuantity ?? '—',
-              },
+              { key: 'pieces', header: 'Quantity', numeric: true, render: (l) => `${l.quantity}${l.unit === 'piece' ? '' : ` ${l.unit}`}` },
+              ...(issued
+                ? []
+                : [
+                    {
+                      key: 'counted',
+                      header: 'Counted by JobWork',
+                      numeric: true,
+                      render: (l: (typeof lines)[number]) => s.receiving?.lines.find((r) => r.itemId === l.itemId)?.countedQuantity ?? '—',
+                    },
+                  ]),
             ]}
           />
         </Card>

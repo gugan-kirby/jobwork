@@ -288,6 +288,49 @@ The material flow:
 - It issues the material to the supplier on a `jobwork_to_supplier` leg with JobWork's own challan.
 - The same receiving and ledger rules apply, and conservation holds per lot.
 
+**Deviations (2026-10-05, F-16.5):**
+
+- **Registration puts an inbound leg straight into receiving.**
+  - `POST /logistics/customer-material` (jobwork_logistics) creates a `customer_to_jobwork` shipment already `picked_up`, because JobWork does not release the customer's dispatch.
+  - It records the customer's challan (required), the carrier, and packages whose items carry a unit (kg, m, sheet, piece).
+  - The origin is one of the customer's addresses, defaulting to the order's delivery site; the destination is the hub.
+  - It is then received with the ordinary `receive` onto `customer_material` lots, which are excluded from the work package's made-part quantities.
+- **Issue on JobWork's challan.**
+  - `POST /logistics/material-issues` creates a `jobwork_to_supplier` shipment already `released`, against an acknowledged PO of the same order.
+  - It requires JobWork's challan. The destination is a supplier works or pickup site, defaulting to its first active works site.
+  - Lots come only from the order's customer material, and only from `JW-STOCK`; quarantined material is not issued.
+  - The ledger moves the quantity `JW-STOCK → OUT-ISSUED` at issue, since it leaves JobWork's custody then. Pickup uses the ordinary command.
+- **The supplier confirms receipt.** `POST /supplier/shipments/:id/acknowledge-receipt` (the consignee's production or admin) moves the issue leg through `receiving_check` to `accepted`. A shortage or damage at the supplier's end is a supplier case (IN-18).
+- **Shielding.**
+  - A supplier sees what it ships, plus material issued to it.
+  - Every shipment view carries `salesOrderId: null` outside JobWork.
+  - An issue leg shows only JobWork's hub, JobWork's challan and the lot or heat code, never the customer's name, challan or address.
+- **Units.** A lot holds one unit: receiving refuses a lot counted in two units. Stock lots now carry their unit.
+- **Set-aside pieces need a reason** (found while testing this functionality). Quarantined or refused pieces must be marked damaged or doubtful, or be beyond the shipped count (an overage). Otherwise no discrepancy would exist to release them, and they would sit in quarantine with no exit. The workstation shows the same rule.
+- **Challan accounting stops at issue and receipt.** Reconciling issued material against parts made, scrap and returns (CGST §143 return windows) is IN-18's.
+- **UX.**
+  - The ops order page gains a "Customer material" card: lots, recording what is arriving (which opens it for receiving) and issuing to a supplier.
+  - The ops shipment page names the leg and shows units.
+  - The portal shows issued material as "material from JobWork", with a confirm-receipt card and no dispatch actions.
+- `customer_to_jobwork` stores the customer's own vehicle as `supplier_vehicle`, meaning the shipper's vehicle; the carrier enum is unchanged.
+
+**Verification (2026-10-05, F-16.5).** `customer-material.api.spec.ts` (5) covers:
+
+- registration by logistics only, with the customer's address and challan required;
+- receipt onto a `customer_material` kg lot, with the order unaffected;
+- issue, where over-stock, a wrong supplier site and a missing challan are refused, the default destination is used, and stock goes 120.5 → 40.5 with 80 issued;
+- the supplier's view, free of the customer's name, challan, address, organization and order ids, plus isolation and the receipt confirmation;
+- conservation per lot (40.5 in stock + 80 issued = 120.5 received).
+
+`receiving.api.spec.ts` gains the set-aside reason.
+
+**Browser walk (2026-10-05, F-16.5)** on the dev stack (SO-2026-0002, Demo Precision):
+
+- **Recording the material.** Logistics recorded customer material from the order page: HT-88412, 86.4 kg EN8 bar on the customer's challan DPW-DC-3310. The order had no delivery site, so the walk found the default missing; the default now falls back to the customer's first active address (Ambattur plant).
+- **Receipt.** The material opened straight into receiving and was received in full onto a customer-owned kg lot.
+- **Issue.** 50 kg went to PO-2026-0001 on challan JW-DC-0007 (stock 86.4 → 36.4, 50 issued), handed over by JobWork van.
+- **Supplier view.** In the portal Anand sees "material from JobWork, 50 kg, on its way to you", with the origin at JobWork's hub and no customer name, address, challan or order. Anand confirmed receipt. The customer's inbound shipment does not appear in the supplier's list.
+
 ## F-16.6 Pilot scenario 10
 
 | File | Action | Contents |

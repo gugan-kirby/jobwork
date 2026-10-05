@@ -104,7 +104,7 @@ export class ReceivingCommand {
 
           // Every counted piece goes somewhere, and nothing beyond what was shipped goes straight to stock.
           const findings: Array<{ kind: DiscrepancyKind; lotCode: string; quantity: Rational; description: string }> = [];
-          const lots = new Map<string, { accepted: Rational; quarantined: Rational; serials: string[] }>();
+          const lots = new Map<string, { accepted: Rational; quarantined: Rational; serials: string[]; unit: string }>();
           let accepted = ZERO;
           let quarantined = ZERO;
           let refused = ZERO;
@@ -117,12 +117,17 @@ export class ReceivingCommand {
             if (a.compare(shipped) > 0) throw new LogisticsRefused('ACCEPT_BEYOND_SHIPPED', `${name}: no more than the ${show(shipped)} shipped goes to stock`, 'Quarantine or refuse the extra pieces; the overage is resolved separately.', 422);
             if (l.identity !== 'ok' && a.compare(ZERO) > 0) throw new LogisticsRefused('ACCEPT_UNSOUND', `${name}: pieces whose identity is in doubt are quarantined or refused, not accepted`, undefined, 422);
             if (l.damaged && qu.add(r).compare(ZERO) === 0) throw new LogisticsRefused('DAMAGE_UNSPLIT', `${name}: quarantine or refuse the damaged pieces`, 'Only the sound pieces are accepted.', 422);
+            // Set-aside pieces leave quarantine only by resolving a discrepancy, so each needs one.
+            if (qu.add(r).compare(ZERO) > 0 && !l.damaged && l.identity === 'ok' && counted.compare(shipped) <= 0) {
+              throw new LogisticsRefused('QUARANTINE_REASON', `${name}: say why pieces are set aside`, 'Mark them damaged or doubtful; extra pieces beyond those shipped count as an overage.', 422);
+            }
             if (counted.compare(shipped) < 0) findings.push({ kind: 'shortage', lotCode: item.lotCode, quantity: shipped.sub(counted), description: `${name}: ${show(counted)} counted of ${show(shipped)} shipped.` });
             if (counted.compare(shipped) > 0) findings.push({ kind: 'overage', lotCode: item.lotCode, quantity: counted.sub(shipped), description: `${name}: ${show(counted)} counted of ${show(shipped)} shipped.` });
             if (l.damaged) findings.push({ kind: 'damage', lotCode: item.lotCode, quantity: qu.add(r), description: `${name}: damaged${l.note ? ` (${l.note})` : ''}.` });
             if (l.identity !== 'ok') findings.push({ kind: l.identity === 'wrong_item' ? 'wrong_item' : 'identity', lotCode: item.lotCode, quantity: counted, description: `${name}: ${l.identity === 'wrong_item' ? 'not the ordered part' : 'marking or lot does not match'}${l.note ? ` (${l.note})` : ''}.` });
-            const lot = lots.get(item.lotCode) ?? { accepted: ZERO, quarantined: ZERO, serials: [] };
-            lots.set(item.lotCode, { accepted: lot.accepted.add(a), quarantined: lot.quarantined.add(qu), serials: [...lot.serials, ...item.serials] });
+            const lot = lots.get(item.lotCode) ?? { accepted: ZERO, quarantined: ZERO, serials: [], unit: item.unit };
+            if (lot.unit !== item.unit) throw new LogisticsRefused('LOT_UNITS', `${name} is counted in both ${lot.unit} and ${item.unit}`, 'A lot is held in one unit.', 422);
+            lots.set(item.lotCode, { accepted: lot.accepted.add(a), quarantined: lot.quarantined.add(qu), serials: [...lot.serials, ...item.serials], unit: item.unit });
             accepted = accepted.add(a);
             quarantined = quarantined.add(qu);
             refused = refused.add(r);
@@ -167,7 +172,7 @@ export class ReceivingCommand {
           for (const [lotCode, lot] of lots) {
             const custody = lot.accepted.add(lot.quarantined);
             if (custody.compare(ZERO) === 0) continue;
-            const lotId = await this.repo.insertStockLot({ lotCode, serials: [...new Set(lot.serials)], salesOrderId: s.salesOrderId, workPackageId: s.workPackageId, sourceShipmentId: s.id, receivedQuantity: show(custody), ownership, by: actor.userId }, tx);
+            const lotId = await this.repo.insertStockLot({ lotCode, serials: [...new Set(lot.serials)], salesOrderId: s.salesOrderId, workPackageId: s.workPackageId, sourceShipmentId: s.id, receivedQuantity: show(custody), unit: lot.unit, ownership, by: actor.userId }, tx);
             const evidence = { shipment: s.number, receivingId };
             if (lot.accepted.compare(ZERO) > 0) await this.repo.move({ lotId, from: null, to: 'JW-STOCK', quantity: show(lot.accepted), type: 'receive', source: 'logistics.receive-shipment', evidence, by: actor.userId }, tx);
             if (lot.quarantined.compare(ZERO) > 0) await this.repo.move({ lotId, from: null, to: 'JW-QUARANTINE', quantity: show(lot.quarantined), type: 'receive', source: 'logistics.receive-shipment', evidence, by: actor.userId }, tx);

@@ -35,7 +35,8 @@ const SUPPLIER_READERS = ['supplier_production', 'org_admin', 'supplier_quality'
 const PREPARING: readonly ShipmentStatus[] = ['draft', 'planned', 'ready_for_release'];
 const show = (q: string): string => Rational.parse(q).toDisplay(4);
 
-const snapshot = (s: SiteSnapshot): SiteSnapshot => ({
+/** The address as it stood: frozen into a released shipment (doc 10 §11). */
+export const snapshot = (s: SiteSnapshot): SiteSnapshot => ({
   label: s.label,
   addressLine1: s.addressLine1,
   addressLine2: s.addressLine2,
@@ -416,14 +417,14 @@ export class DispatchCommand {
 
   async list(actor: Actor, filter: { workPackageId?: string; salesOrderId?: string; statuses?: readonly ShipmentStatus[] }): Promise<Shipment[]> {
     const scope = this.scope(actor);
-    const rows = await this.repo.list({ ...filter, ...(scope ? { shipperOrganizationId: scope } : {}) });
+    const rows = await this.repo.list({ ...filter, ...(scope ? { partyOrganizationId: scope } : {}) });
     return Promise.all(rows.map((s) => this.view(actor, s)));
   }
 
   async get(actor: Actor, shipmentId: string): Promise<Shipment> {
     const scope = this.scope(actor);
     const s = await this.repo.find(shipmentId);
-    if (!s || (scope !== null && s.shipperOrganizationId !== scope)) throw new DomainError('SHIPMENT_NOT_FOUND', 404, 'Shipment not found');
+    if (!s || (scope !== null && s.shipperOrganizationId !== scope && !(s.leg === 'jobwork_to_supplier' && s.consigneeOrganizationId === scope))) throw new DomainError('SHIPMENT_NOT_FOUND', 404, 'Shipment not found');
     return this.view(actor, s);
   }
 
@@ -445,7 +446,7 @@ export class DispatchCommand {
       purchaseOrderId: s.purchaseOrderId,
       purchaseOrderNumber: s.purchaseOrderNumber ?? '',
       workPackageId: s.workPackageId,
-      salesOrderId: s.salesOrderId,
+      salesOrderId: actor.isInternal ? s.salesOrderId : null,
       supplierDisplayName: actor.isInternal || actor.organizationId === s.shipperOrganizationId ? s.shipperDisplayName : '',
       origin: origin ? snapshot(origin) : null,
       destination: destination ? snapshot(destination) : null,
