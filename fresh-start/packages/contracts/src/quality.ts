@@ -245,6 +245,115 @@ export const inspectionSchema = z.object({
   aggregateVersion: z.number().int().positive(),
 });
 
+// ----------------------------------------------------------------- NCR and corrective action (IN-15)
+
+export const ncrStatusSchema = z.enum(['open', 'containment', 'disposition_pending', 'rework', 'reinspection', 'deviation_pending', 'accepted_under_deviation', 'rejected', 'verified', 'closed']);
+export const ncrSeveritySchema = z.enum(['critical', 'major', 'minor']);
+export const costResponsibilitySchema = z.enum(['supplier', 'jobwork', 'customer', 'undetermined']);
+const quantity = z.string().trim().regex(/^\d{1,12}(\.\d{1,4})?$/, 'A quantity, e.g. 5 or 2.5');
+const tags = z.array(z.string().trim().min(1).max(60)).max(200).default([]);
+
+export const openNcrRequestSchema = z.object({
+  inspectionId: z.uuid(),
+  resultIds: z.array(z.uuid()).min(1).max(200),
+  title: z.string().trim().min(3).max(200),
+  description: z.string().trim().min(3).max(2000),
+  severity: ncrSeveritySchema,
+  affectedQuantity: quantity,
+  lots: tags,
+  serials: tags,
+  suspectedCause: z.string().trim().max(1000).default(''),
+  dueAt: z.iso.datetime().optional(),
+  costResponsibility: costResponsibilitySchema.default('undetermined'),
+  /** A new defect found while working another NCR (doc 09 §11 branch lineage). */
+  parentNcrId: z.uuid().optional(),
+});
+export const ncrVersionRequestSchema = z.object(versioned);
+export const containNcrRequestSchema = z.object({ action: z.string().trim().min(3).max(1000), location: z.string().trim().max(200).default(''), quantity: quantity.nullable().default(null) });
+export const approveReworkRequestSchema = z.object({ ...versioned, disposition: z.enum(['rework', 'remake', 'sort']), plan: z.string().trim().min(3).max(2000) });
+export const recordReworkRequestSchema = z.object({ ...versioned, note: z.string().trim().min(3).max(2000) });
+export const planReinspectionRequestSchema = z.object({ ...versioned, sampleSize: z.number().int().min(1).max(500).optional() });
+export const rejectLotRequestSchema = z.object({ ...versioned, disposition: z.enum(['return', 'scrap']), costResponsibility: costResponsibilitySchema, reason });
+export const closeNcrRequestSchema = z.object({ ...versioned, note: reason });
+export const respondCorrectiveActionRequestSchema = z.object({
+  expectedVersion: z.number().int().positive(),
+  problemDefinition: z.string().trim().min(3).max(2000),
+  occurrenceCause: z.string().trim().min(3).max(2000),
+  escapeCause: z.string().trim().min(3).max(2000),
+  actions: z.array(z.object({ action: z.string().trim().min(3).max(500), owner: z.string().trim().min(2).max(120), dueDate: z.iso.date() })).min(1).max(20),
+});
+export const reviewCorrectiveActionRequestSchema = z.object({ expectedVersion: z.number().int().positive(), decision: z.enum(['accept', 'return']), note: z.string().trim().max(1000).default('') });
+export const verifyCorrectiveActionRequestSchema = z.object({ expectedVersion: z.number().int().positive(), evidence: reason });
+
+export const ncrSchema = z.object({
+  ncrId: z.uuid(),
+  number: z.string(),
+  workPackageId: z.uuid(),
+  purchaseOrderId: z.uuid(),
+  purchaseOrderNumber: z.string(),
+  /** Empty in a supplier's own view. */
+  supplierDisplayName: z.string(),
+  inspectionId: z.uuid(),
+  inspectionNumber: z.string(),
+  stage: z.string(),
+  title: z.string(),
+  description: z.string(),
+  severity: ncrSeveritySchema,
+  affectedQuantity: z.string(),
+  lots: z.array(z.string()),
+  serials: z.array(z.string()),
+  suspectedCause: z.string(),
+  status: ncrStatusSchema,
+  attemptNo: z.number().int(),
+  dueAt: z.string(),
+  costResponsibility: costResponsibilitySchema,
+  parent: z.object({ ncrId: z.uuid(), number: z.string() }).nullable(),
+  children: z.array(z.object({ ncrId: z.uuid(), number: z.string(), status: ncrStatusSchema })),
+  defects: z.array(
+    z.object({
+      resultId: z.uuid(),
+      characteristicId: z.uuid(),
+      characteristicName: z.string(),
+      sampleNo: z.number().int(),
+      original: z.object({ value: z.string(), unit: z.string().nullable() }),
+      normalized: z.object({ value: z.string(), unit: z.string() }).nullable(),
+      outcome: outcomeSchema,
+      outcomeReason: z.string(),
+    }),
+  ),
+  containment: z.array(z.object({ action: z.string(), location: z.string(), quantity: z.string().nullable(), recordedAt: z.string(), by: z.enum(['jobwork', 'supplier']) })),
+  dispositions: z.array(
+    z.object({
+      attemptNo: z.number().int(),
+      disposition: z.enum(['rework', 'remake', 'sort', 'use_as_is', 'return', 'scrap']),
+      plan: z.string(),
+      decidedAt: z.string(),
+      reworkNote: z.string().nullable(),
+      reworkRecordedAt: z.string().nullable(),
+      reinspection: z.object({ inspectionId: z.uuid(), number: z.string(), status: inspectionStatusSchema }).nullable(),
+      outcome: z.enum(['pending', 'verified', 'still_nonconforming', 'deviation_approved', 'deviation_rejected', 'rejected']),
+    }),
+  ),
+  correctiveAction: z
+    .object({
+      status: z.enum(['requested', 'responded', 'accepted', 'verified']),
+      dueAt: z.string(),
+      problemDefinition: z.string().nullable(),
+      occurrenceCause: z.string().nullable(),
+      escapeCause: z.string().nullable(),
+      actions: z.array(z.object({ action: z.string(), owner: z.string(), dueDate: z.string() })),
+      reviewNote: z.string().nullable(),
+      effectivenessEvidence: z.string().nullable(),
+      aggregateVersion: z.number().int().positive(),
+    })
+    .nullable(),
+  /** Why it cannot close for the reader; empty when it can (internal view only). */
+  closeBlockers: z.array(z.string()),
+  closedAt: z.string().nullable(),
+  closureNote: z.string().nullable(),
+  aggregateVersion: z.number().int().positive(),
+});
+
 export type InspectionStage = z.infer<typeof inspectionStageSchema>;
 export type InspectionStatus = z.infer<typeof inspectionStatusSchema>;
 export type CharacteristicInput = z.infer<typeof characteristicInputSchema>;
@@ -270,3 +379,16 @@ export type DecideInspectionRequest = z.infer<typeof decideInspectionRequestSche
 export type InvalidateInspectionRequest = z.infer<typeof invalidateInspectionRequestSchema>;
 export type InspectionResult = z.infer<typeof inspectionResultSchema>;
 export type Inspection = z.infer<typeof inspectionSchema>;
+export type NcrStatus = z.infer<typeof ncrStatusSchema>;
+export type OpenNcrRequest = z.infer<typeof openNcrRequestSchema>;
+export type NcrVersionRequest = z.infer<typeof ncrVersionRequestSchema>;
+export type ContainNcrRequest = z.infer<typeof containNcrRequestSchema>;
+export type ApproveReworkRequest = z.infer<typeof approveReworkRequestSchema>;
+export type RecordReworkRequest = z.infer<typeof recordReworkRequestSchema>;
+export type PlanReinspectionRequest = z.infer<typeof planReinspectionRequestSchema>;
+export type RejectLotRequest = z.infer<typeof rejectLotRequestSchema>;
+export type CloseNcrRequest = z.infer<typeof closeNcrRequestSchema>;
+export type RespondCorrectiveActionRequest = z.infer<typeof respondCorrectiveActionRequestSchema>;
+export type ReviewCorrectiveActionRequest = z.infer<typeof reviewCorrectiveActionRequestSchema>;
+export type VerifyCorrectiveActionRequest = z.infer<typeof verifyCorrectiveActionRequestSchema>;
+export type Ncr = z.infer<typeof ncrSchema>;
