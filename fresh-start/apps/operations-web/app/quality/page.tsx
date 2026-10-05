@@ -42,9 +42,14 @@ export default function QualityPage(): React.JSX.Element {
       description="Inspections are planned from each work package's approved quality plan. Submitted is not passed: someone other than the inspector decides."
       width="wide"
       actions={
-        <ButtonLink href="/quality/instruments" variant="secondary">
-          Instruments
-        </ButtonLink>
+        <>
+          <ButtonLink href="/quality/ncrs" variant="secondary">
+            NCRs
+          </ButtonLink>
+          <ButtonLink href="/quality/instruments" variant="secondary">
+            Instruments
+          </ButtonLink>
+        </>
       }
     >
       <Stack gap={4}>

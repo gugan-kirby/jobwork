@@ -53,7 +53,7 @@ const BADGE_SOURCES: Record<string, ReadonlyArray<string>> = {
   '/leakage-reviews': ['leakage_reviews_open'],
   '/sales-orders': ['orders_awaiting_release', 'purchase_orders_to_issue', 'baselines_to_release', 'work_packages_to_release'],
   '/production': ['milestones_to_verify'],
-  '/quality': ['inspections_awaiting_review'],
+  '/quality': ['inspections_awaiting_review', 'ncrs_open'],
   '/finance': ['payments_unmatched'],
 };
 
