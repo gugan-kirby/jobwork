@@ -10,6 +10,7 @@ import type {
   ShipmentGuard,
   ShipmentStatus,
   ShipmentVersionRequest,
+  ShippableLot,
   SiteSnapshot,
 } from '@jobwork/contracts';
 import type { Actor } from '../../iam';
@@ -380,6 +381,29 @@ export class DispatchCommand {
   }
 
   // ----------------------------------------------------------------- reads
+
+  /** The supplier's view of what it may still ship, lot by lot (the quantity guard, ahead of time). */
+  async shippable(actor: Actor, purchaseOrderId: string): Promise<ShippableLot[]> {
+    const po = await this.repo.purchaseOrder(purchaseOrderId);
+    if (!po) throw new DomainError('PURCHASE_ORDER_NOT_FOUND', 404, 'Purchase order not found');
+    this.requireShipper(actor, { shipperOrganizationId: po.supplierOrganizationId }, SUPPLIER_READERS);
+    if (!po.workPackage) return [];
+    const facts = await this.quality.factsFor(po.workPackage.id);
+    const shipped = await this.repo.shippedBefore(po.workPackage.id, '00000000-0000-0000-0000-000000000000');
+    const lots = [...new Set(facts.releases.flatMap((r) => (r.lots.length > 0 ? r.lots : [''])))];
+    return lots.map((lot) => {
+      const released = facts.releases.filter((r) => (lot === '' ? r.lots.length === 0 : r.lots.includes(lot))).reduce((t, r) => t.add(Rational.parse(r.quantity)), Rational.of(0));
+      const out = shipped.filter((x) => x.lotCode === lot).reduce((t, x) => t.add(Rational.parse(x.quantity)), Rational.of(0));
+      const left = released.sub(out);
+      return {
+        lotCode: lot,
+        released: released.toDisplay(4),
+        shipped: out.toDisplay(4),
+        available: left.compare(Rational.of(0)) > 0 ? left.toDisplay(4) : '0',
+        heldBy: facts.openNcrs.filter((n) => n.lots.length === 0 || n.lots.includes(lot)).map((n) => n.number),
+      };
+    });
+  }
 
   private scope(actor: Actor): string | null {
     if (actor.isInternal) {
