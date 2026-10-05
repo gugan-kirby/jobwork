@@ -49,6 +49,14 @@ finance.record-bank-transfer  modules/orders/application/payment.command.ts
 finance.release-credit-hold  modules/orders/application/order.command.ts
 finance.set-credit-profile  modules/orders/application/order.command.ts
 iam.invite-member  modules/iam/application/invitation.service.ts
+logistics.cancel-shipment  modules/logistics/application/dispatch.command.ts
+logistics.ingest-carrier-webhook  modules/logistics/application/dispatch.command.ts
+logistics.plan-shipment  modules/logistics/application/dispatch.command.ts
+logistics.record-carrier-event  modules/logistics/application/dispatch.command.ts
+logistics.record-pickup  modules/logistics/application/dispatch.command.ts
+logistics.release-shipment  modules/logistics/application/dispatch.command.ts
+logistics.replan-shipment  modules/logistics/application/dispatch.command.ts
+logistics.submit-shipment  modules/logistics/application/dispatch.command.ts
 orders.accept-quote  modules/orders/application/accept-quote.command.ts
 orders.acknowledge-purchase-order  modules/orders/application/order.command.ts
 orders.issue-purchase-orders  modules/orders/application/order.command.ts
