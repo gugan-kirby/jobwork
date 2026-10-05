@@ -225,6 +225,22 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
           },
         ]
       : [],
+  'logistics.delivery_recorded.v1': async (e) => [
+    {
+      templateKey: 'customer.delivery_confirmation_needed',
+      audience: customer(str(e.data['customerOrganizationId'])),
+      variables: { orderNumber: str(e.data['orderNumber']), shipmentNumber: str(e.data['number']), dueDate: dateLabel(str(e.data['acceptanceDueAt']) || null) },
+      link: `/orders/${str(e.data['salesOrderId'])}/deliveries/${e.aggregateId}`,
+    },
+  ],
+  'logistics.delivery_deemed_accepted.v1': async (e) => [
+    {
+      templateKey: 'customer.delivery_deemed_accepted',
+      audience: customer(str(e.data['customerOrganizationId'])),
+      variables: { orderNumber: str(e.data['orderNumber']), shipmentNumber: str(e.data['number']) },
+      link: `/orders/${str(e.data['salesOrderId'])}/deliveries/${e.aggregateId}`,
+    },
+  ],
   'quality.deviation_customer_decision_requested.v1': async (e) => [
     {
       templateKey: 'customer.deviation_decision_needed',
@@ -290,6 +306,15 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
       ? [{ templateKey: 'internal.approval_requested', audience: internal(roles), variables: { subjectLabel: `Cost sheet for ${reference}` }, link: '/approvals' }]
       : [];
   },
+  // Doc 19 §8: support triages what the customer reports; logistics arranges what moves.
+  'logistics.delivery_exception_opened.v1': async (e) => [
+    {
+      templateKey: 'internal.delivery_exception_opened',
+      audience: internal(['jobwork_support', 'jobwork_logistics']),
+      variables: { exceptionNumber: str(e.data['exceptionNumber']), exceptionLabel: str(e.data['exceptionLabel']), shipmentNumber: str(e.data['number']) },
+      link: `/logistics/shipments/${e.aggregateId}`,
+    },
+  ],
   // Doc 03 §4: the owner of a hold decides a dispatch override; the link opens the shipment's gate.
   'logistics.dispatch_override_requested.v1': async (e) => {
     const roles = strings(e.data['requiredRoles']);
