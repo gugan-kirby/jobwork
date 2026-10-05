@@ -142,6 +142,27 @@ What `deviation.api.spec.ts` covers:
 - an expired deviation stops counting for release;
 - results remain `fail` in the database.
 
+**Deviations (2026-10-05, F-15.3):**
+
+- **Rail routing.** The approval rail now applies its own kinds (award, cost sheet, quote) and hands every other kind to the module that registered it, instead of listing allocation and change. `deviation` needed no further special case.
+- **A request is a disposition attempt.** Requesting a deviation is a `use_as_is` disposition; an internal or customer rejection, or a withdrawal, returns the NCR to `disposition_pending` with the attempt recorded (`deviation_rejected`).
+- **The deciders.** The internal approver is recorded as the NCR's disposition decider, so the same person cannot close it (`BR-QLT-06`). A customer decision does not displace that.
+- **When the customer sees it.** Only once JobWork has approved it internally and the customer must decide. A deviation withdrawn before that never reaches the customer (found by the test).
+- **No customer approval limit.** A deviation carries no amount; the `customer_approver` role, read in the transaction, is the authority, with the approver's acknowledgment of scope in the snapshot. A deviation-specific limit is for the owner (`D-07`).
+- **Coverage on results.** Inspection results show `coveredByDeviation` when an approved deviation covers them; the stored outcome stays `fail` (`BR-QLT-02`).
+
+**Verification (2026-10-05, F-15.3).** `deviation.api.spec.ts` (4):
+
+- scope refusals (characteristic, quantity, lot, expiry beyond 180 days);
+- no informal path: closing a pending NCR "on the phone" is refused, and a withdrawal returns the NCR;
+- the requester cannot approve; engineering does;
+- the customer approver decides on its own requirement and actual value with no supplier trace; the requester cannot;
+- the NCR is accepted under deviation and the supplier told;
+- the failed result stays `fail`, shown as covered;
+- a minor, effect-free deviation stays internal: rejected once, approved on the second attempt, and closed by someone other than its approver.
+
+761 tests green.
+
 ## F-15.4 Quality release
 
 | File | Action | Contents |
