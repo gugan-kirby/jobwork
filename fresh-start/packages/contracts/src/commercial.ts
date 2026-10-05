@@ -80,7 +80,7 @@ export const createEvaluationRequestSchema = z.object({
 
 // ------------------------------------------------------------------ approvals
 
-export const approvalKindSchema = z.enum(['award', 'cost_sheet', 'quote', 'allocation', 'change', 'deviation']);
+export const approvalKindSchema = z.enum(['award', 'cost_sheet', 'quote', 'allocation', 'change', 'deviation', 'dispatch_override']);
 export const approvalRequestStatusSchema = z.enum(['pending', 'approved', 'rejected', 'returned', 'superseded']);
 export const approvalDecisionKindSchema = z.enum(['approved', 'rejected', 'returned']);
 
