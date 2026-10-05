@@ -63,7 +63,13 @@ export class NcrCommand {
   }
 
   private event(n: NcrRow | { id: string; number: string; workPackageId: string }, version: number, type: string, data: Record<string, unknown> = {}): OutboxSpec {
-    return { eventType: type, aggregateType: 'ncr', aggregateId: n.id, aggregateVersion: version, data: { ncrId: n.id, number: n.number, workPackageId: n.workPackageId, ...data } };
+    return {
+      eventType: type,
+      aggregateType: 'ncr',
+      aggregateId: n.id,
+      aggregateVersion: version,
+      data: { ncrId: n.id, number: n.number, workPackageId: n.workPackageId, ...data },
+    };
   }
 
   private supplierFacts(n: NcrRow): Record<string, unknown> {
@@ -620,6 +626,15 @@ export class NcrCommand {
             aggregateVersion: ca.aggregateVersion,
           }
         : null,
+      deviations: (await this.repo.deviations({ ncrId: n.id })).map((d) => ({
+        deviationId: d.id,
+        number: d.number,
+        status: d.status,
+        active: d.status === 'approved' && d.expiresAt.getTime() > Date.now(),
+        quantity: d.quantity,
+        lots: d.lots,
+        expiresAt: d.expiresAt.toISOString(),
+      })),
       closeBlockers: actor.isInternal && n.status !== 'closed' ? closeBlockers(await this.closureFacts(n), actor.userId) : [],
       closedAt: n.closedAt ? n.closedAt.toISOString() : null,
       closureNote: n.closureNote,

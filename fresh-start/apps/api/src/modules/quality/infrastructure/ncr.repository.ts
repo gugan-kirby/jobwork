@@ -73,6 +73,59 @@ export interface CorrectiveActionRow {
   aggregateVersion: number;
 }
 
+export interface DeviationRow {
+  id: string;
+  number: string;
+  ncrId: string;
+  ncrNumber: string;
+  ncrStatus: string;
+  ncrSeverity: 'critical' | 'major' | 'minor';
+  status: 'pending_internal' | 'pending_customer' | 'approved' | 'rejected' | 'withdrawn';
+  characteristicIds: string[];
+  quantity: string;
+  lots: string[];
+  serials: string[];
+  expiresAt: Date;
+  rationale: string;
+  riskAssessment: string;
+  fitFunctionSafety: string;
+  priceEffect: string;
+  warrantyEffect: string;
+  traceabilityEffect: string;
+  labelingEffect: string;
+  customerApprovalRequired: boolean;
+  approvalRequestId: string | null;
+  /** The internal decision on the rail; the customer sees a deviation only once it is approved. */
+  approvalStatus: string | null;
+  requestedBy: string;
+  requestedAt: Date;
+  decidedAt: Date | null;
+  decisionReason: string | null;
+  aggregateVersion: number;
+  workPackageId: string;
+  salesOrderId: string;
+  salesOrderNumber: string;
+  customerOrganizationId: string;
+  supplierOrganizationId: string;
+  purchaseOrderId: string;
+  purchaseOrderNumber: string;
+}
+
+const DEVIATION_COLUMNS = `d.id, d.number, d.ncr_id AS "ncrId", n.number AS "ncrNumber", n.status AS "ncrStatus", n.severity AS "ncrSeverity", d.status,
+  d.characteristic_ids AS "characteristicIds", d.quantity::text AS quantity, d.lots, d.serials, d.expires_at AS "expiresAt", d.rationale,
+  d.risk_assessment AS "riskAssessment", d.fit_function_safety AS "fitFunctionSafety", d.price_effect AS "priceEffect", d.warranty_effect AS "warrantyEffect",
+  d.traceability_effect AS "traceabilityEffect", d.labeling_effect AS "labelingEffect", d.customer_approval_required AS "customerApprovalRequired",
+  d.approval_request_id AS "approvalRequestId", ar.status AS "approvalStatus", d.requested_by AS "requestedBy", d.requested_at AS "requestedAt", d.decided_at AS "decidedAt",
+  d.decision_reason AS "decisionReason", d.aggregate_version AS "aggregateVersion", n.work_package_id AS "workPackageId", w.sales_order_id AS "salesOrderId",
+  so.number AS "salesOrderNumber", so.customer_organization_id AS "customerOrganizationId", w.supplier_organization_id AS "supplierOrganizationId",
+  w.purchase_order_id AS "purchaseOrderId", po.number AS "purchaseOrderNumber"`;
+const DEVIATION_FROM = `FROM quality.deviation d
+  JOIN quality.ncr n ON n.id = d.ncr_id
+  JOIN orders.work_package w ON w.id = n.work_package_id
+  JOIN orders.sales_order so ON so.id = w.sales_order_id
+  JOIN orders.purchase_order po ON po.id = w.purchase_order_id
+  LEFT JOIN commercial.approval_request ar ON ar.id = d.approval_request_id`;
+
 const NCR_COLUMNS = `n.id, n.number, n.work_package_id AS "workPackageId", n.inspection_id AS "inspectionId", i.number AS "inspectionNumber", i.stage,
   n.baseline_id AS "baselineId", n.parent_ncr_id AS "parentNcrId", n.title, n.description, n.severity, n.detection_stage AS "detectionStage",
   n.affected_quantity::text AS "affectedQuantity", n.lots, n.serials, n.suspected_cause AS "suspectedCause", n.owner_id AS "ownerId", n.due_at AS "dueAt",
@@ -358,5 +411,109 @@ export class NcrRepository {
         fields.verifiedBy ?? null,
       ],
     );
+  }
+
+  // ----------------------------------------------------------------- deviations (doc 09 §12)
+
+  async insertDeviation(
+    input: {
+      number: string;
+      ncrId: string;
+      characteristicIds: string[];
+      quantity: string;
+      lots: string[];
+      serials: string[];
+      expiresAt: Date;
+      rationale: string;
+      riskAssessment: string;
+      fitFunctionSafety: string;
+      priceEffect: string;
+      warrantyEffect: string;
+      traceabilityEffect: string;
+      labelingEffect: string;
+      customerApprovalRequired: boolean;
+      by: string;
+    },
+    tx: Queryable,
+  ): Promise<string> {
+    const res = await tx.query<{ id: string }>(
+      `INSERT INTO quality.deviation (number, ncr_id, characteristic_ids, quantity, lots, serials, expires_at, rationale, risk_assessment, fit_function_safety,
+              price_effect, warranty_effect, traceability_effect, labeling_effect, customer_approval_required, requested_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+      [
+        input.number,
+        input.ncrId,
+        input.characteristicIds,
+        input.quantity,
+        input.lots,
+        input.serials,
+        input.expiresAt,
+        input.rationale,
+        input.riskAssessment,
+        input.fitFunctionSafety,
+        input.priceEffect,
+        input.warrantyEffect,
+        input.traceabilityEffect,
+        input.labelingEffect,
+        input.customerApprovalRequired,
+        input.by,
+      ],
+    );
+    return res.rows[0]!.id;
+  }
+
+  async findDeviation(id: string, tx?: Queryable, forUpdate = false): Promise<DeviationRow | null> {
+    const res = await this.q(tx).query<DeviationRow>(`SELECT ${DEVIATION_COLUMNS} ${DEVIATION_FROM} WHERE d.id = $1 ${forUpdate ? 'FOR UPDATE OF d' : ''}`, [id]);
+    return res.rows[0] ?? null;
+  }
+
+  async deviations(filter: { ncrId?: string; salesOrderId?: string; workPackageId?: string }, tx?: Queryable): Promise<DeviationRow[]> {
+    const res = await this.q(tx).query<DeviationRow>(
+      `SELECT ${DEVIATION_COLUMNS} ${DEVIATION_FROM}
+        WHERE ($1::uuid IS NULL OR d.ncr_id = $1) AND ($2::uuid IS NULL OR w.sales_order_id = $2) AND ($3::uuid IS NULL OR n.work_package_id = $3)
+        ORDER BY d.requested_at`,
+      [filter.ncrId ?? null, filter.salesOrderId ?? null, filter.workPackageId ?? null],
+    );
+    return res.rows;
+  }
+
+  async updateDeviation(id: string, fields: Partial<{ status: DeviationRow['status']; approvalRequestId: string; decidedAt: Date; decisionReason: string }>, tx: Queryable): Promise<number> {
+    const res = await tx.query<{ aggregate_version: number }>(
+      `UPDATE quality.deviation
+          SET status = COALESCE($2, status), approval_request_id = COALESCE($3, approval_request_id), decided_at = COALESCE($4, decided_at),
+              decision_reason = COALESCE($5, decision_reason), aggregate_version = aggregate_version + 1
+        WHERE id = $1 RETURNING aggregate_version`,
+      [id, fields.status ?? null, fields.approvalRequestId ?? null, fields.decidedAt ?? null, fields.decisionReason ?? null],
+    );
+    return res.rows[0]!.aggregate_version;
+  }
+
+  async deviationCustomerDecision(deviationId: string, tx?: Queryable): Promise<{ decision: 'approved' | 'rejected'; reason: string; decidedAt: Date } | null> {
+    const res = await this.q(tx).query<{ decision: 'approved' | 'rejected'; reason: string; decidedAt: Date }>(
+      `SELECT decision, reason, decided_at AS "decidedAt" FROM quality.deviation_customer_decision WHERE deviation_id = $1`,
+      [deviationId],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  async insertDeviationCustomerDecision(input: { deviationId: string; decision: 'approved' | 'rejected'; reason: string; decidedBy: string; membershipId: string; authoritySnapshot: Record<string, unknown> }, tx: Queryable): Promise<void> {
+    await tx.query(
+      `INSERT INTO quality.deviation_customer_decision (deviation_id, decision, reason, decided_by, membership_id, authority_snapshot) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [input.deviationId, input.decision, input.reason, input.decidedBy, input.membershipId, JSON.stringify(input.authoritySnapshot)],
+    );
+  }
+
+  /** Failed results of `inspectionId` accepted for use under an approved deviation (they stay failed). */
+  async deviationCoverage(inspectionId: string, tx?: Queryable): Promise<Array<{ resultId: string; number: string; expiresAt: Date }>> {
+    const res = await this.q(tx).query<{ resultId: string; number: string; expiresAt: Date }>(
+      `SELECT DISTINCT ON (nd.result_id) nd.result_id AS "resultId", dv.number, dv.expires_at AS "expiresAt"
+         FROM quality.ncr_defect nd
+         JOIN quality.inspection_result r ON r.id = nd.result_id
+         JOIN quality.deviation dv ON dv.ncr_id = nd.ncr_id AND nd.characteristic_id = ANY(dv.characteristic_ids) AND dv.status = 'approved'
+        WHERE r.inspection_id = $1
+        ORDER BY nd.result_id, dv.expires_at DESC`,
+      [inspectionId],
+    );
+    return res.rows;
   }
 }
