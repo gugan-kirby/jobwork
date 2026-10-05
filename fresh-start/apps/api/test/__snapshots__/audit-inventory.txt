@@ -52,10 +52,12 @@ iam.invite-member  modules/iam/application/invitation.service.ts
 logistics.cancel-shipment  modules/logistics/application/dispatch.command.ts
 logistics.ingest-carrier-webhook  modules/logistics/application/dispatch.command.ts
 logistics.plan-shipment  modules/logistics/application/dispatch.command.ts
+logistics.receive-shipment  modules/logistics/application/receiving.command.ts
 logistics.record-carrier-event  modules/logistics/application/dispatch.command.ts
 logistics.record-pickup  modules/logistics/application/dispatch.command.ts
 logistics.release-shipment  modules/logistics/application/dispatch.command.ts
 logistics.replan-shipment  modules/logistics/application/dispatch.command.ts
+logistics.resolve-discrepancy  modules/logistics/application/receiving.command.ts
 logistics.submit-shipment  modules/logistics/application/dispatch.command.ts
 orders.accept-quote  modules/orders/application/accept-quote.command.ts
 orders.acknowledge-purchase-order  modules/orders/application/order.command.ts
