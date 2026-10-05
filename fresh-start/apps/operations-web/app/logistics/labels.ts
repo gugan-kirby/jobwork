@@ -14,6 +14,7 @@ export const SHIPMENT_STATUS: Record<ShipmentStatus, { label: string; tone: Tone
   accepted: { label: 'received', tone: 'positive' },
   discrepancy_hold: { label: 'discrepancy hold', tone: 'blocked' },
   cancelled: { label: 'cancelled', tone: 'neutral' },
+  refused: { label: 'refused at delivery — coming back', tone: 'blocked' },
 };
 
 export const CARRIER_MODE: Record<CarrierMode, string> = {

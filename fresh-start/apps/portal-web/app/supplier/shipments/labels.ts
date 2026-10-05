@@ -14,6 +14,8 @@ export const SHIPMENT_STATUS: Record<ShipmentStatus, { label: string; tone: Tone
   accepted: { label: 'received', tone: 'positive' },
   discrepancy_hold: { label: 'discrepancy at receiving', tone: 'blocked' },
   cancelled: { label: 'cancelled', tone: 'neutral' },
+  // Only a delivery to a customer is refused, and a supplier never sees one.
+  refused: { label: 'not delivered', tone: 'neutral' },
 };
 
 /** Material JobWork issues to the supplier reads from the receiving side (D-15). */
