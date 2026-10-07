@@ -141,7 +141,8 @@ export class DeliveryCommand {
           if (pending) throw new LogisticsRefused('POD_RECORDED', 'This delivery already has its proof of delivery');
           if (!ON_THE_WAY.includes(s.status) && s.status !== 'discrepancy_hold') throw new LogisticsRefused('SHIPMENT_STATUS', 'A proof of delivery follows the pickup', `It is ${s.status.replace(/_/g, ' ')}.`);
           const receivedAt = new Date(cmd.receivedAt);
-          if (receivedAt.getTime() > Date.now() + 5 * 60_000 || (s.pickedUpAt && receivedAt.getTime() < s.pickedUpAt.getTime())) throw new LogisticsRefused('POD_TIME', 'The handover is after the pickup and not in the future', undefined, 422);
+          // A handover is written to the minute; a pickup recorded seconds into that minute is not after it.
+          if (receivedAt.getTime() > Date.now() + 5 * 60_000 || (s.pickedUpAt && receivedAt.getTime() < s.pickedUpAt.getTime() - 60_000)) throw new LogisticsRefused('POD_TIME', 'The handover is after the pickup and not in the future', undefined, 422);
           for (const id of cmd.documentVersionIds) {
             if (!(await this.repo.ownCleanVersion(id, actor.organizationId!, tx))) throw new LogisticsRefused('PHOTO_UNAVAILABLE', 'Upload the signed copy and photos first', 'Each must be JobWork’s own file and scanned clean.', 422);
           }
