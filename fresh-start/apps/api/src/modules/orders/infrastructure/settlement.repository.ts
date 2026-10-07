@@ -246,4 +246,38 @@ export class SettlementRepository {
     );
     return res.rows[0]!.id;
   }
+
+  // ----------------------------------------------------------------- margin (F-18.3)
+
+  /** The approved cost sheet behind an order's accepted quote, and the order's posted amounts by account. */
+  async marginFacts(salesOrderId: string, tx?: Queryable): Promise<{
+    plan: { sell: number; landed: number; margin: number; marginBp: number } | null;
+    posted: Record<string, { debit: number; credit: number }>;
+    billsComplete: boolean;
+  }> {
+    const plan = await this.q(tx).query<{ sell: string; landed: string; margin: string; marginBp: number }>(
+      `SELECT v.sell_total_minor::text AS sell, v.landed_total_minor::text AS landed, v.margin_minor::text AS margin, v.margin_bp AS "marginBp"
+         FROM orders.sales_order so JOIN commercial.customer_quote q ON q.id = so.customer_quote_id JOIN commercial.cost_sheet_version v ON v.id = q.cost_sheet_version_id
+        WHERE so.id = $1`,
+      [salesOrderId],
+    );
+    const posted = await this.q(tx).query<{ account: string; debit: string; credit: string }>(
+      `SELECT l.account_code AS account, SUM(l.debit_minor)::text AS debit, SUM(l.credit_minor)::text AS credit FROM finance.journal_line l
+        WHERE (l.cost_object_type = 'sales_order' AND l.cost_object_id = $1)
+           OR (l.cost_object_type = 'purchase_order' AND l.cost_object_id IN (SELECT id FROM orders.purchase_order WHERE sales_order_id = $1))
+        GROUP BY l.account_code`,
+      [salesOrderId],
+    );
+    const complete = await this.q(tx).query<{ done: boolean }>(
+      `SELECT NOT EXISTS (SELECT 1 FROM orders.purchase_order p WHERE p.sales_order_id = $1 AND p.status <> 'cancelled'
+                            AND NOT EXISTS (SELECT 1 FROM finance.supplier_bill b WHERE b.purchase_order_id = p.id AND b.status IN ('matched', 'exception_approved'))) AS done`,
+      [salesOrderId],
+    );
+    const p = plan.rows[0];
+    return {
+      plan: p ? { sell: Number(p.sell), landed: Number(p.landed), margin: Number(p.margin), marginBp: p.marginBp } : null,
+      posted: Object.fromEntries(posted.rows.map((r) => [r.account, { debit: Number(r.debit), credit: Number(r.credit) }])),
+      billsComplete: complete.rows[0]!.done,
+    };
+  }
 }

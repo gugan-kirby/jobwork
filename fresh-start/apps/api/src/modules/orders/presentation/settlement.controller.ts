@@ -9,11 +9,13 @@ import {
   scheduleSettlementRequestSchema,
   submitSupplierBillRequestSchema,
   supplierBillStatusSchema,
+  type JobMargin,
   type SupplierBill,
 } from '@jobwork/contracts';
 import type { Actor } from '../../iam';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { JobMarginView } from '../application/job-margin';
 import { SettlementCommand } from '../application/settlement.command';
 
 const opts = (request: FastifyRequest) => {
@@ -88,5 +90,21 @@ export class FinanceBillsController {
   @Post(':billId/settlement/pay')
   pay(@CurrentActor() actor: Actor, @Param('billId') id: string, @Req() request: FastifyRequest): Promise<SupplierBill> {
     return this.settlement.markPaid(actor, id, parseBody(markSettlementPaidRequestSchema, request.body), opts(request));
+  }
+}
+
+/** Planned against realized margin per order (F-18.3), internal only. */
+@Controller('finance/margin')
+export class MarginController {
+  constructor(private readonly margin: JobMarginView) {}
+
+  @Get()
+  list(@CurrentActor() actor: Actor): Promise<JobMargin[]> {
+    return this.margin.list(actor);
+  }
+
+  @Get(':salesOrderId')
+  get(@CurrentActor() actor: Actor, @Param('salesOrderId') id: string): Promise<JobMargin> {
+    return this.margin.forOrder(actor, parseBody(z.uuid(), id));
   }
 }

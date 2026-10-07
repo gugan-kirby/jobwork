@@ -87,3 +87,31 @@ export type MarkSettlementPaidRequest = z.infer<typeof markSettlementPaidRequest
 export type BillMatch = z.infer<typeof billMatchSchema>;
 export type SettlementEligibility = z.infer<typeof settlementEligibilitySchema>;
 export type SupplierBill = z.infer<typeof supplierBillSchema>;
+
+/**
+ * One order's margin, planned against realized (IN-18 F-18.3; doc 05 §8 cost objects; doc 01 §7):
+ * the approved cost sheet against what was actually posted to the order — revenue less credit notes,
+ * the supplier's cost less recoveries, change and warranty cost. JobWork only.
+ */
+export const jobMarginSchema = z.object({
+  salesOrderId: z.uuid(),
+  orderNumber: z.string(),
+  customerDisplayName: z.string(),
+  status: z.string(),
+  currency: z.string(),
+  planned: z.object({ sellMinor: z.number().int(), landedMinor: z.number().int(), marginMinor: z.number().int(), marginBp: z.number().int() }).nullable(),
+  actual: z.object({
+    revenueMinor: z.number().int(),
+    creditNotesMinor: z.number().int(),
+    costOfGoodsMinor: z.number().int(),
+    recoveriesMinor: z.number().int(),
+    changeCostMinor: z.number().int(),
+    warrantyCostMinor: z.number().int(),
+    marginMinor: z.number().int(),
+    marginBp: z.number().int().nullable(),
+  }),
+  /** Realized less planned margin; meaningful once every supplier bill is in. */
+  varianceMinor: z.number().int().nullable(),
+  billsComplete: z.boolean(),
+});
+export type JobMargin = z.infer<typeof jobMarginSchema>;

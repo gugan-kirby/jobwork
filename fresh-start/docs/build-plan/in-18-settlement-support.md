@@ -77,6 +77,18 @@ Use cases: UC-31, UC-34; pilot scenarios 11–12 completion.
 |---|---|---|
 | `apps/api/src/modules/orders/application/job-margin.ts` | new | Per sales order: quoted price and approved landed cost against posted revenue, credit notes, cost of goods, change, warranty and recovery |
 
+**Built (2026-10-07, F-18.3), tests deferred.**
+
+- **`JobMarginView`**, served on `GET /finance/margin` and `/finance/margin/:salesOrderId` to finance and sales only, sets the approved cost sheet behind the accepted quote against the order's postings.
+- **Postings counted:**
+  - revenue less credit notes;
+  - `cost_of_goods` less recoveries;
+  - `change_cost` and `warranty_cost`.
+- **Scope:** postings are read on the order's cost object and on its purchase orders' cost objects.
+- **Variance** is shown only once every live purchase order has a matched bill.
+- **Deviation:** the plan had a stored `margin_snapshot` written on order closure. The view instead derives it from the journal, which is already immutable, so there is no second copy to keep in step.
+- **Deferred to the test pass:** `margin.api.spec.ts` (planned vs. realized after a credit note and a recovery; no customer or supplier route reaches it).
+
 ## F-18.4 UX
 
 | File | Action | Contents |

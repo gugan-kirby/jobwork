@@ -7,7 +7,8 @@ import { CustomerRemedy } from './application/customer-remedy';
 import { OrderClosure } from './application/order-closure';
 import { SettlementCommand } from './application/settlement.command';
 import { SettlementRepository } from './infrastructure/settlement.repository';
-import { FinanceBillsController, SupplierBillsController } from './presentation/settlement.controller';
+import { FinanceBillsController, MarginController, SupplierBillsController } from './presentation/settlement.controller';
+import { JobMarginView } from './application/job-margin';
 import { MoneyFlow } from './application/money-flow';
 import { OrderCommand } from './application/order.command';
 import { OrdersView } from './application/orders-view';
@@ -54,6 +55,7 @@ import {
     SupplierProductionController,
     SupplierBillsController,
     FinanceBillsController,
+    MarginController,
   ],
   providers: [
     OrdersRepository,
@@ -64,6 +66,7 @@ import {
     SettlementCommand,
     OrderClosure,
     CustomerRemedy,
+    JobMarginView,
     OrdersView,
     AcceptQuoteCommand,
     OrderCommand,
