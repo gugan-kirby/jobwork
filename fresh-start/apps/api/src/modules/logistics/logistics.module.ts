@@ -4,6 +4,7 @@ import { CommunicationModule } from '../communication';
 import { IamModule } from '../iam';
 import { OrdersModule } from '../orders';
 import { QualityModule } from '../quality';
+import { CaseLogistics } from './application/case-logistics';
 import { CustomerDeliveries } from './application/customer-deliveries';
 import { CustomerDispatchCommand } from './application/customer-dispatch.command';
 import { DeliveryCommand } from './application/delivery.command';
@@ -25,6 +26,7 @@ import { CarrierWebhookController, DiscrepancyController, LogisticsViewControlle
 @Module({
   imports: [IamModule, OrdersModule, QualityModule, CommercialModule, CommunicationModule],
   controllers: [SupplierShipmentController, ShipmentController, DiscrepancyController, LogisticsViewController, CarrierWebhookController, CustomerDispatchController, CustomerDeliveriesController, DeliveryController, InternalDeliveriesController],
-  providers: [LogisticsRepository, DispatchCommand, ReceivingCommand, MaterialCommand, LogisticsView, CustomerDeliveries, CustomerDispatchCommand, DeliveryCommand, { provide: CarrierPort, useClass: DevCarrier }],
+  providers: [LogisticsRepository, DispatchCommand, ReceivingCommand, MaterialCommand, LogisticsView, CustomerDeliveries, CustomerDispatchCommand, DeliveryCommand, CaseLogistics, { provide: CarrierPort, useClass: DevCarrier }],
+  exports: [CaseLogistics],
 })
 export class LogisticsModule {}
