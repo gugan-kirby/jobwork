@@ -98,6 +98,26 @@ Use cases: UC-31, UC-34; pilot scenarios 11–12 completion.
 | `apps/operations-web/app/finance/bills/*`, `/finance/margin` | new | Bills to match, exceptions, settlements, margin per order |
 | `apps/operations-web/app/support/*` | new | Case center: triage, events, resolution actions, verification, close |
 
+**Built (2026-10-07, F-18.4), tests deferred.**
+
+- **Portal, supplier:** `/supplier/bills` lets a supplier submit a bill against an acknowledged purchase order and see why a bill or its payment waits.
+- **Portal, customer:** `/support` and `/support/[caseId]` let a customer raise a case, add information, see the agreed remedies (never a supplier recovery) and withdraw before JobWork starts.
+- **Ops:**
+  - `/finance/bills`: match, exception, reject, recheck, schedule and pay;
+  - `/finance/margin`: margin per order;
+  - `/support` and `/support/[caseId]`: triage, investigate, propose a resolution, carry out, verify and cancel actions, internal or shared notes, close.
+- **Navigation:** Bills (supplier) and Support (customer, ops) are added; ops badges come from `supplier_bills_to_match`, `settlements_held` and `cases_open`.
+- **Deviations:**
+  - The supplier attaches the bill file later (`documentVersionId` stays optional); v1 has no upload control on the form.
+  - In the proposal form, the stock lot is entered by id, because there is no lot picker yet.
+- **Deferred to the test pass:** a browser walk of every screen at desktop and mobile widths, and an axe check.
+
+**IN-18 build closed 2026-10-07 (PRs #52–#56); testing deferred.** The test pass owes:
+- the F-18.1–F-18.4 specs named above;
+- pilot scenarios 11 and 12 end to end;
+- IN-17's deferred F-17.6 items (scenario 11 delivery half, UAT 11.x);
+- a full local gate run.
+
 ## Increment exit
 
 - [ ] Pilot scenarios 11 (delivery exception → warranty/return/refund) and 12 green: **deferred to the test pass**.
