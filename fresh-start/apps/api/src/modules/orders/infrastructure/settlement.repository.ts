@@ -227,4 +227,23 @@ export class SettlementRepository {
     );
     return res.rows[0]!.done;
   }
+
+  // ----------------------------------------------------------------- credit notes (BR-FIN-06)
+
+  async creditedOn(invoiceId: string, tx?: Queryable): Promise<number> {
+    const res = await this.q(tx).query<{ total: string }>(`SELECT COALESCE(SUM(total_minor), 0)::text AS total FROM finance.credit_note WHERE invoice_id = $1`, [invoiceId]);
+    return Number(res.rows[0]!.total);
+  }
+
+  async insertCreditNote(
+    input: { number: string; invoiceId: string; salesOrderId: string; customerOrganizationId: string; currency: string; reason: string; taxableMinor: number; taxMinor: number; caseId: string | null; contentHash: string; journalId: string; by: string },
+    tx: Queryable,
+  ): Promise<string> {
+    const res = await tx.query<{ id: string }>(
+      `INSERT INTO finance.credit_note (number, invoice_id, sales_order_id, customer_organization_id, currency, reason, taxable_minor, tax_minor, total_minor, case_id, content_hash, journal_id, issued_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $7::bigint + $8::bigint, $9, $10, $11, $12) RETURNING id`,
+      [input.number, input.invoiceId, input.salesOrderId, input.customerOrganizationId, input.currency, input.reason, input.taxableMinor, input.taxMinor, input.caseId, input.contentHash, input.journalId, input.by],
+    );
+    return res.rows[0]!.id;
+  }
 }
