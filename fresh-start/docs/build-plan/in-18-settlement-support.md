@@ -36,6 +36,18 @@ Use cases: UC-31, UC-34; pilot scenarios 11–12 completion.
 | `apps/api/src/modules/orders/application/settlement.command.ts` | new | `submitBill` (supplier), `matchBill` (finance), `requestException` / approval effect, `rejectBill`, eligibility, `scheduleSettlement`, `markPaid`; journals |
 | `apps/api/src/modules/orders/presentation/settlement.controller.ts` | new | Supplier `/supplier/bills`; JobWork `/supplier-bills`, `/settlements` |
 
+**Built (2026-10-07, F-18.1), tests deferred.**
+
+- Migration 0027 also carries F-18.2's tables, so the schema lands once.
+- `three-way-match.ts` (match and eligibility rules), `SettlementRepository`, `SettlementCommand`, and `OrderClosure`, which closes a `customer_accepted` order once every PO is billed and paid and no case is open.
+- Routes:
+  - supplier: `/supplier/bills` (list, submit, get);
+  - finance: `/supplier-bills` with `match`, `exception`, `reject`, `settlement/recheck`, `settlement/schedule` and `settlement/pay`.
+- The bill-exception decision runs through the approval rail.
+- Queues `supplier_bills_to_match`, `settlements_held` and `cases_open`; the supplier is notified when paid.
+- Existing test expectations were updated by hand, without a test run: the template pin (38), the approval-policy seeds, and the audit inventory (+7).
+- **Deferred to the test pass:** `settlement.api.spec.ts` (match pass and fail, exception by a second finance member, eligibility holds, payment journal, a chargeback leaving settlement untouched) and a database spec for 0027.
+
 ## F-18.2 Support cases, credit notes, returns (UC-34)
 
 | File | Action | Contents |

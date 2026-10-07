@@ -37,6 +37,8 @@ const KIND_LABEL: Record<ApprovalRequest['kind'], string> = {
   change: 'Engineering change',
   deviation: 'Deviation',
   dispatch_override: 'Dispatch override',
+  bill_exception: 'Supplier bill exception',
+  case_resolution: 'Case resolution',
 };
 
 const STATUS_TONE: Record<ApprovalRequest['status'], Tone> = {

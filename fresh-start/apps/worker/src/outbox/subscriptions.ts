@@ -101,6 +101,12 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'logistics.delivery_accepted.v1',
   'logistics.delivery_exception_resolved.v1',
   'logistics.delivery_refused.v1',
+  // IN-18: bills are recorded; the paid supplier is notified.
+  'finance.supplier_bill_submitted.v1',
+  'finance.supplier_bill_matched.v1',
+  'finance.supplier_bill_match_exception.v1',
+  'finance.bill_exception_requested.v1',
+  'finance.supplier_bill_rejected.v1',
   'supplier.admitted.v1',
   'supplier.application_declined.v1',
   'supplier.application_received.v1',

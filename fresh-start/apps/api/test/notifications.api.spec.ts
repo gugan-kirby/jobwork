@@ -159,7 +159,7 @@ describe('Notifications (F-10.3)', () => {
     const rows = await pg.query<{ template_key: string; channels: string[] }>(
       `SELECT template_key, array_agg(channel ORDER BY channel) AS channels FROM communication.template_version GROUP BY template_key`,
     );
-    expect(rows.rows.length).toBe(36); // 18 from F-10.3, 3 from F-11.1 (SLA due, escalated, handed over), 1 from F-12.5 (round superseded), 2 from F-13.2 (change decision, interim decision), 2 from F-14.1 (inspection planned, decided), 3 from F-15.1 (NCR opened, NCR disposition, deviation decision), 2 from F-16.1 (shipment released, receiving discrepancy), 5 from F-17.1 (address confirmation, dispatched, confirmation needed, deemed accepted, delivery exception)
+    expect(rows.rows.length).toBe(38); // 18 from F-10.3, 3 from F-11.1 (SLA due, escalated, handed over), 1 from F-12.5 (round superseded), 2 from F-13.2 (change decision, interim decision), 2 from F-14.1 (inspection planned, decided), 3 from F-15.1 (NCR opened, NCR disposition, deviation decision), 2 from F-16.1 (shipment released, receiving discrepancy), 5 from F-17.1 (address confirmation, dispatched, confirmation needed, deemed accepted, delivery exception), 2 from IN-18 (case update, settlement paid)
     for (const row of rows.rows) expect(row.channels, row.template_key).toEqual(['email', 'in_app']);
   });
 
