@@ -104,6 +104,8 @@ describe('commercial schema constraints (F-07.1)', () => {
     expect(policies.rows).toEqual([
       { kind: 'allocation', n: 1 },
       { kind: 'award', n: 1 },
+      { kind: 'bill_exception', n: 1 },
+      { kind: 'case_resolution', n: 1 },
       { kind: 'change', n: 1 },
       { kind: 'cost_sheet', n: 1 },
       { kind: 'deviation', n: 1 },
