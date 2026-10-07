@@ -175,10 +175,12 @@ export function nextStepFor(input: {
 }): { owner: 'you' | 'jobwork'; label: string; detail: string } {
   const deliveries = input.deliveries ?? [];
   const awaiting = deliveries.filter((d) => d.status === 'receiving_check' && d.dueAt).sort((a, b) => a.dueAt!.localeCompare(b.dueAt!));
-  if (deliveries.some((d) => d.addressNeeded) && ['final_checks', 'on_the_way', 'delivery_confirmation_needed'].includes(input.status)) {
+  // A partial delivery can leave while another part is still being made: what it needs from you comes first.
+  const open = input.status !== 'completed' && input.status !== 'cancelled' && input.status !== 'payment_needed';
+  if (open && deliveries.some((d) => d.addressNeeded)) {
     return { owner: 'you', label: 'Confirm the delivery address', detail: 'A delivery is packed. Confirm the address and the receiving contact so it can leave.' };
   }
-  if (awaiting.length > 0 && (input.status === 'on_the_way' || input.status === 'delivery_confirmation_needed')) {
+  if (open && awaiting.length > 0) {
     return { owner: 'you', label: 'Confirm delivery', detail: `Accept the delivery, or report a shortage, damage or defect, by ${day(awaiting[0]!.dueAt!)}. After that it is taken as accepted; your warranty is not affected.` };
   }
   if (input.status === 'delivery_confirmation_needed' && deliveries.some((d) => d.status === 'discrepancy_hold')) {
