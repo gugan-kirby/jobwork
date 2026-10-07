@@ -306,6 +306,15 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
       ? [{ templateKey: 'internal.approval_requested', audience: internal(roles), variables: { subjectLabel: `Cost sheet for ${reference}` }, link: '/approvals' }]
       : [];
   },
+  // IN-18: the supplier hears its bill was paid.
+  'finance.settlement_paid.v1': async (e) => [
+    {
+      templateKey: 'supplier.settlement_paid',
+      audience: suppliers([str(e.data['supplierOrganizationId'])]),
+      variables: { supplierReference: str(e.data['supplierReference']), purchaseOrderNumber: str(e.data['purchaseOrderNumber']), paymentReference: str(e.data['paymentReference']) },
+      link: `/supplier/bills/${e.aggregateId}`,
+    },
+  ],
   // Doc 19 §8: support triages what the customer reports; logistics arranges what moves.
   'logistics.delivery_exception_opened.v1': async (e) => [
     {

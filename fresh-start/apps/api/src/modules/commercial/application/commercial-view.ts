@@ -249,5 +249,9 @@ function approvalTarget(row: ApprovalRequestRow): { href: string; title: string 
       return { href: `/quality/ncrs/${context.ncrId ?? ''}`, title: context.label ?? 'Deviation' };
     case 'dispatch_override':
       return { href: `/logistics/shipments/${context.shipmentId ?? row.subjectId}`, title: context.label ?? 'Dispatch override' };
+    case 'bill_exception':
+      return { href: '/finance/bills', title: context.label ?? 'Supplier bill exception' };
+    case 'case_resolution':
+      return { href: `/support/${row.subjectId}`, title: context.label ?? 'Support case resolution' };
   }
 }

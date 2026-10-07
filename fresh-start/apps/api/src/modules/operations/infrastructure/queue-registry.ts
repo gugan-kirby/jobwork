@@ -355,6 +355,42 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
        WHERE x.status = 'open'`,
   },
   {
+    key: 'supplier_bills_to_match',
+    label: 'Supplier bills to match',
+    detail: 'Submitted by suppliers: match each against its purchase order and what JobWork accepted, or decide its exception.',
+    href: '/finance/bills',
+    roles: ['jobwork_finance'],
+    subjectType: 'supplier_bill',
+    membership: `
+      SELECT b.id AS subject_id, b.number AS reference, b.number || ' on ' || p.number AS title, '/finance/bills' AS href, b.submitted_at AS waiting_since
+        FROM finance.supplier_bill b JOIN orders.purchase_order p ON p.id = b.purchase_order_id
+       WHERE b.status IN ('submitted', 'match_exception')`,
+  },
+  {
+    key: 'settlements_held',
+    label: 'Supplier settlements held',
+    detail: 'Matched bills not yet eligible for payment (doc 10 §5): the reasons say what is missing.',
+    href: '/finance/bills',
+    roles: ['jobwork_finance'],
+    subjectType: 'settlement',
+    membership: `
+      SELECT s.id AS subject_id, b.number AS reference, b.number AS title, '/finance/bills' AS href, s.updated_at AS waiting_since
+        FROM finance.settlement s JOIN finance.supplier_bill b ON b.id = s.supplier_bill_id
+       WHERE s.status = 'held'`,
+  },
+  {
+    key: 'cases_open',
+    label: 'Support cases',
+    detail: 'Delivery issues, warranty claims and disputes until every resolution is verified.',
+    href: '/support',
+    roles: ['jobwork_support'],
+    subjectType: 'case',
+    membership: `
+      SELECT c.id AS subject_id, c.number AS reference, c.title AS title, '/support/' || c.id AS href, c.created_at AS waiting_since
+        FROM support.case c
+       WHERE c.status NOT IN ('closed', 'rejected', 'withdrawn')`,
+  },
+  {
     // Messages held by the contact-leakage gate, invisible to their readers until decided (F-10.4).
     key: 'leakage_reviews_open',
     label: 'Messages held for review',
