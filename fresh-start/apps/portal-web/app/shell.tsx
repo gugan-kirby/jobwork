@@ -34,6 +34,7 @@ const CUSTOMER_NAVIGATION: NavItem[] = [
   { href: '/quotations', label: 'Quotations' },
   { href: '/orders', label: 'Orders' },
   { href: '/invoices', label: 'Invoices' },
+  { href: '/support', label: 'Support' },
   { href: '/documents', label: 'Documents' },
   { href: '/team', label: 'Team' },
 ];
@@ -53,6 +54,7 @@ const SUPPLIER_NAVIGATION: NavItem[] = [
   { href: '/supplier/orders', label: 'Orders' },
   { href: '/supplier/quality', label: 'Quality' },
   { href: '/supplier/shipments', label: 'Shipments' },
+  { href: '/supplier/bills', label: 'Bills' },
   { href: '/supplier/company', label: 'Company' },
   { href: '/supplier/compliance', label: 'Compliance' },
   { href: '/capabilities', label: 'Capabilities' },
