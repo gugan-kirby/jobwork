@@ -102,7 +102,7 @@ export default function InvoicesPage() {
                 key={i.invoiceId}
                 href={`/invoices/${i.invoiceId}`}
                 reference={i.number}
-                title={`${i.kind === 'advance' ? 'Advance' : i.kind === 'balance' ? 'Balance' : 'Final'} · ${i.orderTitle}`}
+                title={`${i.kind === 'advance' ? 'Advance' : i.kind === 'balance' ? 'Balance' : i.kind === 'change' ? 'Change' : 'Final'} · ${i.orderTitle}`}
                 caption={i.status === 'paid' ? `Order ${i.orderNumber}` : `Due ${i.dueAt.slice(0, 10)} · order ${i.orderNumber}`}
                 figure={formatMoney({ amountMinor: i.status === 'paid' ? i.totalMinor : i.openMinor, currency: i.currency })}
                 status={<StatusChip tone={TONE[i.status]}>{i.statusLabel}</StatusChip>}
