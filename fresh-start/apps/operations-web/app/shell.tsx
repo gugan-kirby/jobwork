@@ -31,6 +31,7 @@ const BASE_NAVIGATION: NavItem[] = [
   { href: '/quality', label: 'Quality' },
   { href: '/logistics', label: 'Logistics' },
   { href: '/finance', label: 'Finance' },
+  { href: '/support', label: 'Support' },
   { href: '/approvals', label: 'Approvals' },
   { href: '/leakage-reviews', label: 'Held messages' },
   { href: '/suppliers', label: 'Suppliers' },
@@ -56,7 +57,8 @@ const BADGE_SOURCES: Record<string, ReadonlyArray<string>> = {
   '/production': ['milestones_to_verify'],
   '/quality': ['inspections_awaiting_review', 'ncrs_open'],
   '/logistics': ['shipments_to_release', 'shipments_awaiting_receiving', 'receiving_discrepancies_open', 'customer_dispatches_to_release', 'deliveries_awaiting_pod', 'delivery_exceptions_open'],
-  '/finance': ['payments_unmatched'],
+  '/finance': ['payments_unmatched', 'supplier_bills_to_match', 'settlements_held'],
+  '/support': ['cases_open'],
 };
 
 const UNSHELLED = ['/login'];
