@@ -3,6 +3,10 @@ import { CommercialModule } from '../commercial';
 import { IamModule } from '../iam';
 import { AcceptQuoteCommand } from './application/accept-quote.command';
 import { DispatchFinance } from './application/dispatch-finance';
+import { OrderClosure } from './application/order-closure';
+import { SettlementCommand } from './application/settlement.command';
+import { SettlementRepository } from './infrastructure/settlement.repository';
+import { FinanceBillsController, SupplierBillsController } from './presentation/settlement.controller';
 import { MoneyFlow } from './application/money-flow';
 import { OrderCommand } from './application/order.command';
 import { OrdersView } from './application/orders-view';
@@ -47,12 +51,17 @@ import {
     InternalPaymentsController,
     ProductionController,
     SupplierProductionController,
+    SupplierBillsController,
+    FinanceBillsController,
   ],
   providers: [
     OrdersRepository,
     FinanceRepository,
     MoneyFlow,
     DispatchFinance,
+    SettlementRepository,
+    SettlementCommand,
+    OrderClosure,
     OrdersView,
     AcceptQuoteCommand,
     OrderCommand,
@@ -63,6 +72,6 @@ import {
     // `T-03`: the provider is chosen by configuration; `dev` is the only adapter until the decision lands.
     { provide: PaymentGateway, useExisting: DevGateway },
   ],
-  exports: [OrdersRepository, FinanceRepository, ProductionRepository, DispatchFinance],
+  exports: [OrdersRepository, FinanceRepository, ProductionRepository, DispatchFinance, OrderClosure, SettlementRepository],
 })
 export class OrdersModule {}

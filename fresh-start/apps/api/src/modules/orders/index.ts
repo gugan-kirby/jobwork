@@ -5,3 +5,5 @@ export { FinanceRepository } from './infrastructure/finance.repository';
 export { DispatchFinance, type DispatchPaymentFacts } from './application/dispatch-finance';
 export { ProductionRepository, type BaselineRecord } from './infrastructure/production.repository';
 export { baselineHash, governingConflicts } from './domain/production';
+export { OrderClosure } from './application/order-closure';
+export { SettlementRepository } from './infrastructure/settlement.repository';
