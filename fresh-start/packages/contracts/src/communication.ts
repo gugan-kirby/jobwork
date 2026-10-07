@@ -276,5 +276,6 @@ export const NOTIFIED_EVENT_TYPES = [
   'logistics.delivery_deemed_accepted.v1',
   'logistics.delivery_exception_opened.v1',
   'finance.settlement_paid.v1',
+  'support.case_updated.v1',
 ] as const;
 export type NotifiedEventType = (typeof NOTIFIED_EVENT_TYPES)[number];
