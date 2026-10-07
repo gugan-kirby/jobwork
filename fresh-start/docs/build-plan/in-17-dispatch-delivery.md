@@ -362,8 +362,22 @@ Taken as safe defaults so the build can proceed; each is reversible and recorded
 | Acceptance window | 7 calendar days from POD to the end of that day in IST, then deemed acceptance | A common B2B inspection period; `D-20` is open |
 | Reports after acceptance | Recorded as warranty claims; the warranty period and remedies are IN-18's | Acceptance never waives warranty (doc 19 §8) |
 
+**F-17.6 deferred (2026-10-07, owner).** The owner asked to stop all testing for now and continue the build; testing is a later, separate pass. Scenario 11's delivery half (`scenario-11-delivery-exception.api.spec.ts`) and its UAT steps (11.x) are not written. They are the first items of that pass.
+
 ## Increment exit
 
-- [ ] Full two-leg physical chain demo with all gates computed from real facts (scenario 11 start, browser walk).
-- [ ] Supplier identity absent from every customer-facing logistics artifact (labels, delivery notes, POD, conformity certificate, tracking and deliveries JSON) — snapshot and leak suite green.
-- [ ] POD and acceptance distinct (`BR-LOG-05`); no carrier event accepts anything; every dispatched quantity traceable lot → movement → `OUT-DISPATCHED`, and back on a return.
+- [x] Full two-leg physical chain demo with all gates computed from real facts. The F-17.5 browser walk ran plan → gate → address and payment → override → release → pickup → POD → acceptance on dev data. The scenario 11 spec is deferred to the test pass.
+- [x] Supplier identity absent from every customer-facing logistics artifact. The leak suites in `customer-dispatch.api.spec.ts` and `customer-deliveries.api.spec.ts`, and the document snapshots, were green at F-17.4.
+- [x] POD and acceptance distinct (`BR-LOG-05`, enforced by the trigger); no carrier event accepts anything; every dispatched quantity traceable lot → movement → `OUT-DISPATCHED`, and back on a return (`delivery.api.spec.ts`).
+
+**IN-17 build closed 2026-10-07** (PRs #44–#50), with testing deferred. Waiting for the test pass:
+
+- F-17.6, pilot scenario 11's delivery half, and UAT 11.x;
+- a full local gate after F-17.5: CI was green on #50, but the local run was stopped.
+
+Owner items carried:
+
+- the defaults above for review;
+- `T-04` and `T-05` (no tax or carrier provider);
+- legal and tax review of the e-way bill threshold and the invoice that travels with goods;
+- `D-20`, the warranty, refund and cancellation matrix, of which the 7-day window is a default.

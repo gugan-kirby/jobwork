@@ -40,8 +40,8 @@ This directory decomposes the [Implementation plan](../24-implementation-plan.md
 | [IN-14 Quality & inspections](in-14-quality-plans-inspections.md) | F-14.1–F-14.5 | build **done** 2026-10-05; UAT scenario 7 with the owner's UAT; `D-06` default for owner review |
 | [IN-15 NCR, deviation, release](in-15-ncr-deviation-release.md) | F-15.1–F-15.6 | build **done** 2026-10-05; UAT scenarios 7–8 with the owner's UAT; defaults for owner review |
 | [IN-16 Logistics leg 1 & receiving](in-16-logistics-leg1-receiving.md) | F-16.1–F-16.6 | build **done** 2026-10-05; UAT scenario 10 with the owner's UAT; defaults for owner review |
-| [IN-17 Dispatch & delivery](in-17-dispatch-delivery.md) | F-17.1–F-17.6 | **in progress** — F-17.1–F-17.5 done 2026-10-05 (PRs #44–#49 and F-17.5's); paused by the owner before F-17.6 (pilot scenario 11 start) and the increment close |
-| [IN-18 Settlement & support](in-18-settlement-support.md) | F-18.1–F-18.3 | not started |
+| [IN-17 Dispatch & delivery](in-17-dispatch-delivery.md) | F-17.1–F-17.6 | build **done** 2026-10-07 (PRs #44–#50); **testing deferred** by the owner: F-17.6 (scenario 11 delivery half, UAT 11.x) and a full local gate wait for the test pass |
+| [IN-18 Settlement & support](in-18-settlement-support.md) | F-18.1–F-18.3 | **in progress** — plan refresh first; built without tests (owner, 2026-10-07) |
 
 **F-CX** closes the customer-side dead ends the same audit found on the internal side: a draft nobody could reopen, an enquiry nobody could withdraw or repeat, and an enquiry that never said where it ships. **F-OPS** builds the console the queue screens were hanging off: a command center with real counts, and the organization/user administration that existed only as API routes. **F-SO** is likewise cross-cutting: IN-04 built the supplier domain but neither surface that admits a supplier or lets it describe itself, and IN-06 cannot invite a supplier that was never admitted.
 
