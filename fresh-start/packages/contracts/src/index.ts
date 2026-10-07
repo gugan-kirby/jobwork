@@ -337,3 +337,6 @@ export * from './quality';
 
 // ------------------------------------------------------------------ logistics (IN-16)
 export * from './logistics';
+
+// ------------------------------------------------------------------ settlement (IN-18)
+export * from './settlement';
