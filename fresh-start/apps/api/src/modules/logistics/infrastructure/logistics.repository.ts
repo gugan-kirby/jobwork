@@ -129,6 +129,9 @@ export interface DeliveryExceptionRow {
   carrierChargeNote: string;
   createdAt: Date;
   resolvedAt: Date | null;
+  /** The support case it was handed to (IN-18), and whether that case is still open. */
+  caseId: string | null;
+  caseOpen: boolean;
 }
 
 export interface PodRow {
@@ -144,7 +147,8 @@ export interface PodRow {
 
 const EXCEPTION_COLUMNS = `id, number, shipment_id AS "shipmentId", kind, raised_by_party AS "raisedByParty", lot_marking AS "lotMarking", quantity::text AS quantity, description,
   evidence_document_version_ids AS evidence, warranty_claim AS "warrantyClaim", requested_snapshot AS "requestedSnapshot", status, resolution, resolution_note AS "resolutionNote",
-  case_reference AS "caseReference", carrier_charge_note AS "carrierChargeNote", created_at AS "createdAt", resolved_at AS "resolvedAt"`;
+  case_reference AS "caseReference", carrier_charge_note AS "carrierChargeNote", created_at AS "createdAt", resolved_at AS "resolvedAt", case_id AS "caseId",
+  COALESCE((SELECT c.status NOT IN ('closed', 'rejected', 'withdrawn') FROM support.case c WHERE c.id = case_id), true) AS "caseOpen"`;
 
 export type LocationCode = 'JW-RECEIVING' | 'JW-QUARANTINE' | 'JW-STOCK' | 'OUT-DISPATCHED' | 'OUT-SCRAPPED' | 'OUT-RETURNED' | 'OUT-REWORK' | 'OUT-ISSUED';
 export type MovementType = 'receive' | 'quarantine' | 'release' | 'pick' | 'dispatch' | 'return' | 'scrap' | 'rework_out' | 'rework_in' | 'adjust' | 'issue';
@@ -845,11 +849,17 @@ export class LogisticsRepository {
     return res.rows[0] ?? null;
   }
 
-  async resolveDeliveryException(id: string, input: { resolution: DeliveryExceptionResolution; note: string; caseReference: string; carrierChargeNote: string; by: string }, tx: Queryable): Promise<void> {
+  async resolveDeliveryException(id: string, input: { resolution: DeliveryExceptionResolution; note: string; caseReference: string; carrierChargeNote: string; by: string; caseId?: string }, tx: Queryable): Promise<void> {
     await tx.query(
-      `UPDATE logistics.delivery_exception SET status = 'resolved', resolution = $2, resolution_note = $3, case_reference = $4, carrier_charge_note = $5, resolved_by = $6, resolved_at = now() WHERE id = $1`,
-      [id, input.resolution, input.note, input.caseReference, input.carrierChargeNote, input.by],
+      `UPDATE logistics.delivery_exception SET status = 'resolved', resolution = $2, resolution_note = $3, case_reference = $4, carrier_charge_note = $5, resolved_by = $6, resolved_at = now(), case_id = COALESCE($7, case_id) WHERE id = $1`,
+      [id, input.resolution, input.note, input.caseReference, input.carrierChargeNote, input.by, input.caseId ?? null],
     );
+  }
+
+  /** Shipments with an exception handed to this case. */
+  async shipmentsOfCase(caseId: string, tx?: Queryable): Promise<string[]> {
+    const res = await this.q(tx).query<{ id: string }>(`SELECT DISTINCT shipment_id AS id FROM logistics.delivery_exception WHERE case_id = $1`, [caseId]);
+    return res.rows.map((r) => r.id);
   }
 
   /** Doc 06 §7: what of an order was handed over (has a POD) and what was accepted, on leg 2. */

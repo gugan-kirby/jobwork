@@ -56,6 +56,21 @@ Use cases: UC-31, UC-34; pilot scenarios 11–12 completion.
 | `apps/api/src/modules/orders/application/credit-note.command.ts` | new | Credit note and refund executed for a case action; journals; originals untouched (`BR-FIN-06`) |
 | `apps/api/src/modules/logistics/application/return.command.ts` | new | Customer return leg on a delivered shipment; supplier return or rework leg from stock or quarantine |
 
+**Built (2026-10-07, F-18.2), tests deferred.**
+
+- **Module `support`** (`CaseCommand`, `SupportRepository`):
+  - customer routes `/support/cases` (open, list, get, add a note, withdraw);
+  - JobWork routes `/cases` (open, which may take over delivery exceptions, then triage, investigate, note, proposal, reject, close) and `/case-actions/:id/{execute,verify,cancel}`.
+- **Resolution approval** goes through the rail: money to finance, anything else to quality.
+- **Who carries out each action:**
+  - finance: credit notes, refunds and recoveries, through orders' `CustomerRemedy`, each with its own journal;
+  - logistics: returns and rework, through `CaseLogistics` (a customer return leg on the same lots; a supplier return or rework leg moving stock to `OUT-RETURNED` or `OUT-REWORK`);
+  - support: the rest.
+- **Verification:** someone other than the person who carried an action out verifies it.
+- **Closing** needs every action verified (the database checks this too), then lifts the delivery holds the case carried and may close the order.
+- **Supplier recovery** never appears on the customer's view, and a recovery or dispute holds that supplier's settlement.
+- **Deferred to the test pass:** `cases.api.spec.ts` (the case machine, separation of carrying out and verifying, closure blocked while an action is unverified, a credit note leaving the invoice as it was, the customer-paid-supplier-failed path, returns conserving the ledger, the hold lifted on close) and pilot scenario 11's second half.
+
 ## F-18.3 Margin realization
 
 | File | Action | Contents |

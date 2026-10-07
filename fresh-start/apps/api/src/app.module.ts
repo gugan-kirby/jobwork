@@ -10,6 +10,7 @@ import { OrdersModule } from './modules/orders';
 import { ChangeModule } from './modules/change';
 import { QualityModule } from './modules/quality';
 import { LogisticsModule } from './modules/logistics';
+import { SupportModule } from './modules/support';
 import { SupplierModule } from './modules/supplier';
 import { PlatformModule } from './platform/platform.module';
 
@@ -25,6 +26,7 @@ import { PlatformModule } from './platform/platform.module';
     ChangeModule,
     QualityModule,
     LogisticsModule,
+    SupportModule,
     CommunicationModule,
     OperationsModule,
     HealthModule,

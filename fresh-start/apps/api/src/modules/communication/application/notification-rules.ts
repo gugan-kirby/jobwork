@@ -315,6 +315,14 @@ export const NOTIFICATION_RULES: Record<NotifiedEventType, Rule> = {
       link: `/supplier/bills/${e.aggregateId}`,
     },
   ],
+  'support.case_updated.v1': async (e) => [
+    {
+      templateKey: 'customer.case_update',
+      audience: customer(str(e.data['customerOrganizationId'])),
+      variables: { caseNumber: str(e.data['number']), caseStatus: str(e.data['statusLabel']), orderNumber: str(e.data['orderNumber']) },
+      link: `/support/${e.aggregateId}`,
+    },
+  ],
   // Doc 19 §8: support triages what the customer reports; logistics arranges what moves.
   'logistics.delivery_exception_opened.v1': async (e) => [
     {

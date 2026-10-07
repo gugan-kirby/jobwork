@@ -60,7 +60,8 @@ export function resolverRoles(kind: DeliveryExceptionKind): readonly string[] {
  * withdrawn, found delivered or declined; one handed to a case holds until the case (IN-18) decides.
  * An address change, a refusal and a warranty claim never hold the leg.
  */
-export function holdsDelivery(x: { kind: DeliveryExceptionKind; warrantyClaim: boolean; status: 'open' | 'resolved'; resolution: DeliveryExceptionResolution | null }): boolean {
+export function holdsDelivery(x: { kind: DeliveryExceptionKind; warrantyClaim: boolean; status: 'open' | 'resolved'; resolution: DeliveryExceptionResolution | null; caseOpen?: boolean }): boolean {
   if (x.warrantyClaim || x.kind === 'address_change' || x.kind === 'refused') return false;
-  return x.status === 'open' || x.resolution === 'handed_to_case';
+  // IN-18: a case that closed (or was rejected or withdrawn) no longer holds what was handed to it.
+  return x.status === 'open' || (x.resolution === 'handed_to_case' && x.caseOpen !== false);
 }

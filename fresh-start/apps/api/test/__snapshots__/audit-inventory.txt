@@ -169,6 +169,15 @@ supplier.set-availability  modules/supplier/application/set-availability.command
 supplier.submit-onboarding  modules/supplier/application/onboarding-decision.command.ts
 supplier.submit-verification  modules/supplier/application/submit-verification.command.ts
 supplier.update-profile  modules/supplier/application/update-profile.command.ts
+support.add-case-event  modules/support/application/case.command.ts
+support.cancel-resolution-action  modules/support/application/case.command.ts
+support.close-case  modules/support/application/case.command.ts
+support.execute-resolution-action  modules/support/application/case.command.ts
+support.open-case  modules/support/application/case.command.ts
+support.propose-resolution  modules/support/application/case.command.ts
+support.reject-case  modules/support/application/case.command.ts
+support.verify-resolution-action  modules/support/application/case.command.ts
+support.withdraw-case  modules/support/application/case.command.ts
 
 # Audit rows written directly, inside the caller’s transaction (file  action)
 modules/dms/application/finalize-upload.command.ts  dms.upload_rejected

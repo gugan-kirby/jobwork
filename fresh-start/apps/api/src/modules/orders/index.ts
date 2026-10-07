@@ -7,3 +7,4 @@ export { ProductionRepository, type BaselineRecord } from './infrastructure/prod
 export { baselineHash, governingConflicts } from './domain/production';
 export { OrderClosure } from './application/order-closure';
 export { SettlementRepository } from './infrastructure/settlement.repository';
+export { CustomerRemedy } from './application/customer-remedy';
