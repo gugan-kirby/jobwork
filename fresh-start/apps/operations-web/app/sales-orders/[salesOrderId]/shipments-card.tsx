@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { Shipment, ShipmentLeg } from '@jobwork/contracts';
 import { Card, Inline, Stack, StatusChip } from '@jobwork/ui';
 import { api } from '../../../lib/api';
-import { SHIPMENT_STATUS } from '../../logistics/labels';
+import { statusOf } from '../../logistics/labels';
 
 const LEG: Record<ShipmentLeg, string> = {
   supplier_to_jobwork: 'Supplier to JobWork',
@@ -27,7 +27,11 @@ export function ShipmentsCard({ salesOrderId }: { salesOrderId: string }): React
   if (rows === null) return null;
   const legs = (Object.keys(LEG) as ShipmentLeg[]).filter((leg) => rows.some((s) => s.leg === leg));
   return (
-    <Card title="Shipments" description="Each leg of the goods: supplier to JobWork, then JobWork to the customer.">
+    <Card
+      title="Shipments"
+      description="Each leg of the goods: supplier to JobWork, then JobWork to the customer."
+      actions={<Link href={`/logistics/dispatch/new?salesOrderId=${salesOrderId}`}>Plan a delivery</Link>}
+    >
       {rows.length === 0 ? (
         <p style={{ color: 'var(--color-text-muted)' }}>No shipments yet.</p>
       ) : (
@@ -42,9 +46,9 @@ export function ShipmentsCard({ salesOrderId }: { salesOrderId: string }): React
                     <Link href={`/logistics/shipments/${s.shipmentId}`} className="mono">
                       {s.number}
                     </Link>
-                    <span>{s.purchaseOrderNumber}</span>
+                    {s.purchaseOrderNumber ? <span>{s.purchaseOrderNumber}</span> : null}
                     <span className="numeric">{s.totalQuantity} pcs</span>
-                    <StatusChip tone={SHIPMENT_STATUS[s.status].tone}>{SHIPMENT_STATUS[s.status].label}</StatusChip>
+                    <StatusChip tone={statusOf(s).tone}>{statusOf(s).label}</StatusChip>
                   </Inline>
                 ))}
             </Stack>

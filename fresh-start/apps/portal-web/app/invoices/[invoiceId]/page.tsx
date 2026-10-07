@@ -93,7 +93,7 @@ export default function InvoiceDetailPage() {
           </Callout>
         ) : null}
 
-        <Card title={`${invoice.kind === 'advance' ? 'Advance' : invoice.kind === 'balance' ? 'Balance' : 'Final'} invoice from JobWork`}>
+        <Card title={`${invoice.kind === 'advance' ? 'Advance' : invoice.kind === 'balance' ? 'Balance' : invoice.kind === 'change' ? 'Change' : 'Final'} invoice from JobWork`}>
           <DescriptionList
             columns={1}
             items={[

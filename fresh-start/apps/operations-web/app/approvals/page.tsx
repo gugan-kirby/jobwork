@@ -160,7 +160,7 @@ export default function ApprovalsPage(): React.JSX.Element {
   return (
     <Page
       title="Approvals"
-      description="Awards, cost sheets, quotations, cash allocations and engineering changes waiting for a second pair of eyes. The requester never decides."
+      description="Awards, cost sheets, quotations, cash allocations, engineering changes and dispatch overrides waiting for a second pair of eyes. The requester never decides."
       width="wide"
       actions={<Select label="Show" value={status} options={FILTERS} onChange={(event) => setStatus(event.target.value)} />}
     >
@@ -174,6 +174,17 @@ export default function ApprovalsPage(): React.JSX.Element {
           >
             <Stack gap={3}>
               <CopyableId label="Subject hash" value={deciding.subjectHash} />
+              {deciding.kind === 'dispatch_override' ? (
+                <Callout tone="attention" title="Letting it leave despite">
+                  <ul>
+                    {((deciding.context as { reasons?: string[] }).reasons ?? []).map((r) => (
+                      <li key={r}>{r}</li>
+                    ))}
+                  </ul>
+                  <p>Logistics says: {String((deciding.context as { justification?: string }).justification ?? '')}</p>
+                  <p>Your approval covers exactly these reasons; a new one turns the guard red again.</p>
+                </Callout>
+              ) : null}
               {(deciding.context as { exception?: string | null }).exception ? (
                 <Callout tone="attention" title="This is an exception">
                   {String((deciding.context as { exception?: string }).exception).replace(/_/g, ' ')} — your approval is the recorded sign-off.
@@ -213,7 +224,7 @@ export default function ApprovalsPage(): React.JSX.Element {
             stackTitle={(row) => row.title}
             empty={{
               title: status === 'pending' ? 'Nothing waiting' : 'Nothing here',
-              detail: status === 'pending' ? 'Awards, cost sheets, quotations, cash allocations and engineering changes arrive here when somebody asks for approval.' : 'No requests with that status.',
+              detail: status === 'pending' ? 'Awards, cost sheets, quotations, cash allocations, engineering changes and dispatch overrides arrive here when somebody asks for approval.' : 'No requests with that status.',
             }}
           />
         </Card>

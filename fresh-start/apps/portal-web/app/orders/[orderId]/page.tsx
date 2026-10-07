@@ -24,6 +24,7 @@ import {
 import { api, ApiError } from '../../../lib/api';
 import { ThreadPanel } from '../../thread-panel';
 import { ChangesPanel } from './changes-panel';
+import { DeliveriesPanel } from './deliveries-panel';
 import { DeviationsPanel } from './deviations-panel';
 
 /**
@@ -155,6 +156,8 @@ function OrderDetail() {
           </ol>
         </Card>
 
+        <DeliveriesPanel orderId={order.orderId} />
+
         {order.scheduleUnderReview ? (
           <Callout tone="attention" title="Schedule under review">
             JobWork is reviewing the production schedule. We will confirm with you before any change to your delivery date.
@@ -256,7 +259,7 @@ function OrderDetail() {
         <ThreadPanel contextType="sales_order" contextId={orderId} description="Anything about this order, between you and JobWork." />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
           <ButtonLink href="/help" variant="secondary" fullWidth>Contact JobWork</ButtonLink>
-          <ButtonLink href="/invoices" variant="secondary" fullWidth>All invoices</ButtonLink>
+          <ButtonLink href={`/orders/${order.orderId}/documents`} variant="secondary" fullWidth>Documents</ButtonLink>
         </div>
       </Stack>
     </Page>

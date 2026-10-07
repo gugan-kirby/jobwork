@@ -284,6 +284,53 @@ API suite 507 green.
 
 Browser walk at desktop width and at 390 px: the planner and the gate on desktop; POD capture and the customer's accept/report flow at 390 px (doc 14 §12).
 
+**Deviations (2026-10-05, F-17.5):**
+
+- **Operations.**
+  - The logistics board gains five leg-2 groups: to release, customer issues, on the way, awaiting acceptance, being prepared. Orders received at JobWork are listed with "Plan a delivery".
+  - `/logistics/dispatch/new` plans from the order (`salesOrderId`) or edits a delivery not yet released (`shipmentId`).
+  - The shipment page shows leg 2's own panels (`delivery-panels.tsx`):
+    - the gate, with overrides asked of each red guard's owner and their state;
+    - recording a phone confirmation;
+    - submit and release;
+    - the customer's four documents;
+    - the POD form with photos;
+    - refusal;
+    - handover and acceptance facts;
+    - the exceptions with their resolutions.
+
+    The receiving form stays leg 1's.
+  - Statuses read by leg (`statusOf`). The order's shipments card links to the planner.
+  - The approvals page shows an override's reasons and logistics' justification before the owner decides.
+- **Portal.**
+  - The order page gains a deliveries panel, each delivery saying what it needs from the customer.
+  - `/orders/[id]/deliveries/[shipmentId]`: confirm the address, accept with the warranty statement, report with photos (only the kinds the delivery's state allows, a defect after acceptance being a warranty claim), ask for another address, withdraw a report, and open the documents.
+  - `/orders/[id]/documents` lists the order's documents with their hashes.
+  - Home shows "Deliveries waiting on you" through the existing "Waiting on you" list.
+- **Found and fixed in the walk.**
+  - **A change's instalment never invoiced** (PR #49, its own fix). The gate could only say "not invoiced yet" about a change order's price delta, which IN-13 left pending. Planning and replanning now invoice every instalment due before dispatch.
+  - **The next step hid a waiting delivery.** On an order still in production, which can happen with partial deliveries, the next step said "nothing is needed from you" while a packed delivery waited on the address. Delivery actions now come first at any open stage.
+  - **POD to the minute.** The form records minutes, so a POD in the same minute as a pickup recorded with seconds read as "before the pickup". The rule allows that minute.
+  - **The approver decided blind.** The override decision now shows the reasons and the justification.
+  - **A change invoice labelled "Final".** The customer's invoice list and invoice page now say "Change".
+
+**Verification (2026-10-05, F-17.5).** Browser walk on the dev stack (SO-2026-0002, LOT-7 with 26 pieces in JobWork stock, Demo Precision):
+
+- **Planning, desktop, logistics.**
+  - The planner offered JW-61B1CB88 (LOT-7 · WP-2026-0001, 26 of 26) and the Ambattur plant. Planned with half the packing check.
+  - Five guards red, from the real facts: balance and change open with no credit, a partial delivery the customer did not allow, packing, a missing receiving phone with no confirmation, and no tax invoice.
+  - Editing in the planner chose the balance invoice and completed the check. The change instalment was invoiced as INV-2026-0004.
+- **The customer at 390 px.**
+  - Added the receiving phone to the address.
+  - The order page showed the delivery with "Confirm the address"; confirmed it on the delivery page.
+  - Paid INV-2026-0003 and INV-2026-0004 through the dev gateway.
+- **The override.** Logistics asked sales to override the partial-delivery guard with a justification. Sales saw it in Approvals and approved it.
+- **Release and pickup.** Logistics submitted and released it; the stock left for `OUT-DISPATCHED`. Pickup was recorded with Safexpress, SX-90411.
+- **POD at 390 px.** Received by the stores desk "with remarks": outer carton scuffed, seal intact. The window was set to 12 Oct, 11:59 pm.
+- **Acceptance at 390 px.** The customer read the warranty statement and accepted. The page then offered only a warranty report.
+
+The walk's API fixes ran against the suites they touch: dispatch, delivery and customer projection (23), customer portal (12).
+
 ## F-17.6 Pilot scenario 11 (start)
 
 | File | Action | Contents |
