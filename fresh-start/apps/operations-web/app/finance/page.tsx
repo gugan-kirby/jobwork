@@ -86,6 +86,9 @@ export default function FinancePage(): React.JSX.Element {
   return (
     <Page title="Finance" description="Receipts in suspense, allocations awaiting a checker, and customer credit." width="wide">
       <Stack gap={4}>
+        <p>
+          <Link href="/finance/bills">Supplier bills</Link> · <Link href="/finance/margin">Margin per order</Link>
+        </p>
         {error ? <ErrorState message={error.problem.detail ?? error.problem.title} code={error.problem.code} /> : null}
         {notice ? <Callout tone="blocked" assertive title={notice.problem.title}>{notice.problem.detail ?? ''} ({notice.problem.code})</Callout> : null}
 
