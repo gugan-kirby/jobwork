@@ -6,7 +6,8 @@ import { useParams } from 'next/navigation';
 import type { CarrierMode, CarrierStatus, DiscrepancyResolution, ReceivingDiscrepancy, Shipment, SiteSnapshot } from '@jobwork/contracts';
 import { Callout, Card, CommandButton, DataTable, DescriptionList, ErrorState, GateMatrix, LoadingState, Page, Select, Stack, StatusChip, TextInput } from '@jobwork/ui';
 import { api, ApiError } from '../../../../lib/api';
-import { CARRIER_MODE, DISCREPANCY, QUALITY_RESOLUTIONS, RECEIVABLE, RESOLUTION, RESOLUTIONS, SHIPMENT_STATUS, when } from '../../labels';
+import { CARRIER_MODE, DISCREPANCY, QUALITY_RESOLUTIONS, RECEIVABLE, RESOLUTION, RESOLUTIONS, statusOf, when } from '../../labels';
+import { DeliveryDocumentsPanel, DeliveryFactsPanel, DispatchGatePanel, PodPanel, RefusalPanel } from './delivery-panels';
 import { ReceivingForm } from './receiving-form';
 
 const pieces = (q: string): string => `${q} ${q === '1' ? 'piece' : 'pieces'}`;
@@ -94,16 +95,20 @@ export default function LogisticsShipmentPage(): React.JSX.Element {
     setS(await api<Shipment>(`/shipments/${s.shipmentId}${path}`, { method: 'POST', body, idempotencyKey: crypto.randomUUID() }));
   };
   const lines = s.packages.flatMap((p) => p.items.map((i) => ({ ...i, packageNo: p.packageNo, received: s.receiving?.lines.find((r) => r.itemId === i.itemId) })));
+  const toCustomer = s.leg === 'jobwork_to_customer';
+  const onTheWay = ['picked_up', 'in_transit', 'delivered_to_destination'].includes(s.status);
 
   return (
     <Page
-      title={`${s.number} — ${s.supplierDisplayName}`}
+      title={toCustomer ? `${s.number} — to ${s.delivery?.customerDisplayName ?? 'the customer'}` : `${s.number} — ${s.supplierDisplayName}`}
       breadcrumb={<Link href="/logistics">← Logistics</Link>}
-      meta={<StatusChip tone={SHIPMENT_STATUS[s.status].tone}>{SHIPMENT_STATUS[s.status].label}</StatusChip>}
-      description={[LEG[s.leg], s.purchaseOrderNumber, `${amount(s)} in ${s.packages.length} package${s.packages.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
+      meta={<StatusChip tone={statusOf(s).tone}>{statusOf(s).label}</StatusChip>}
+      description={[LEG[s.leg], toCustomer ? s.delivery?.orderNumber : s.purchaseOrderNumber, `${amount(s)} in ${s.packages.length} package${s.packages.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
     >
       <Stack gap={4}>
-        {s.status === 'ready_for_release' || s.status === 'planned' ? (
+        {toCustomer && (s.status === 'ready_for_release' || s.status === 'planned') ? <DispatchGatePanel s={s} onChange={setS} /> : null}
+        {toCustomer && s.delivery?.packagingNote ? <Callout tone="neutral" title="The customer’s packaging instructions">{s.delivery.packagingNote}</Callout> : null}
+        {!toCustomer && (s.status === 'ready_for_release' || s.status === 'planned') ? (
           <Card title="Release guards" description="doc 10 §12. Release checks them again inside the transaction and freezes the addresses.">
             <Stack gap={3}>
               <GateMatrix gates={s.guards} label={`Release guards for ${s.number}`} />
@@ -118,13 +123,23 @@ export default function LogisticsShipmentPage(): React.JSX.Element {
           </Card>
         ) : null}
 
-        {s.status === 'delivered_to_destination' ? <Callout tone="attention" title="The carrier says it is delivered">That ends the carrier’s custody; nothing is received until it is counted below.</Callout> : null}
-        {RECEIVABLE.includes(s.status) ? <ReceivingForm shipment={s} onReceive={(body) => post('/receive', body)} /> : null}
+        {!toCustomer && s.status === 'delivered_to_destination' ? <Callout tone="attention" title="The carrier says it is delivered">That ends the carrier’s custody; nothing is received until it is counted below.</Callout> : null}
+        {!toCustomer && RECEIVABLE.includes(s.status) ? <ReceivingForm shipment={s} onReceive={(body) => post('/receive', body)} /> : null}
+        {toCustomer ? <DeliveryFactsPanel s={s} onChange={setS} /> : null}
+        {toCustomer && !s.delivery?.pod && (onTheWay || s.status === 'discrepancy_hold') ? <PodPanel s={s} onChange={setS} /> : null}
+        {toCustomer && !s.delivery?.pod && onTheWay ? <RefusalPanel s={s} onChange={setS} /> : null}
+        {toCustomer ? <DeliveryDocumentsPanel s={s} /> : null}
 
         {s.status === 'released' ? (
           <Card title={s.leg === 'jobwork_to_supplier' ? 'Hand over the material' : 'Record the pickup'} description="When the supplier has not, or JobWork arranged the vehicle.">
             <Stack gap={2}>
-              <Select label="How it travels" placeholder="Choose" value={pickup.carrierMode} onChange={(e) => setPickup({ ...pickup, carrierMode: e.target.value as CarrierMode })} options={(Object.keys(CARRIER_MODE) as CarrierMode[]).map((m) => ({ value: m, label: CARRIER_MODE[m] }))} />
+              <Select
+                label="How it travels"
+                placeholder="Choose"
+                value={pickup.carrierMode}
+                onChange={(e) => setPickup({ ...pickup, carrierMode: e.target.value as CarrierMode })}
+                options={(Object.keys(CARRIER_MODE) as CarrierMode[]).filter((m) => !toCustomer || m !== 'supplier_vehicle').map((m) => ({ value: m, label: CARRIER_MODE[m] }))}
+              />
               <TextInput label="Carrier" value={pickup.carrierName} onChange={(e) => setPickup({ ...pickup, carrierName: e.target.value })} />
               <TextInput label="Tracking or LR number" value={pickup.trackingReference} onChange={(e) => setPickup({ ...pickup, trackingReference: e.target.value })} />
               <CommandButton receiptLabel="Recorded" disabled={!pickup.carrierMode} disabledReason="Say how it travels" onCommand={() => post('/pickup', { expectedVersion: s.aggregateVersion, carrierMode: pickup.carrierMode, carrierName: pickup.carrierName.trim(), trackingReference: pickup.trackingReference.trim() })}>
@@ -185,7 +200,8 @@ export default function LogisticsShipmentPage(): React.JSX.Element {
             rowKey={(l) => l.itemId}
             columns={[
               { key: 'package', header: 'Pkg', render: (l) => l.packageNo },
-              { key: 'lot', header: 'Lot', sticky: true, render: (l) => <span className="mono">{l.lotCode || '—'}</span> },
+              { key: 'lot', header: toCustomer ? 'Marking' : 'Lot', sticky: true, render: (l) => <span className="mono">{l.lotCode || '—'}</span> },
+              ...(toCustomer ? [{ key: 'source', header: 'Released lot', render: (l: (typeof lines)[number]) => <span className="mono">{l.sourceLotCode || '—'}</span> }] : []),
               { key: 'shipped', header: 'Shipped', numeric: true, render: (l) => l.quantity },
               { key: 'counted', header: 'Counted', numeric: true, render: (l) => l.received?.countedQuantity ?? '—' },
               { key: 'accepted', header: 'Accepted', numeric: true, render: (l) => l.received?.split?.accepted ?? '—' },
