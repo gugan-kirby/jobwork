@@ -47,7 +47,12 @@ export const proposedActionSchema = z.object({
   quantity: quantity.optional(),
   stockLotId: z.uuid().optional(),
 });
-export const proposeResolutionRequestSchema = z.object({ ...versioned, actions: z.array(proposedActionSchema).min(1).max(20) });
+export const proposeResolutionRequestSchema = z.object({
+  ...versioned,
+  actions: z.array(proposedActionSchema).min(1).max(20),
+  /** Links the supplier's purchase order to a case that names none yet (a customer-opened case); a recovery needs one. */
+  purchaseOrderId: z.uuid().optional(),
+});
 
 /** What carrying out an action needs; only the fields of its kind are read. */
 export const executeActionRequestSchema = z.object({
