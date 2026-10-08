@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { Invoice, ResolutionActionKind, SupportCase } from '@jobwork/contracts';
+import type { Invoice, PurchaseOrder, ResolutionActionKind, SalesOrder, SupportCase } from '@jobwork/contracts';
 import {
   Button,
   Callout,
@@ -47,6 +47,8 @@ export default function CasePage(): React.JSX.Element {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [exec, setExec] = useState<Record<string, Exec>>({});
   const [verifyNote, setVerifyNote] = useState<Record<string, string>>({});
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [purchaseOrderId, setPurchaseOrderId] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -55,6 +57,8 @@ export default function CasePage(): React.JSX.Element {
       setError(null);
       const res = await api<{ invoices: Invoice[] }>('/finance/invoices').catch(() => ({ invoices: [] as Invoice[] }));
       setInvoices(res.invoices.filter((i) => i.salesOrderId === found.salesOrderId && i.status !== 'void'));
+      const order = await api<SalesOrder>(`/sales-orders/${found.salesOrderId}`).catch(() => null);
+      setPurchaseOrders(order?.purchaseOrders.filter((po) => po.status !== 'cancelled') ?? []);
     } catch (err) {
       if (err instanceof ApiError) setError(err);
     }
@@ -81,6 +85,8 @@ export default function CasePage(): React.JSX.Element {
   const v = { expectedVersion: c.aggregateVersion };
   const money = (minor: number): string => formatMoney({ amountMinor: minor, currency: 'INR' });
   const closed = ['closed', 'rejected', 'withdrawn'].includes(c.status);
+  // A recovery holds the supplier's settlement through the case's purchase order, so a case without one names it.
+  const needsPurchaseOrder = !c.purchaseOrderId && drafts.some((d) => d.kind === 'supplier_recovery');
   const execOf = (id: string): Exec => exec[id] ?? { invoiceId: invoices[0]?.invoiceId ?? '', reference: '', note: '', challanNumber: '', from: 'quarantine' };
 
   return (
@@ -99,6 +105,7 @@ export default function CasePage(): React.JSX.Element {
                 { label: 'Order', value: <Link href={`/sales-orders/${c.salesOrderId}`} className="mono">{c.orderNumber}</Link> },
                 { label: 'Delivery', value: c.shipmentId ? <Link href={`/logistics/shipments/${c.shipmentId}`} className="mono">{c.shipmentNumber}</Link> : '—' },
                 { label: 'Delivery exceptions held', value: c.linkedExceptions.length > 0 ? c.linkedExceptions.map((x) => x.number).join(', ') : '—' },
+                { label: 'Supplier purchase order', value: purchaseOrders.find((po) => po.purchaseOrderId === c.purchaseOrderId)?.number ?? (c.purchaseOrderId ? 'Linked' : '—') },
                 { label: 'What was reported', value: c.description },
               ]}
             />
@@ -137,12 +144,20 @@ export default function CasePage(): React.JSX.Element {
                   <Button size="sm" variant="ghost" onClick={() => setDrafts(drafts.filter((_, j) => j !== i))}>Remove</Button>
                 </Inline>
               ))}
+              {needsPurchaseOrder ? (
+                <Select
+                  label="Supplier purchase order the recovery is against"
+                  value={purchaseOrderId}
+                  options={[{ value: '', label: 'Choose a purchase order' }, ...purchaseOrders.map((po) => ({ value: po.purchaseOrderId, label: `${po.number} · ${po.supplierDisplayName}` }))]}
+                  onChange={(e) => setPurchaseOrderId(e.target.value)}
+                />
+              ) : null}
               <Inline gap={2}>
                 <Button size="sm" variant="secondary" onClick={() => setDrafts([...drafts, { kind: 'credit_note', description: '', amount: '', quantity: '', stockLotId: '' }])}>Add an action</Button>
                 <CommandButton
                   receiptLabel="Proposed"
-                  disabled={drafts.length === 0 || drafts.some((d) => d.description.length < 3)}
-                  disabledReason="Add at least one action and describe each"
+                  disabled={drafts.length === 0 || drafts.some((d) => d.description.length < 3) || (needsPurchaseOrder && !purchaseOrderId)}
+                  disabledReason={needsPurchaseOrder && !purchaseOrderId ? 'Choose the purchase order the recovery is against' : 'Add at least one action and describe each'}
                   onCommand={async () => {
                     await act(`/cases/${c.caseId}/proposal`, {
                       ...v,
@@ -152,6 +167,7 @@ export default function CasePage(): React.JSX.Element {
                         ...(MONEY.includes(d.kind) && d.amount ? { amountMinor: Math.round(Number(d.amount) * 100) } : {}),
                         ...(TO_SUPPLIER.includes(d.kind) ? { stockLotId: d.stockLotId, quantity: d.quantity } : {}),
                       })),
+                      ...(needsPurchaseOrder ? { purchaseOrderId } : {}),
                     });
                     setDrafts([]);
                   }}
