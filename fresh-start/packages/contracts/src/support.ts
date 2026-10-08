@@ -8,7 +8,8 @@ import { z } from 'zod';
  */
 
 const versioned = { expectedVersion: z.number().int().positive() };
-const quantity = z.string().trim().regex(/^\d{1,12}(\.\d{1,4})?$/, 'A quantity, e.g. 5 or 2.5');
+/** More than zero: a bill or an action for nothing is not one (the database refuses it too). */
+const quantity = z.string().trim().regex(/^\d{1,12}(\.\d{1,4})?$/, 'A quantity, e.g. 5 or 2.5').refine((q) => Number(q) > 0, 'More than zero');
 
 export const caseKindSchema = z.enum(['delivery_issue', 'warranty', 'dispute', 'supplier_failure', 'chargeback']);
 export const caseStatusSchema = z.enum(['open', 'triage', 'investigating', 'resolution_proposed', 'resolution_approved', 'executing', 'verifying', 'closed', 'rejected', 'withdrawn']);

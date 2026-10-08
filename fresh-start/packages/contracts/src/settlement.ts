@@ -7,7 +7,8 @@ import { z } from 'zod';
  */
 
 const versioned = { expectedVersion: z.number().int().positive() };
-const quantity = z.string().trim().regex(/^\d{1,12}(\.\d{1,4})?$/, 'A quantity, e.g. 5 or 2.5');
+/** More than zero: a bill or an action for nothing is not one (the database refuses it too). */
+const quantity = z.string().trim().regex(/^\d{1,12}(\.\d{1,4})?$/, 'A quantity, e.g. 5 or 2.5').refine((q) => Number(q) > 0, 'More than zero');
 const minor = z.number().int().min(0).max(1_000_000_000_000);
 
 export const supplierBillStatusSchema = z.enum(['submitted', 'matched', 'match_exception', 'exception_approved', 'rejected']);
