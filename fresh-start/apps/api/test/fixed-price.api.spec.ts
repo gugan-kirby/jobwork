@@ -119,4 +119,50 @@ describe('fixed-price path (F-FP)', () => {
       p.expectNothingOf(po, ['13000', 'Kovai', p.orgs.customer], 'supplier PO');
     });
   });
+
+  describe('F-FP.3 JobWork sets the customer price', () => {
+    it('quotes the customer exactly the price JobWork set, with the margin following and the floor still guarded', async () => {
+      const { enquiryId } = await p.approvedEnquiry({ targetUnitPriceMinor: 13_000 });
+      const { rfqId } = await p.openRound(enquiryId, ['supplierA', 'supplierB'], { pricingMode: 'fixed', offer: { paymentTerms: '30 days from receipt', lines: [{ lineNo: 1, unitPriceMinor: 11_000 }] } });
+      const accepted = ok(await p.as.supplierA.post(`/api/v1/supplier/rfqs/${rfqId}/offer/accept`, { leadTimeDays: 21, validityUntil: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10) }), 201, 'accept');
+      const itemId = ((((ok(await p.as.sourcing.get(`/api/v1/rfqs/${rfqId}`), 200, 'round')['rfq'] as Body)['items'] as Body[])[0]!)['rfqItemId']) as string;
+      const { evaluationId } = await p.evaluate(rfqId);
+      const award = ok(await p.proposeAward(rfqId, itemId, evaluationId, accepted['bidVersionId'] as string, { fallbackNote: 'Re-offer to Balaji at the same price.' }), 201, 'award');
+      ok(await p.decide('sourcing2', award['approvalRequestId'] as string), 201, 'approve award');
+      const sheetUrl = `/api/v1/awards/${award['awardId']}/cost-sheet`;
+
+      expect((await p.as.sales.post(sheetUrl, { targetMarginBp: 1500, sellLines: [{ lineNo: 1, unitSellMinor: 14_000 }] })).status).toBe(400);
+      expect((await p.as.sales.post(sheetUrl, { sellLines: [{ lineNo: 2, unitSellMinor: 14_000 }] })).body['code']).toBe('SELL_LINES_MISMATCH');
+
+      // ₹115 against ₹110 is 4.3 %: under the 10 % floor, so finance decides, and returns it.
+      let sheet = ok(await p.as.sales.post(sheetUrl, { sellLines: [{ lineNo: 1, unitSellMinor: 11_500 }], note: 'Match the customer’s budget' }), 201, 'under the floor');
+      const costSheetId = sheet['costSheetId'] as string;
+      let requested = ok(await p.as.sales.post(`/api/v1/cost-sheets/${costSheetId}/request-approval`, {}), 201, 'request');
+      let approvalId = (requested['versions'] as Body[])[0]!['approvalRequestId'] as string;
+      const request = ok(await p.as.finance.get(`/api/v1/approvals/${approvalId}`), 200, 'approval');
+      expect(request['requiredRoles']).toEqual(['jobwork_finance']);
+      expect((request['context'] as Body)['exception']).toBe('below_margin_floor');
+      ok(await p.decide('finance', approvalId, 'returned', 'Ten percent is our floor; price it at ₹140.'), 201, 'return');
+
+      sheet = ok(await p.as.sales.post(sheetUrl, { sellLines: [{ lineNo: 1, unitSellMinor: 14_000 }], note: 'Customer price set by JobWork' }), 201, 'at the customer price');
+      const version = (sheet['versions'] as Body[])[0]!;
+      expect(version).toMatchObject({ buyTotalMinor: 1_100_000, landedTotalMinor: 1_100_000, sellTotalMinor: 1_400_000, marginMinor: 300_000, marginBp: 2143 });
+      expect(version['sellLines']).toEqual([expect.objectContaining({ lineNo: 1, quantity: 100, unitSellMinor: 14_000, amountMinor: 1_400_000 })]);
+      requested = ok(await p.as.sales.post(`/api/v1/cost-sheets/${costSheetId}/request-approval`, {}), 201, 'request again');
+      approvalId = (requested['versions'] as Body[])[0]!['approvalRequestId'] as string;
+      ok(await p.decide('finance', approvalId), 201, 'approve');
+      const approved = (ok(await p.as.sales.get(`/api/v1/cost-sheets/${costSheetId}`), 200, 'sheet')['versions'] as Body[]).find((v) => v['status'] === 'approved')!;
+
+      const quoteId = await p.sentQuote(approved['costSheetVersionId'] as string);
+      const quotation = ok(await p.as.approver.get(`/api/v1/quotations/${quoteId}`), 200, 'customer quotation');
+      expect((quotation['lines'] as Body[])[0]).toMatchObject({ unitPriceMinor: 14_000, quantity: 100 });
+      p.expectNothingOf(quotation, ['11000', '110.00', 'Anand', '300000'], 'customer quotation');
+
+      const accept = ok(await p.accept(quoteId, `accept-${quoteId}`, await p.acceptanceBody(quoteId)), 201, 'accept quote');
+      const pos = await p.issuePurchaseOrders(accept['orderId'] as string);
+      const po = ok(await p.as.supplierA.get(`/api/v1/supplier/purchase-orders/${pos[0]!['purchaseOrderId']}`), 200, 'supplier PO');
+      expect(((po['lines'] as Body[])[0]!)['unitPriceMinor']).toBe(11_000);
+      p.expectNothingOf(po, ['14000', '140.00', '13000', 'Kovai'], 'supplier PO');
+    });
+  });
 });
