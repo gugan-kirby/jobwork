@@ -39,6 +39,7 @@ const PEOPLE = [
   { email: 'sales@jobwork.test', org: 'internal', roles: ['jobwork_sales'] },
   { email: 'sales2@jobwork.test', org: 'internal', roles: ['jobwork_sales'] },
   { email: 'finance@jobwork.test', org: 'internal', roles: ['jobwork_finance'] },
+  { email: 'support@jobwork.test', org: 'internal', roles: ['jobwork_support'] },
 ];
 
 const server = new pg.Client({ connectionString: admin });

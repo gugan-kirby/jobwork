@@ -19,7 +19,7 @@ setup('build the journey world', async () => {
   const supplierB = await ApiSession.signIn('estimator@balaji.test');
   const secrets: Record<string, string> = {};
   const staff: Record<string, ApiSession> = {};
-  for (const who of ['engineering', 'sourcing', 'sales', 'sales2', 'finance']) {
+  for (const who of ['engineering', 'sourcing', 'sales', 'sales2', 'finance', 'support']) {
     const email = `${who}@jobwork.test`;
     const { session, secret } = await ApiSession.signInEnrolled(email);
     staff[who] = session;
@@ -134,22 +134,38 @@ setup('build the journey world', async () => {
   const dealA = await sourced('Pump mounting bracket');
   const openQuoteId = await sentQuote(dealA);
 
+  /** Accepted by the customer's approver, ordered, POs issued; returns the order and supplier A's PO. */
+  async function ordered(quoteId: string): Promise<{ orderId: string; purchaseOrderId: string }> {
+    const seen = ok(await approver.get(`/quotations/${quoteId}`), 200, 'quotation');
+    const accepted = ok(
+      await approver.post(
+        `/quotations/${quoteId}/accept`,
+        { expectedVersion: seen['aggregateVersion'], quoteVersionNo: seen['versionNo'], contentHash: seen['contentHash'], termsHash: (seen['terms'] as Body)['hash'], acknowledgeTerms: true },
+        { 'idempotency-key': `e2e-accept-${quoteId}` },
+      ),
+      201,
+      'accept',
+    );
+    const id = accepted['orderId'] as string;
+    const so = ok(await staff['sourcing']!.get(`/sales-orders/${id}`), 200, 'sales order');
+    const pos = ok(await staff['sourcing']!.post(`/sales-orders/${id}/purchase-orders`, { expectedVersion: so['aggregateVersion'] }), 201, 'issue POs')['purchaseOrders'] as Body[];
+    return { orderId: id, purchaseOrderId: pos[0]!['purchaseOrderId'] as string };
+  }
+
   // Deal B: accepted, ordered, PO issued to supplier A.
   const dealB = await sourced('Motor base plate');
-  const acceptedQuoteId = await sentQuote(dealB);
-  const seen = ok(await approver.get(`/quotations/${acceptedQuoteId}`), 200, 'quotation');
-  const accepted = ok(
-    await approver.post(
-      `/quotations/${acceptedQuoteId}/accept`,
-      { expectedVersion: seen['aggregateVersion'], quoteVersionNo: seen['versionNo'], contentHash: seen['contentHash'], termsHash: (seen['terms'] as Body)['hash'], acknowledgeTerms: true },
-      { 'idempotency-key': `e2e-accept-${acceptedQuoteId}` },
-    ),
+  const { orderId, purchaseOrderId } = await ordered(await sentQuote(dealB));
+
+  // Deal D (IN-18): supplier A acknowledged and billed its PO; the customer opened a case on the order.
+  const dealD = await ordered(await sentQuote(await sourced('Pump end cover')));
+  const po = ok(await supplierA.get(`/supplier/purchase-orders/${dealD.purchaseOrderId}`), 200, 'supplier PO');
+  ok(await supplierA.post(`/supplier/purchase-orders/${dealD.purchaseOrderId}/acknowledge`, { expectedVersion: po['aggregateVersion'], note: 'Material booked.' }), 201, 'acknowledge');
+  const billId = ok(
+    await supplierA.post('/supplier/bills', { purchaseOrderId: dealD.purchaseOrderId, supplierReference: 'AE/E2E-1', billDate: daysFromNow(0), quantity: '100', taxableMinor: 100 * 4850, taxMinor: 0 }),
     201,
-    'accept',
-  );
-  const orderId = accepted['orderId'] as string;
-  const so = ok(await staff['sourcing']!.get(`/sales-orders/${orderId}`), 200, 'sales order');
-  const pos = ok(await staff['sourcing']!.post(`/sales-orders/${orderId}/purchase-orders`, { expectedVersion: so['aggregateVersion'] }), 201, 'issue POs')['purchaseOrders'] as Body[];
+    'bill',
+  )['billId'] as string;
+  const caseId = ok(await buyer.post('/support/cases', { salesOrderId: dealD.orderId, kind: 'warranty', title: 'Thread worn on two covers', description: 'Two threads stripped at assembly' }), 201, 'case')['caseId'] as string;
 
   // An award waiting for approval.
   const dealC = await sourced('Gearbox cover');
@@ -161,7 +177,9 @@ setup('build the journey world', async () => {
     openQuoteId,
     openRfqId: dealA.rfqId,
     orderId,
-    purchaseOrderId: pos[0]!['purchaseOrderId'] as string,
+    purchaseOrderId,
+    billId,
+    caseId,
     pendingApprovalId: pending['approvalRequestId'] as string,
     secrets,
   };

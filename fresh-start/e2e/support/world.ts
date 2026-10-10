@@ -12,6 +12,9 @@ export interface World {
   /** Deal B: accepted; the order exists and supplier A's PO waits for acknowledgment. */
   orderId: string;
   purchaseOrderId: string;
+  /** Deal D (IN-18): supplier A's bill on its acknowledged PO, and the customer's case on that order. */
+  billId: string;
+  caseId: string;
   /** An award proposed and waiting for approval. */
   pendingApprovalId: string;
   secrets: Record<string, string>;
