@@ -112,4 +112,44 @@ describe('Pilot 12: user suspension and cross-party access', () => {
     expect(decisions.map((a) => a.actor_id)).toEqual([p.users.admin, p.users.admin]);
     expect(decisions.map((a) => a.reason)).toEqual(['Left the company; account under review.', 'Review closed; access restored.']);
   });
+
+  it('keeps Phase 2 records to their parties: bills to their supplier, cases to their customer, margin to JobWork', async () => {
+    const bill = ok(
+      await p.as.supplierA.post('/api/v1/supplier/bills', { purchaseOrderId: deal.purchaseOrderId, supplierReference: 'AE/1201', billDate: new Date().toISOString().slice(0, 10), quantity: '10', taxableMinor: 10 * 12_350, taxMinor: 0 }),
+      201,
+      'supplier A bills',
+    );
+    const supplierB = await p.signIn('supplierB');
+    const r = await refusal(supplierB, (id) => `/api/v1/supplier/bills/${id}`, bill['billId'] as string);
+    expect(r.real.status).toBe(404);
+    expect(r.real).toEqual(r.invented);
+    expect((ok(await supplierB.get('/api/v1/supplier/bills'), 200, 'B bills') as unknown as Body[]).map((b) => b['billId'])).not.toContain(bill['billId']);
+    expect((await supplierB.post('/api/v1/supplier/bills', { purchaseOrderId: deal.purchaseOrderId, supplierReference: 'BE/1', billDate: new Date().toISOString().slice(0, 10), quantity: '10', taxableMinor: 10 * 12_350, taxMinor: 0 })).status).toBeGreaterThanOrEqual(403);
+
+    for (const path of ['/api/v1/cases', '/api/v1/finance/margin', `/api/v1/finance/margin/${deal.orderId}`, '/api/v1/supplier-bills', `/api/v1/supplier-bills/${bill['billId']}`]) {
+      expect((await p.as.supplierA.get(path)).status, `supplier ${path}`).toBe(403);
+      expect((await p.as.buyer.get(path)).status, `customer ${path}`).toBe(403);
+    }
+    expect((await p.as.buyer.get('/api/v1/supplier/bills')).status).toBe(403);
+
+    const opened = ok(await p.as.buyer.post('/api/v1/support/cases', { salesOrderId: deal.orderId, kind: 'warranty', title: 'Thread worn', description: 'Two threads stripped at assembly' }), 201, 'customer opens');
+    const c = await refusal(p.as.outsider, (id) => `/api/v1/support/cases/${id}`, opened['caseId'] as string);
+    expect(c.real.status).toBe(404);
+    expect(c.real).toEqual(c.invented);
+    expect((await p.as.outsider.get('/api/v1/support/cases')).body).toEqual([]);
+    expect((await p.as.outsider.post(`/api/v1/support/cases/${opened['caseId']}/events`, { note: 'Me too' })).status).toBe(404);
+    expect((await p.as.supplierA.get(`/api/v1/support/cases/${opened['caseId']}`)).status).toBe(404);
+  });
+
+  it('stops a suspended supplier user billing and a suspended customer user opening a case', async () => {
+    const staleA = p.as.supplierA.clone();
+    const staleBuyer = p.as.buyer.clone();
+    for (const who of ['supplierA', 'buyer'] as const) ok(await p.as.admin.post(`/api/v1/admin/users/${p.users[who]}/suspend`, { reason: 'Access review in progress.' }), 201, `suspend ${who}`);
+    expect((await staleA.post('/api/v1/supplier/bills', { purchaseOrderId: deal.purchaseOrderId, supplierReference: 'AE/1202', billDate: new Date().toISOString().slice(0, 10), quantity: '1', taxableMinor: 12_350, taxMinor: 0 })).status).toBe(401);
+    expect((await staleA.get('/api/v1/supplier/bills')).status).toBe(401);
+    expect((await staleBuyer.post('/api/v1/support/cases', { salesOrderId: deal.orderId, kind: 'warranty', title: 'Another', description: 'Another' })).status).toBe(401);
+    expect((await staleBuyer.get('/api/v1/support/cases')).status).toBe(401);
+    expect(await p.one(`SELECT count(*)::int AS n FROM finance.supplier_bill WHERE supplier_reference = 'AE/1202'`)).toEqual({ n: 0 });
+    for (const who of ['supplierA', 'buyer'] as const) ok(await p.as.admin.post(`/api/v1/admin/users/${p.users[who]}/reinstate`, { reason: 'Review closed; access restored.' }), 201, `reinstate ${who}`);
+  });
 });

@@ -54,12 +54,12 @@ export class FinanceBillsController {
   @Get()
   list(@CurrentActor() actor: Actor, @Query() query: unknown): Promise<SupplierBill[]> {
     const { status, purchaseOrderId } = parseBody(listQuerySchema, query ?? {});
-    return this.settlement.list(actor, { ...(status ? { status } : {}), ...(purchaseOrderId ? { purchaseOrderId } : {}) });
+    return this.settlement.list(actor, { ...(status ? { status } : {}), ...(purchaseOrderId ? { purchaseOrderId } : {}) }, 'finance');
   }
 
   @Get(':billId')
   get(@CurrentActor() actor: Actor, @Param('billId') id: string): Promise<SupplierBill> {
-    return this.settlement.get(actor, parseBody(z.uuid(), id));
+    return this.settlement.get(actor, parseBody(z.uuid(), id), 'finance');
   }
 
   @Post(':billId/match')

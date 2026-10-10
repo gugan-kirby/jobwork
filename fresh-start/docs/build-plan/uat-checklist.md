@@ -159,6 +159,34 @@ Start from an order in production with two lots released by quality (e.g. LOT-A 
 | 10.11 | JobWork logistics | `/logistics/work-packages/[id]` | Read the reconciliation and the lots | Ordered 100, shipped 109, counted 104, accepted 100, scrapped 4, outstanding 0; every lot's received quantity = stock + scrapped | ☐ |
 | 10.12 | Supplier A | `/supplier/shipments/[id]` | Read the first shipment | JobWork's counts and both discrepancies with their resolutions; no stock locations, no internal split | ☐ |
 
+## Scenario 11: delivery refused, damaged, made good (IN-17, IN-18)
+
+Start from the scenario 10 order received at JobWork in full (LOT-A 60, LOT-B 40), with partial delivery allowed. The JobWork logistics, sales, support, finance and quality members sign in with MFA; two finance members are needed.
+
+| # | Who | Screen | Do | Expect | ✓ |
+|---|---|---|---|---|---|
+| 11.1 | JobWork logistics | `/logistics/dispatch/new` | Plan a delivery of LOT-A 60 with the packing check ticked | The balance invoice is issued; payment, address and documents are red, each with its reason; lots show JobWork's `JW-` markings only | ☐ |
+| 11.2 | Customer requester | `/orders/[orderId]/deliveries/[shipmentId]` | Confirm the delivery address; pay the balance | Address confirmed; payment turns green on the ops screen | ☐ |
+| 11.3 | JobWork logistics | `/logistics/shipments/[id]` | Enter the invoice number and e-way bill `1811-XX`, then `1811 0000 0042`; submit; release | The malformed number is refused by the documents guard with its reason; then every guard is green and it releases | ☐ |
+| 11.4 | JobWork logistics | Same screen → Label, Delivery note | Open both documents | Neither names the supplier, its lot codes, its PO or its city | ☐ |
+| 11.5 | JobWork logistics | Same screen | Record pickup, then a refusal at the door with who refused and why | "Refused"; a return leg to the hub appears under the same marking | ☐ |
+| 11.6 | JobWork logistics (phone) | Return leg → Receive | Receive it in full | Stock is back on the same lots; the refusal shows "returned to stock" | ☐ |
+| 11.7 | JobWork logistics | Plan, release, pick up | Re-dispatch LOT-A 60; record the POD with remarks | "Receiving check"; the customer is asked to confirm | ☐ |
+| 11.8 | Customer requester | Delivery page → Report an issue | Report 2 damaged on the lot with a photo | "Issue reported"; Accept is unavailable | ☐ |
+| 11.9 | JobWork support | `/support` → New case | Open a delivery case from the report, naming the PO | The exception shows "handed to case" with the case number; the delivery stays held | ☐ |
+| 11.10 | JobWork logistics | Plan, release, pick up, POD | Deliver LOT-B 40; let the window pass (or run the acceptance sweep) | Deemed accepted; the customer is told | ☐ |
+| 11.11 | Customer requester | That delivery | Report a hidden defect on 1 piece | Recorded as a warranty claim; the delivery stays accepted | ☐ |
+| 11.12 | Supplier A production | `/supplier/bills` | Bill the PO for 100 | Bill submitted | ☐ |
+| 11.13 | JobWork finance | `/finance/bills` | Match the bill | Matched; settlement eligible | ☐ |
+| 11.14 | JobWork support | `/support/[caseId]` | Triage, investigate, propose a credit note (₹236), a supplier recovery (₹247) and a concession | Goes to finance for approval; the customer sees no remedy yet | ☐ |
+| 11.15 | Second JobWork finance | Approvals | Approve | The case shows "resolution approved"; the bill's settlement is held, naming the case | ☐ |
+| 11.16 | JobWork finance / support | Case → each action | Issue the credit note on the balance invoice; record the recovery with its debit-note reference; record the concession with a note | The invoice is unchanged and a CN-… is issued; the case moves to verifying; close is refused | ☐ |
+| 11.17 | Customer requester | `/support/[caseId]` | Read the case | The credit note and concession appear; no supplier, PO or recovery | ☐ |
+| 11.18 | Second finance, support, quality | Case → Verify | Each verifies an action they did not carry out; close the case | The doer cannot verify their own action; the case closes and the delivery waits for acceptance again | ☐ |
+| 11.19 | Customer approver | Delivery page | Accept | The order shows accepted | ☐ |
+| 11.20 | JobWork finance | `/finance/bills` | Recheck, schedule and pay the settlement with a UTR | Paid; the order is closed | ☐ |
+| 11.21 | JobWork finance | `/finance/margin` | Open the order | Revenue is net of the ₹200 credit before tax; cost is net of the ₹247 recovery; the variance is shown | ☐ |
+
 ## Scenario 12: suspension and cross-party access
 
 | # | Who | Screen | Do | Expect | ✓ |
@@ -169,6 +197,9 @@ Start from an order in production with two lots released by quality (e.g. LOT-A 
 | 12.4 | Customer requester | address bar | Open a supplier bid or a PO by URL | "Not found" | ☐ |
 | 12.5 | Platform admin | `/audit` | Look up supplier B's estimator | The suspension and the reinstatement, each with the admin who did it and the reason given | ☐ |
 | 12.6 | Platform admin | Grafana → JobWork security → "External refusals (403/404)" | Look for the refused attempts from 12.3–12.4 | They appear as supplier and customer refusals; a sustained burst would raise `ExternalDenialSpike` (doc 12 §7) | ☐ |
+| 12.7 | Supplier B estimator | address bar | Open supplier A's bill by URL; try `/support` and the ops finance screens | "Not found" for the bill; no access elsewhere | ☐ |
+| 12.8 | Customer requester of another company | address bar | Open this customer's case by URL | "Not found"; the case list is empty | ☐ |
+| 12.9 | Platform admin, then supplier A and customer | People, then `/supplier/bills` and `/support` | Suspend each user; in their open sessions, submit a bill / open a case | Signed out at the next request; nothing is created; reinstate both | ☐ |
 
 ## Findings
 
