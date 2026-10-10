@@ -39,6 +39,8 @@ export function requirementSnapshot(enquiry: Enquiry): Record<string, unknown> {
       qualityNote: item.qualityNote,
       targetDate: item.targetDate ?? null,
       deliverySiteId: item.deliverySiteId ?? null,
+      // Only when stated, so every requirement frozen before FR-308 keeps its content hash.
+      ...(item.targetUnitPriceMinor !== undefined ? { targetUnitPriceMinor: item.targetUnitPriceMinor } : {}),
     })),
     documents: enquiry.documents
       .map((doc) => ({

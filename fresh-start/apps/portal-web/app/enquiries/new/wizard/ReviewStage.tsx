@@ -2,7 +2,7 @@
 
 import type { DocumentSummary, OrganizationSite } from '@jobwork/contracts';
 import { JOB_TYPE_LABELS } from '@jobwork/contracts/constants';
-import { Callout, Card, CommandButton, DescriptionList, Icon, Stack } from '@jobwork/ui';
+import { Callout, Card, CommandButton, DescriptionList, formatMoney, Icon, Stack } from '@jobwork/ui';
 
 const INSPECTION_LABELS: Record<string, string> = {
   standard: 'Standard checks',
@@ -74,6 +74,11 @@ export function ReviewStage({ api: draftApi, taxonomy, sites, documents, submit,
                     .map((bp) => `${bp.quantity} ${bp.unit === 'piece' ? 'Nos' : bp.unit}${bp.kind === 'prototype' ? ' (prototype)' : ''}`)
                     .join(' · '),
                   numeric: true,
+                },
+                {
+                  label: `${prefix}Your target price`,
+                  value: item.targetUnitPriceMinor !== undefined ? `${formatMoney({ amountMinor: item.targetUnitPriceMinor, currency: 'INR' })} per unit` : <em>not given</em>,
+                  numeric: item.targetUnitPriceMinor !== undefined,
                 },
               ];
             }),

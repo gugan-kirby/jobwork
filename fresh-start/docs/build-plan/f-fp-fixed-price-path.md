@@ -137,4 +137,8 @@ Each functionality's tests above, plus the full suite green before the next star
 
 ## Deviations recorded during build (protocol rule 3)
 
-None yet.
+- **One migration per functionality.** Each functionality ships in its own PR, so `0029_fixed_price.sql` is split: `0029_enquiry_target_price.sql` (F-FP.1), then the fixed round and the supplier copy in later numbers.
+- **F-FP.1, where the customer sees the target.** A submitted enquiry's customer detail is a summary with no item lines (`enquiry-projection.ts`). So the customer sees its target in the wizard, on the review step and in a draft. JobWork sees it on every intake item. Item lines on the submitted detail are a separate customer-flow change.
+- **F-FP.1, the snapshot.** The target enters the hashed requirement only when stated, so every requirement frozen before `FR-308` keeps its content hash.
+
+**F-FP.1 done (2026-10-10).** Migration 0029 adds `enquiry.currency` and `enquiry_item.target_unit_price_minor`. The contracts, repository and snapshot carry them. The portal's "Your target price per unit (optional)" field appears on the review step, and the intake page shows "Customer's target price · JobWork only". `fixed-price.api.spec.ts` has 3 tests: the target is stored, frozen and shown to JobWork; a negative or fractional value is refused; an enquiry without a target keeps its hash; a supplier's round carries no trace of the target.
