@@ -18,6 +18,7 @@ import { ConfigService } from '../../../platform/config/config.service';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
 import { RateLimit } from '../../../platform/http/rate-limit/rate-limit.decorator';
+import { neutralFilename } from '../domain/neutral-name';
 
 const revokeBodySchema = z.object({
   reason: z.string().trim().min(1).max(200).optional(),
@@ -118,10 +119,12 @@ export class DownloadController {
     }
 
     const ttlSeconds = this.config.env.DOWNLOAD_GRANT_TTL_SECONDS;
+    // F-FP.4: someone outside JobWork who does not own the file gets JobWork's name for it.
+    const filename = decision.ownerAccess || actor.isInternal ? decision.originalFilename : neutralFilename(versionId, decision.originalFilename);
     const url = this.store.signDownload({
       bucket: 'clean',
       key: decision.storageKey,
-      filename: decision.originalFilename,
+      filename,
       ttlSeconds,
     });
 
@@ -136,7 +139,7 @@ export class DownloadController {
 
     return {
       url,
-      filename: decision.originalFilename,
+      filename,
       sha256: decision.sha256,
       byteSize: decision.byteSize,
       expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
