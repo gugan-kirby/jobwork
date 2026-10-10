@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { stageJobWorkFile, stageSupplierCopy } from './helpers/supplier-copy';
 import { type Body, ok, Pilot } from './pilot/driver';
 
 /**
@@ -177,7 +178,8 @@ describe('fixed-price path (F-FP)', () => {
       );
       const version = await p.one<{ id: string }>(`INSERT INTO dms.document_version (document_id, version_no, file_object_id, original_filename, status, created_by) VALUES ($1, 1, $2, 'KovaiPumps_bracket_rev2.pdf', 'available', gen_random_uuid()) RETURNING id`, [doc.id, file.id]);
       await p.pg.query(`UPDATE dms.document SET current_version_no = 1 WHERE id = $1`, [doc.id]);
-      const neutral = `JW-DOC-${version.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+      const copyId = await stageSupplierCopy(p.pg, version.id, 'bracket-supplier-copy.pdf');
+      const neutral = `JW-DOC-${copyId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
       p.drawingVersionId = version.id;
 
       const deal = await p.sourceToPurchaseOrder((await p.approvedEnquiry()).enquiryId);
@@ -185,7 +187,9 @@ describe('fixed-price path (F-FP)', () => {
       expect((round['documents'] as Body[]).map((d) => d['filename'])).toEqual([`${neutral}.pdf`]);
       p.expectNothingOf(round, ['Kovai', 'KovaiPumps'], 'supplier round documents');
 
-      const supplierDownload = ok(await p.as.supplierA.get(`/api/v1/documents/versions/${version.id}/download`), 200, 'supplier download');
+      // The supplier holds JobWork's copy, never the customer's own version (F-FP.5).
+      expect((await p.as.supplierA.get(`/api/v1/documents/versions/${version.id}/download`)).status).toBe(404);
+      const supplierDownload = ok(await p.as.supplierA.get(`/api/v1/documents/versions/${copyId}/download`), 200, 'supplier download');
       expect(supplierDownload['filename']).toBe(`${neutral}.pdf`);
       expect(decodeURIComponent(supplierDownload['url'] as string)).not.toContain('KovaiPumps');
       expect(ok(await p.as.buyer.get(`/api/v1/documents/versions/${version.id}/download`), 200, 'owner download')['filename']).toBe('KovaiPumps_bracket_rev2.pdf');
@@ -197,6 +201,63 @@ describe('fixed-price path (F-FP)', () => {
       // JobWork still sees the customer's own name for it.
       const internal = ok(await p.as.engineering.get(`/api/v1/sales-orders/${deal.orderId}/production`), 200, 'internal production');
       expect(JSON.stringify(internal)).toContain('KovaiPumps_bracket_rev2.pdf');
+    });
+  });
+
+  describe('F-FP.5 the reviewed supplier copy', () => {
+    /** A customer file with no supplier copy yet, as an upload leaves it. */
+    async function customerFile(): Promise<string> {
+      const doc = await p.one<{ id: string }>(`INSERT INTO dms.document (owning_organization_id, logical_type, title) VALUES ($1, 'drawing_2d', 'Kovai Pumps flange') RETURNING id`, [p.orgs.customer]);
+      const file = await p.one<{ id: string }>(
+        `INSERT INTO dms.file_object (storage_key, byte_size, declared_media_type, sha256, scan_state, owning_organization_id) VALUES ($1, 2048, 'application/pdf', $2, 'clean', $3) RETURNING id`,
+        [`clean/${randomBytes(8).toString('hex')}`, randomBytes(32).toString('hex'), p.orgs.customer],
+      );
+      const v = await p.one<{ id: string }>(`INSERT INTO dms.document_version (document_id, version_no, file_object_id, original_filename, status, created_by) VALUES ($1, 1, $2, 'KovaiPumps_flange.pdf', 'available', gen_random_uuid()) RETURNING id`, [doc.id, file.id]);
+      await p.pg.query(`UPDATE dms.document SET current_version_no = 1 WHERE id = $1`, [doc.id]);
+      return v.id;
+    }
+
+    it('blocks release until a JobWork copy is prepared by one member and confirmed by another', async () => {
+      const source = await customerFile();
+      p.drawingVersionId = source;
+      const { enquiryId } = await p.approvedEnquiry();
+      const created = ok(await p.as.sourcing.post('/api/v1/rfqs', { enquiryId, deadlineAt: new Date(Date.now() + 7 * 86_400_000).toISOString() }), 201, 'round');
+      const rfqId = created['rfqId'] as string;
+      ok(await p.as.sourcing.post(`/api/v1/rfqs/${rfqId}/invitations`, { supplierProfileId: p.profiles.supplierA }), 201, 'invite');
+      const release = async () => p.as.sourcing.post(`/api/v1/rfqs/${rfqId}/release`, { expectedVersion: await p.rfqVersion(rfqId) });
+      expect((await release()).body['code']).toBe('SUPPLIER_COPY_REQUIRED');
+
+      const url = `/api/v1/documents/versions/${source}/supplier-copy`;
+      const copy = await stageJobWorkFile(p.pg, 'flange-clean.pdf');
+      expect((await p.as.supplierA.post(url, { copyVersionId: copy })).status).toBe(403);
+      expect((await p.as.buyer.post(url, { copyVersionId: copy })).status).toBe(403);
+      expect((await p.as.engineering.post(url, { copyVersionId: await customerFile() })).body['code']).toBe('COPY_NOT_JOBWORKS');
+      expect((await p.as.engineering.post(`/api/v1/documents/versions/${copy}/supplier-copy`, { copyVersionId: await stageJobWorkFile(p.pg) })).body['code']).toBe('NOT_A_CUSTOMER_FILE');
+      const prepared = ok(await p.as.engineering.post(url, { copyVersionId: copy, note: 'Title block and contact removed' }), 201, 'prepare');
+      expect(prepared).toMatchObject({ sourceVersionId: source, copyVersionId: copy, confirmed: false });
+      expect((await release()).body['code']).toBe('SUPPLIER_COPY_REQUIRED');
+
+      expect((await p.as.engineering.post(`${url}/confirm`, { note: 'Looks clean' })).body['code']).toBe('COPY_FOUR_EYES');
+      const confirmed = ok(await p.as.sourcing.post(`${url}/confirm`, { note: 'Checked every sheet: no customer name, no phone' }), 201, 'confirm');
+      expect(confirmed).toMatchObject({ confirmed: true, confirmNote: expect.stringContaining('every sheet') });
+      expect((await p.as.engineering.post(url, { copyVersionId: await stageJobWorkFile(p.pg) })).body['code']).toBe('COPY_CONFIRMED');
+      await expect(p.pg.query(`DELETE FROM dms.supplier_copy WHERE source_version_id = $1`, [source])).rejects.toThrow(/is kept/);
+
+      ok(await release(), 201, 'release');
+      const round = ok(await p.as.supplierA.get(`/api/v1/supplier/rfqs/${rfqId}`), 200, 'supplier round');
+      expect((round['documents'] as Body[]).map((d) => d['documentVersionId'])).toEqual([copy]);
+      expect((await p.as.supplierA.get(`/api/v1/documents/versions/${copy}/download`)).status).toBe(200);
+      expect((await p.as.supplierA.get(`/api/v1/documents/versions/${source}/download`)).status).toBe(404);
+      expect(await p.auditActions(source)).toEqual(expect.arrayContaining(['dms.supplier_copy_prepared', 'dms.supplier_copy_confirmed']));
+    });
+
+    it('refuses, in the database, any grant of a customer’s own file to a supplier', async () => {
+      const source = await customerFile();
+      await expect(
+        p.pg.query(`INSERT INTO dms.audience_grant (document_version_id, audience_type, organization_id) VALUES ($1, 'organization', $2)`, [source, p.orgs.supplierA]),
+      ).rejects.toThrow(/never reaches a supplier/);
+      // Another customer organization, or JobWork, is not a supplier: those grants stand as before.
+      await p.pg.query(`INSERT INTO dms.audience_grant (document_version_id, audience_type, organization_id) VALUES ($1, 'organization', $2)`, [source, p.orgs.internal]);
     });
   });
 });

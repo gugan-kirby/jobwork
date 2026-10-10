@@ -26,6 +26,7 @@ import {
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../../lib/api';
 import { STAGE } from '../../../quality/labels';
+import { SupplierCopyPanel } from '../../../supplier-copy-panel';
 
 /**
  * Technical baseline and production for one order (IN-09). Assemble the exact versions,
@@ -321,6 +322,7 @@ export default function OrderProductionPage(): React.JSX.Element {
                           <td>
                             <strong>{c.title}</strong> v{c.versionNo} · {c.logicalType.replace(/_/g, ' ')} · {c.source}
                             {c.reason ? <span style={{ display: 'block', color: 'var(--status-blocked-fg)' }}>{c.reason}</span> : null}
+                            {c.source !== 'internal' ? <SupplierCopyPanel versionId={c.documentVersionId} /> : null}
                           </td>
                           <td>
                             <Select label="Purpose" value={s.purpose} options={[{ value: 'governing', label: 'Governing' }, { value: 'reference', label: 'Reference' }, { value: 'inspection', label: 'Inspection' }]} onChange={(e) => setSelection({ ...selection, [c.documentVersionId]: { ...s, purpose: e.target.value as 'governing' } })} />

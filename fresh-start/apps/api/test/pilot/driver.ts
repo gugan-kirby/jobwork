@@ -10,6 +10,7 @@ import { expect } from 'vitest';
 import { hashPassword } from '../../src/modules/iam/domain/password';
 import { createTestApp } from '../helpers/boot';
 import { TestClient } from '../helpers/http';
+import { stageSupplierCopy } from '../helpers/supplier-copy';
 
 /**
  * IN-12 F-12.1 pilot driver. Each scenario (doc 19 §10) walks the Phase 1 path through
@@ -223,6 +224,8 @@ export class Pilot {
     );
     // As finalize would: the document points at its current version, so a later upload is version 2.
     await this.pg.query(`UPDATE dms.document SET current_version_no = 1 WHERE id = $1`, [doc.id]);
+    // F-FP.5: a customer's file reaches a supplier only as JobWork's confirmed copy; the stage has one ready.
+    if (orgId === this.orgs.customer || orgId === this.orgs.outsider) await stageSupplierCopy(this.pg, version.id);
     return version.id;
   }
 
@@ -802,6 +805,9 @@ export class Pilot {
     const file = await this.one<{ id: string }>(`SELECT file_object_id AS id FROM dms.document_version WHERE id = $1`, [fin['documentVersionId']]);
     ok(await this.service(`/internal/documents/scans/${file.id}/begin`), 201, 'scan begin');
     ok(await this.service(`/internal/documents/scans/${file.id}/result`, { verdict: 'clean', reason: 'clean', detectedMediaType: 'application/pdf', scanner: { name: 'test-scanner', version: '1' } }), 201, 'scan result');
+    // F-FP.5: a customer's revision travels to suppliers as JobWork's confirmed copy; the stage has one ready.
+    const owner = await this.one<{ type: string }>(`SELECT o.type FROM dms.document d JOIN iam.organization o ON o.id = d.owning_organization_id WHERE d.id = $1`, [documentId]);
+    if (owner.type === 'customer') await stageSupplierCopy(this.pg, fin['documentVersionId'] as string);
     return { documentVersionId: fin['documentVersionId'] as string, versionNo: fin['versionNo'] as number };
   }
 

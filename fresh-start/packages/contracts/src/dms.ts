@@ -176,3 +176,34 @@ export type GrantAction = z.infer<typeof grantActionSchema>;
 export type GrantAudienceRequest = z.infer<typeof grantAudienceRequestSchema>;
 export type GrantSummary = z.infer<typeof grantSummarySchema>;
 export type DownloadResponse = z.infer<typeof downloadResponseSchema>;
+
+/**
+ * `FR-305` (F-FP.5): JobWork's reviewed copy of a customer's file, the only form in which a
+ * supplier receives it. Prepared by one JobWork member, confirmed by another.
+ */
+export const supplierCopySchema = z.object({
+  sourceVersionId: z.uuid(),
+  copyVersionId: z.uuid(),
+  copyFilename: z.string(),
+  preparedBy: z.uuid(),
+  preparedAt: z.string(),
+  note: z.string(),
+  confirmed: z.boolean(),
+  confirmedBy: z.uuid().nullable(),
+  confirmedAt: z.string().nullable(),
+  confirmNote: z.string().nullable(),
+});
+
+export const prepareSupplierCopyRequestSchema = z.object({
+  /** A clean, available version JobWork uploaded: the customer's file with its identity removed. */
+  copyVersionId: z.uuid(),
+  note: z.string().trim().max(500).default(''),
+});
+
+export const confirmSupplierCopyRequestSchema = z.object({
+  note: z.string().trim().min(3).max(500),
+});
+
+export type SupplierCopy = z.infer<typeof supplierCopySchema>;
+export type PrepareSupplierCopyRequest = z.infer<typeof prepareSupplierCopyRequestSchema>;
+export type ConfirmSupplierCopyRequest = z.infer<typeof confirmSupplierCopyRequestSchema>;

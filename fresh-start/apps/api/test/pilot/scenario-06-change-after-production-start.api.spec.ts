@@ -157,8 +157,12 @@ describe('Pilot 6: engineering change after production start', () => {
     expect((await p.one<{ baseline_id: string }>(`SELECT baseline_id FROM orders.milestone_evidence WHERE milestone_id = $1`, [prod.milestoneId])).baseline_id).toBe(prod.baselineId);
     const wp = ((await p.productionView(deal.orderId))['workPackages'] as Body[])[0]!;
     expect((wp['baselinesUsed'] as Body[]).map((b) => b['baselineId'])).toEqual([prod.baselineId, candidateId]);
-    // The supplier now holds the marking drawing it must make the parts to.
-    expect((await p.as.supplierA.get(`/api/v1/documents/versions/${markingSpecId}/download`)).status).toBe(200);
+    // The supplier now holds the marking drawing it must make the parts to, as JobWork's copy (F-FP.5).
+    const copyId = (await p.one<{ copy_version_id: string }>(`SELECT copy_version_id FROM dms.supplier_copy WHERE source_version_id = $1`, [markingSpecId])).copy_version_id;
+    const transmitted = (((await p.supplierProduction('supplierA', deal.purchaseOrderId))['transmittal'] as Body)['items'] as Body[]).map((i) => i['documentVersionId']);
+    expect(transmitted).toContain(copyId);
+    expect((await p.as.supplierA.get(`/api/v1/documents/versions/${copyId}/download`)).status).toBe(200);
+    expect((await p.as.supplierA.get(`/api/v1/documents/versions/${markingSpecId}/download`)).status).toBe(404);
 
     ok(await p.as.engineering.post(`/api/v1/changes/${changeId}/verify`, { expectedVersion: await version(), note: 'First marked part checked against the marking drawing.' }), 201, 'verify');
     expect((ok(await p.as.engineering.post(`/api/v1/changes/${changeId}/close`, { expectedVersion: await version() }), 201, 'close'))['status']).toBe('closed');

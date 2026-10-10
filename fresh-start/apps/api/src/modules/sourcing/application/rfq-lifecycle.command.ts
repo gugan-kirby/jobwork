@@ -21,6 +21,7 @@ import {
   OfferRefused,
   ReleaseBlocked,
   RfqNotFound,
+  SupplierCopyRequired,
   SupplierNotEligible,
 } from '../domain/rfq';
 import { EnquiryRepository } from '../infrastructure/enquiry.repository';
@@ -264,6 +265,21 @@ export class RfqLifecycleCommand {
       );
     }
 
+    // `FR-305` (F-FP.5): a customer's own file travels only as JobWork's confirmed supplier copy.
+    const owners = await this.dms.ownerTypes(documents.map((d) => d.documentVersionId));
+    const customerFiles = documents.filter((d) => owners.get(d.documentVersionId) === 'customer');
+    const copies = await this.dms.confirmedCopies(customerFiles.map((d) => d.documentVersionId));
+    const uncopied = customerFiles.filter((d) => !copies.has(d.documentVersionId));
+    if (uncopied.length > 0) {
+      throw new SupplierCopyRequired(
+        `${uncopied.length} customer file${uncopied.length === 1 ? ' has' : 's have'} no confirmed supplier copy. Suppliers receive only JobWork’s reviewed copy of a customer file.`,
+      );
+    }
+    const released = documents.map((d) => {
+      const copy = copies.get(d.documentVersionId);
+      return copy ? { ...d, documentVersionId: copy.copyVersionId, sha256: copy.copySha256 } : d;
+    });
+
     // Eligibility is re-checked at release, not trusted from shortlisting time: a
     // certificate can lapse between Tuesday and Friday (doc 19 §4).
     const records = await this.eligibility.query({ limit: 500 });
@@ -307,7 +323,7 @@ export class RfqLifecycleCommand {
           const reference = await this.rfqs.allocateReference(rfqId, tx);
 
           // The manifest first, then one grant per invited organization per version.
-          for (const document of documents) {
+          for (const document of released) {
             await this.rfqs.addReleaseItem(
               {
                 rfqId,
@@ -345,7 +361,7 @@ export class RfqLifecycleCommand {
               { invitationId: invitation.id, status: 'invited' },
               tx,
             );
-            for (const document of documents) {
+            for (const document of released) {
               await this.dms.ensureGrant(
                 {
                   versionId: document.documentVersionId,

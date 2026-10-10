@@ -28,6 +28,9 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'dms.file_cleared',
   'dms.file_quarantined',
   'dms.transmittal_acknowledged.v1',
+  // F-FP.5: recorded; the copy reaches suppliers through the next release or transmittal.
+  'dms.supplier_copy_prepared.v1',
+  'dms.supplier_copy_confirmed.v1',
   'finance.allocation_proposed.v1',
   'finance.credit_hold_placed.v1',
   'finance.payment_failed.v1',

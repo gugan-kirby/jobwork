@@ -158,11 +158,12 @@ describe('Audience release and download refusals (F-03.4)', () => {
   /** Uploads a file as the owner, optionally taking it all the way to `clean`. */
   async function uploadVersion(
     content: string,
-    opts: { documentId?: string; expectedVersion?: number; verdict?: 'clean' | 'infected' | null } = {},
+    opts: { documentId?: string; expectedVersion?: number; verdict?: 'clean' | 'infected' | null; by?: TestClient } = {},
   ): Promise<UploadedVersion> {
     const bytes = Buffer.from(content);
     const sha256 = createHash('sha256').update(bytes).digest('hex');
-    const started = await owner.post('/api/v1/documents/uploads', {
+    const uploader = opts.by ?? owner;
+    const started = await uploader.post('/api/v1/documents/uploads', {
       purpose: 'drawing_2d',
       filename: 'drawing.pdf',
       declaredMediaType: 'application/pdf',
@@ -175,7 +176,7 @@ describe('Audience release and download refusals (F-03.4)', () => {
     const put = await fetch(grant.url, { method: 'PUT', headers: grant.headers, body: bytes });
     expect(put.status).toBe(200);
 
-    const finalized = await owner.post(
+    const finalized = await uploader.post(
       `/api/v1/documents/uploads/${started.body['uploadSessionId'] as string}/finalize`,
       {
         byteSize: bytes.byteLength,
@@ -355,6 +356,14 @@ describe('Audience release and download refusals (F-03.4)', () => {
     expect(again.body['grantId']).toBe(toJobWork.body['grantId']);
   });
 
+  it('sends a supplier JobWork’s copy of a customer file, never the file itself (F-FP.5)', async () => {
+    const version = await uploadVersion('%PDF-1.7 customer original\n%%EOF\n');
+    await owner.post(`/api/v1/documents/versions/${version.documentVersionId}/grants`, { audienceType: 'internal' });
+    const refused = await sourcing.post(`/api/v1/documents/versions/${version.documentVersionId}/grants`, { audienceType: 'organization', organizationId: supplierOrgId });
+    expect([refused.status, refused.body['code']]).toEqual([422, 'SUPPLIER_COPY_REQUIRED']);
+    expect((await supplier.get(`/api/v1/documents/versions/${version.documentVersionId}/download`)).status).toBe(404);
+  });
+
   it('gives access to the role doing the work, not to whoever administers accounts', async () => {
     const version = await uploadVersion('%PDF-1.7 internal read\n%%EOF\n');
     await owner.post(`/api/v1/documents/versions/${version.documentVersionId}/grants`, {
@@ -387,10 +396,7 @@ describe('Audience release and download refusals (F-03.4)', () => {
   });
 
   it('binds a release to one immutable version, never to the document (BR-ENG-02)', async () => {
-    const v1 = await uploadVersion('%PDF-1.7 revision one\n%%EOF\n');
-    await owner.post(`/api/v1/documents/versions/${v1.documentVersionId}/grants`, {
-      audienceType: 'internal',
-    });
+    const v1 = await uploadVersion('%PDF-1.7 revision one\n%%EOF\n', { by: sourcing });
     const released = await sourcing.post(
       `/api/v1/documents/versions/${v1.documentVersionId}/grants`,
       { audienceType: 'organization', organizationId: supplierOrgId },
@@ -403,6 +409,7 @@ describe('Audience release and download refusals (F-03.4)', () => {
     const v2 = await uploadVersion('%PDF-1.7 revision two\n%%EOF\n', {
       documentId: v1.documentId,
       expectedVersion: 2,
+      by: sourcing,
     });
     // The supplier holds version 1. Version 2 is a different artifact, not an update
     // to what they were given.
@@ -412,10 +419,7 @@ describe('Audience release and download refusals (F-03.4)', () => {
   });
 
   it('withdraws future access on revocation while the downloads already taken remain facts', async () => {
-    const version = await uploadVersion('%PDF-1.7 withdrawn later\n%%EOF\n');
-    await owner.post(`/api/v1/documents/versions/${version.documentVersionId}/grants`, {
-      audienceType: 'internal',
-    });
+    const version = await uploadVersion('%PDF-1.7 withdrawn later\n%%EOF\n', { by: sourcing });
     const released = await sourcing.post(
       `/api/v1/documents/versions/${version.documentVersionId}/grants`,
       { audienceType: 'organization', organizationId: supplierOrgId },
@@ -468,10 +472,7 @@ describe('Audience release and download refusals (F-03.4)', () => {
   });
 
   it('stops honouring a grant the moment its validity window closes', async () => {
-    const version = await uploadVersion('%PDF-1.7 time boxed\n%%EOF\n');
-    await owner.post(`/api/v1/documents/versions/${version.documentVersionId}/grants`, {
-      audienceType: 'internal',
-    });
+    const version = await uploadVersion('%PDF-1.7 time boxed\n%%EOF\n', { by: sourcing });
     const released = await sourcing.post(
       `/api/v1/documents/versions/${version.documentVersionId}/grants`,
       {
@@ -505,10 +506,7 @@ describe('Audience release and download refusals (F-03.4)', () => {
   });
 
   it('takes file access away with the membership, not on the next login (doc 03 §7)', async () => {
-    const version = await uploadVersion('%PDF-1.7 suspension case\n%%EOF\n');
-    await owner.post(`/api/v1/documents/versions/${version.documentVersionId}/grants`, {
-      audienceType: 'internal',
-    });
+    const version = await uploadVersion('%PDF-1.7 suspension case\n%%EOF\n', { by: sourcing });
     await sourcing.post(`/api/v1/documents/versions/${version.documentVersionId}/grants`, {
       audienceType: 'organization',
       organizationId: supplierOrgId,

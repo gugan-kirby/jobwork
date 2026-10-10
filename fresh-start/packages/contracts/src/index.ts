@@ -72,6 +72,9 @@ export {
   initiateUploadResponseSchema,
   sha256HexSchema,
   uploadSessionStatusSchema,
+  supplierCopySchema,
+  prepareSupplierCopyRequestSchema,
+  confirmSupplierCopyRequestSchema,
   acceptAttribute,
   UPLOAD_POLICY,
   type DocumentManifest,
@@ -85,6 +88,9 @@ export {
   type InitiateUploadResponse,
   type PurposePolicy,
   type UploadSessionStatus,
+  type SupplierCopy,
+  type PrepareSupplierCopyRequest,
+  type ConfirmSupplierCopyRequest,
 } from './dms';
 export {
   beginScanResponseSchema,

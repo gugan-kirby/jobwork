@@ -117,11 +117,17 @@ describe('dms schema constraints', () => {
       ),
     ).rejects.toThrow(/chk_grant_org/);
 
-    await pg.query(
-      `INSERT INTO dms.audience_grant (document_version_id, audience_type, organization_id)
-       VALUES ($1, 'organization', $2)`,
-      [version, orgB],
-    );
+    // A well-formed audience is accepted …
+    await pg.query(`INSERT INTO dms.audience_grant (document_version_id, audience_type) VALUES ($1, 'internal')`, [version]);
+    // … but a customer's own version never goes to a supplier organization: only JobWork's
+    // confirmed supplier copy does (F-FP.5, 0031_supplier_copy.sql).
+    await expect(
+      pg.query(
+        `INSERT INTO dms.audience_grant (document_version_id, audience_type, organization_id)
+         VALUES ($1, 'organization', $2)`,
+        [version, orgB],
+      ),
+    ).rejects.toThrow(/never reaches a supplier/);
   });
 
   it('scan_state only moves along the one-way machine (doc 09 §4)', async () => {
