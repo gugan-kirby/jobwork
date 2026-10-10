@@ -379,7 +379,7 @@ export class Pilot {
     });
   }
 
-  async decide(actor: Actor, approvalRequestId: string, decision: 'approved' | 'rejected' = 'approved', reason = ''): Promise<Res> {
+  async decide(actor: Actor, approvalRequestId: string, decision: 'approved' | 'rejected' | 'returned' = 'approved', reason = ''): Promise<Res> {
     return this.as[actor].post(`/api/v1/approvals/${approvalRequestId}/decide`, { decision, reason });
   }
 

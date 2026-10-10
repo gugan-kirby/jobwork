@@ -44,6 +44,13 @@ export class CostSheetNotEditable extends DomainError {
   }
 }
 
+/** `FR-409`: a customer price set by line names every line of the award, once. */
+export class SellLinesMismatch extends DomainError {
+  constructor(detail: string) {
+    super('SELL_LINES_MISMATCH', 422, 'Set one customer price for each line', detail);
+  }
+}
+
 export class CostSheetNotApproved extends DomainError {
   constructor(status: string) {
     super(
@@ -85,7 +92,8 @@ export interface CostSheetFigures {
 export function computeCostSheet(input: {
   awardLines: readonly AwardLineForCosting[];
   components: readonly CostComponent[];
-  targetMarginBp: number;
+  /** Either a target margin, from which the sell price follows, or (`FR-409`) the customer's unit price per line, from which the margin follows. */
+  pricing: { targetMarginBp: number } | { unitSellByLine: ReadonlyMap<number, number> };
   note: string;
   currency: string;
 }): CostSheetFigures {
@@ -105,18 +113,34 @@ export function computeCostSheet(input: {
   const buyTotalMinor = items.reduce((sum, l) => sum + l.lineTotalMinor, 0);
   const componentsTotal = input.components.reduce((sum, c) => sum + c.amountMinor, 0);
   const landedTotalMinor = buyTotalMinor + componentsTotal;
-  const sellTotalMinor = sellForMargin(landedTotalMinor, input.targetMarginBp);
+
+  // Components are spread over items by buy value.
+  const landedShares = allocateByWeights(componentsTotal, items.map((l) => l.lineTotalMinor));
+  const landedLines = items.map((l, i) => l.lineTotalMinor + (landedShares[i] ?? 0));
+
+  let sellAmounts: number[];
+  let unitSells: number[];
+  if ('unitSellByLine' in input.pricing) {
+    // FR-409: JobWork's price per unit is the truth; each line is that price times its quantity.
+    const given = input.pricing.unitSellByLine;
+    const lines = new Set(items.map((l) => l.lineNo));
+    if (given.size !== lines.size || [...given.keys()].some((n) => !lines.has(n))) {
+      throw new SellLinesMismatch(`The award has lines ${[...lines].join(', ')}; prices were given for ${[...given.keys()].join(', ') || 'none'}.`);
+    }
+    unitSells = items.map((l) => given.get(l.lineNo)!);
+    sellAmounts = items.map((l, i) => lineAmount(unitSells[i]!, l.quantity));
+  } else {
+    // The sell total follows from the target margin and is spread by landed share.
+    sellAmounts = allocateByWeights(sellForMargin(landedTotalMinor, input.pricing.targetMarginBp), landedLines);
+    unitSells = items.map((l, i) => roundDiv((sellAmounts[i] ?? 0) * 10_000, Math.round(l.quantity * 10_000)));
+  }
+  const sellTotalMinor = sellAmounts.reduce((sum, a) => sum + a, 0);
   const marginMinor = sellTotalMinor - landedTotalMinor;
   const marginBp = marginBpOf(sellTotalMinor, landedTotalMinor);
 
-  // Components are spread over items by buy value, then the sell total by landed share.
-  const landedShares = allocateByWeights(componentsTotal, items.map((l) => l.lineTotalMinor));
-  const landedLines = items.map((l, i) => l.lineTotalMinor + (landedShares[i] ?? 0));
-  const sellShares = allocateByWeights(sellTotalMinor, landedLines);
-
   const sellLines: SellLine[] = items.map((l, i) => {
-    const amountMinor = sellShares[i] ?? 0;
-    const unitSellMinor = roundDiv(amountMinor * 10_000, Math.round(l.quantity * 10_000));
+    const amountMinor = sellAmounts[i] ?? 0;
+    const unitSellMinor = unitSells[i] ?? 0;
     return {
       rfqItemId: l.rfqItemId,
       lineNo: l.lineNo,

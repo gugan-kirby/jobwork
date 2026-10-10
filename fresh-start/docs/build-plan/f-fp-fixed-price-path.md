@@ -150,6 +150,17 @@ Each functionality's tests above, plus the full suite green before the next star
 - **F-FP.2, single source.** A fixed round ends with exactly one bid, so its award meets the existing single-source rule: a fallback note, decided by a second sourcing lead (doc 19 §4). This was kept on purpose rather than bypassed.
 - **F-FP.2, no award change.** The award, cost sheet, quote, order and PO needed no code change, so `award.command.ts` was not edited. Prefilling the award belongs to the screens (F-FP.6).
 
+- **F-FP.3, no migration.** A cost sheet version stores its figures, never the target margin, so the explicit customer price needed no schema change. `computeCostSheet` takes `pricing`: either `{ targetMarginBp }` or `{ unitSellByLine }`.
+
+**F-FP.3 done (2026-10-10).**
+- **Request.** `POST /awards/:id/cost-sheet` takes either `targetMarginBp` or `sellLines[{lineNo, unitSellMinor}]`, never both (400). Missing or extra lines get `SELL_LINES_MISMATCH`.
+- **Figures.** Each line is the given price times its quantity, and the margin follows. The margin floor and the approvals are unchanged: under the floor, finance decides.
+- **Tests.** `normalization.spec.ts` gains the arithmetic case: exact lines, a computed margin, a negative margin, and mismatched lines. `fixed-price.api.spec.ts` gains a full pass:
+  - a customer price under the floor goes to finance, who returns it;
+  - ₹140 against ₹110 is approved (21.43 %);
+  - the customer quotation is ₹140 with no supplier cost;
+  - the supplier PO is ₹110 with no customer price or target.
+
 **F-FP.2 done (2026-10-10).**
 - **Create.** `POST /rfqs` takes `pricingMode: 'fixed'` with `offer { paymentTerms, lines[{lineNo, unitPriceMinor}] }` (`OFFER_LINES` unless there is one price per line).
 - **Supplier view.** It shows `pricingMode`, `offerPaymentTerms` and each item's `offeredUnitPriceMinor`. `bid/submit` and `bid/draft` refuse a fixed round (`FIXED_PRICE_ROUND`).

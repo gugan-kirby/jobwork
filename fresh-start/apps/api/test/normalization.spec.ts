@@ -157,7 +157,7 @@ describe('cost sheet arithmetic (FR-404, BR-COM-10)', () => {
         { rfqItemId: 'b', lineNo: 2, description: 'Collar', quantity: 30, unit: 'piece', lineTotalMinor: 360_001 },
       ],
       components: [{ code: 'freight_outbound' as const, label: 'Freight to customer', amountMinor: 12_345, basis: 'estimate' }],
-      targetMarginBp: 1500,
+      pricing: { targetMarginBp: 1500 },
       note: 'first pass',
     };
     const a = computeCostSheet(input);
@@ -169,7 +169,26 @@ describe('cost sheet arithmetic (FR-404, BR-COM-10)', () => {
     expect(a.sellLines).toHaveLength(2);
     expect(a.sellLines[0]!.quantity).toBe(100);
     expect(Math.abs(a.marginBp - 1500)).toBeLessThanOrEqual(1);
-    expect(computeCostSheet({ ...input, targetMarginBp: -500 }).marginMinor).toBeLessThan(0);
+    expect(computeCostSheet({ ...input, pricing: { targetMarginBp: -500 } }).marginMinor).toBeLessThan(0);
+  });
+
+  it('takes JobWork’s customer price per line exactly and lets the margin follow (FR-409)', () => {
+    const awardLines = [
+      { rfqItemId: 'a', lineNo: 1, description: 'Bracket', quantity: 100, unit: 'piece', lineTotalMinor: 1_100_000 },
+      { rfqItemId: 'b', lineNo: 2, description: 'Collar', quantity: 30, unit: 'piece', lineTotalMinor: 360_000 },
+    ];
+    const base = { currency: 'INR', awardLines, components: [], note: '' };
+    const priced = computeCostSheet({ ...base, pricing: { unitSellByLine: new Map([[1, 14_000], [2, 15_000]]) } });
+    expect(priced.sellLines.map((l) => [l.lineNo, l.unitSellMinor, l.amountMinor])).toEqual([
+      [1, 14_000, 1_400_000],
+      [2, 15_000, 450_000],
+    ]);
+    expect(priced).toMatchObject({ sellTotalMinor: 1_850_000, landedTotalMinor: 1_460_000, marginMinor: 390_000 });
+    expect(priced.marginBp).toBe(Math.round((390_000 * 10_000) / 1_850_000));
+    // Below cost is allowed to compute and shows a negative margin; the approval rail blocks it.
+    expect(computeCostSheet({ ...base, pricing: { unitSellByLine: new Map([[1, 10_000], [2, 12_000]]) } }).marginMinor).toBeLessThan(0);
+    expect(() => computeCostSheet({ ...base, pricing: { unitSellByLine: new Map([[1, 14_000]]) } })).toThrow(/prices were given for/);
+    expect(() => computeCostSheet({ ...base, pricing: { unitSellByLine: new Map([[1, 14_000], [3, 1]]) } })).toThrow(/prices were given for/);
   });
 });
 

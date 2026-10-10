@@ -90,7 +90,9 @@ export class CostSheetCommand {
         lineTotalMinor: line.lineTotalMinor,
       })),
       components: input.components,
-      targetMarginBp: input.targetMarginBp,
+      pricing: input.sellLines
+        ? { unitSellByLine: new Map(input.sellLines.map((l) => [l.lineNo, l.unitSellMinor])) }
+        : { targetMarginBp: input.targetMarginBp! },
       note: input.note,
     });
 
