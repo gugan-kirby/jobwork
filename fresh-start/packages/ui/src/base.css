@@ -251,6 +251,12 @@ code,
     border: 0;
     background: transparent;
     flex-direction: row;
+    /* Operations carries ~19 items: wrap onto a second row rather than run off-screen. */
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 0;
   }
 
   .jw-nav-toggle {
