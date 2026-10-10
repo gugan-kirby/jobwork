@@ -134,7 +134,7 @@ export default function SupplierBillsPage(): React.JSX.Element {
                   href={`/supplier/orders/${b.purchaseOrderId}`}
                   reference={b.number}
                   title={`${b.supplierReference} on ${b.purchaseOrderNumber}`}
-                  caption={`${b.quantity} pieces · dated ${b.billDate}${b.settlement?.scheduledFor ? ` · payment due ${b.settlement.scheduledFor}` : ''}${b.settlement?.paymentReference ? ` · paid, ref ${b.settlement.paymentReference}` : ''}${why ? ` · ${why}` : ''}`}
+                  caption={`${b.quantity} ${b.quantity === '1' ? 'piece' : 'pieces'} · dated ${b.billDate}${b.settlement?.scheduledFor ? ` · payment due ${b.settlement.scheduledFor}` : ''}${b.settlement?.paymentReference ? ` · paid, ref ${b.settlement.paymentReference}` : ''}${why ? ` · ${why}` : ''}`}
                   figure={formatMoney({ amountMinor: b.totalMinor, currency: b.currency })}
                   status={
                     b.settlement ? (
