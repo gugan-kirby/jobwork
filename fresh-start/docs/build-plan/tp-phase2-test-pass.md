@@ -44,6 +44,8 @@ The pilot driver gains `dispatchToCustomer`, `proofOfDelivery`, `stockLots`, `ma
 |---|---|---|
 | `apps/api/test/margin.api.spec.ts` | new | Planned margin comes from the approved cost sheet. Realized margin is net of a credit note and a recovery. Variance stays null until every live PO has a matched bill. Finance and sales only; customer and supplier get 403. |
 
+**Done (2026-10-10).** `margin.api.spec.ts` has 3 tests and found no defect. The planned figures match the cost sheet version behind the accepted quote. Actual revenue and cost are checked against the journal lines on the order and its purchase orders. A case with a credit note (taxable 20,000) and a supplier recovery (24,700) moves the realized margin and the variance by exactly those amounts. Quality, support, logistics, customer and supplier members all get 403.
+
 ## TP.4 Pilot scenarios 11 and 12, UAT
 
 | File | Action | Contents |
