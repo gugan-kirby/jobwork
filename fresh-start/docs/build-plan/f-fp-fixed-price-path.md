@@ -154,6 +154,24 @@ Each functionality's tests above, plus the full suite green before the next star
 
 - **F-FP.4, the name.** A neutral name is `JW-DOC-<8 hex of the version id>.<ext>` rather than `<RFQ reference>-<role>-<n>`. A file then has one name everywhere a supplier meets it (round, transmittal, download), including outside any round. Titles are covered too: an upload's default title is its filename (`titleFrom`), so the supplier transmittal shows `JW-DOC-…` as the title.
 
+- **F-FP.5, which files.** A round releases every enquiry document to suppliers (reference files and assisted photos as well as governing drawings), so a confirmed copy is required for **every customer file** that travels, not only governing drawings. The production transmittal needs the same: the baseline's customer files, including those a change brings in.
+- **F-FP.5, enforced at the grant.** Migration `0031_supplier_copy.sql` adds `dms.supplier_copy` (four eyes; a copy is JobWork-owned; frozen once confirmed). A trigger on `dms.audience_grant` refuses any grant of a customer-owned version to a supplier organization, so no path, present or future, can hand a supplier the original. The application substitutes the copy:
+  - round release (`SUPPLIER_COPY_REQUIRED` until every customer file has one);
+  - `transmitBaseline`, used by both transmittal issue and change release;
+  - the manual grant command, which answers 422 rather than letting the trigger fail.
+  Stale-grant revocation drops a version and its copy together.
+- **F-FP.5, screens pulled forward.** Once release requires copies, staff need a way to make them, so the ops panel ships here rather than in F-FP.6. `supplier-copy-panel.tsx` sits beside each document on the intake page and each customer candidate on the baseline page: upload the cleaned file, use it as the supplier copy, and a second member confirms it.
+- **F-FP.5, fixtures.** Test fixtures stage a confirmed copy as rows (`test/helpers/supplier-copy.ts`; the pilot driver's `cleanDrawing` and `uploadRevision` for customer files; five specs' own seeds; the e2e `prepare-db`). `fixed-price.api.spec.ts` drives the real commands. `dms-negative`'s grant-mechanics tests now use a JobWork-owned file, plus a new refusal test.
+
+**F-FP.5 done (2026-10-10).**
+- **Routes.** `GET|POST /documents/versions/:id/supplier-copy` and `POST …/supplier-copy/confirm`, internal-only, for engineering and sourcing.
+- **Tests.** `fixed-price.api.spec.ts` gains 2:
+  - release is blocked until a copy is prepared by one member and confirmed by another;
+  - the preparer cannot confirm, and a confirmed copy is kept;
+  - the supplier sees and downloads only the copy;
+  - the database refuses a direct grant of the original.
+  Scenario 6 now checks the supplier holds the marking spec as JobWork's copy. The full API suite is green (557).
+
 **F-FP.4 done (2026-10-10).**
 - **The helper.** `dms/domain/neutral-name.ts` provides `neutralTitle` and `neutralFilename`, exported from the DMS module.
 - **Where it applies.** A download by someone outside JobWork who does not own the file gets the neutral name, both in the response and in the signed URL's disposition. The supplier RFQ view lists release documents under it, and the supplier transmittal names baseline documents by it. The owner and JobWork keep the original name.
