@@ -357,14 +357,16 @@ export class SettlementCommand {
 
   // ----------------------------------------------------------------- reads
 
-  async list(actor: Actor, filter: { status?: SupplierBillStatus; purchaseOrderId?: string }): Promise<SupplierBill[]> {
-    if (actor.isInternal) this.requireFinance(actor);
+  /** `finance` is the JobWork route: it answers JobWork finance only, never a supplier (deny by default). */
+  async list(actor: Actor, filter: { status?: SupplierBillStatus; purchaseOrderId?: string }, audience: 'supplier' | 'finance' = 'supplier'): Promise<SupplierBill[]> {
+    if (actor.isInternal || audience === 'finance') this.requireFinance(actor);
     else if (actor.organizationType !== 'supplier' || !actor.roles.some((r) => SUPPLIER_BILLERS.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');
     const rows = await this.repo.listBills({ ...filter, ...(actor.isInternal ? {} : { supplierOrganizationId: actor.organizationId! }) });
     return Promise.all(rows.map((b) => this.view(actor, b)));
   }
 
-  async get(actor: Actor, billId: string): Promise<SupplierBill> {
+  async get(actor: Actor, billId: string, audience: 'supplier' | 'finance' = 'supplier'): Promise<SupplierBill> {
+    if (audience === 'finance' && !actor.isInternal) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted', 'Requires jobwork_finance.');
     const b = await this.repo.findBill(billId);
     if (!b || (!actor.isInternal && b.supplierOrganizationId !== actor.organizationId)) throw new DomainError('BILL_NOT_FOUND', 404, 'Bill not found');
     if (actor.isInternal && !actor.roles.some((r) => FINANCE.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');
