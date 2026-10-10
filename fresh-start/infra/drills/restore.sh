@@ -105,7 +105,7 @@ echo "     re-enable provider callbacks only after reconciling the intents above
 step "7/7 critical journey on an API booted against $TARGET_DB"
 t=$(now)
 (cd apps/api && DATABASE_URL="postgres://localhost:5432/$TARGET_DB" API_PORT="$PORT" SESSION_SECRET="${SESSION_SECRET:-dev-only-change-me}" RATE_LIMIT_MODE=off \
-  node dist/main.js >"$WORK/api.log" 2>&1) &
+  exec node dist/main.js >"$WORK/api.log" 2>&1) &
 API_PID=$!
 for _ in $(seq 1 30); do curl -fsS "http://localhost:$PORT/api/v1/health" >/dev/null 2>&1 && break; sleep 1; done
 export DRILL_BASE="http://localhost:$PORT"
