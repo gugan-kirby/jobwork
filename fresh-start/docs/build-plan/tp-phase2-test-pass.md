@@ -16,6 +16,9 @@ Scope source: the deferred items recorded in [IN-17](in-17-dispatch-delivery.md)
 | D4 | `support.resolution_action` (found by TP.1) | Nothing stopped a done or verified action from being reopened, edited or deleted, so a verified credit note could be set back to planned and carried out twice. Migration 0028 adds a forward-only trigger: planned → done → verified, or planned → cancelled. Only planned actions may be deleted, which a replacing proposal does. |
 | D5 | `@jobwork/contracts` settlement and support `quantity` (found by TP.1) | `'0'` passed validation, then failed the database's `quantity > 0` check with a 500. The schema now refuses it with a 400. |
 | D6 | `FinanceBillsController` (found by TP.4) | The JobWork finance routes `GET /supplier-bills` and `/supplier-bills/:id` answered a supplier with its own bills, because they shared the supplier route's scoping. Nothing leaked, since the view was the supplier projection, but an internal route must refuse anyone outside JobWork (deny by default). They now require JobWork finance. |
+| D7 | Ops case page (found by TP.5) | A planned action showed "Reason to cancel" while its proposal still waited for approval, and after the case closed. The API refuses a cancel in both states (D2), so the screen offered something that could only fail. The cancel controls now appear only while the agreed resolution is being carried out. |
+| D8 | Ops case page (found by TP.5) | "Close the case" was enabled while an action was still unverified, and the API then refused with `ACTIONS_UNVERIFIED`. It is now disabled until every action is verified or cancelled, and it says why. |
+| D9 | `AppShell` header, `@jobwork/ui` (found by TP.5) | From 768px up, the operations navigation (19 items) ran in one row with no wrap and no menu. At 1280 it ran off-screen from Approvals on: Held messages, Suppliers, Organizations, Health, Audit and Account could not be reached. The row now wraps. The e2e smoke checks that every primary link sits inside the viewport. |
 
 ## TP.1 Settlement (F-18.1)
 
@@ -67,6 +70,15 @@ Every IN-18 screen is driven at desktop (1280) and phone (390) widths against th
 | File | Action | Contents |
 |---|---|---|
 | `e2e/tests/settlement-support.spec.ts` | new | Ops `/finance/bills`, `/finance/margin`, `/support`, `/support/[caseId]`; portal `/supplier/bills`, `/support`, `/support/[caseId]`; each page loads with no axe violations at both widths |
+
+**Done (2026-10-10).**
+- `settlement-support.spec.ts` has 8 tests: four journeys at 1280 and 390. Each page shows its heading, does not scroll sideways, keeps the primary navigation inside the viewport, and has no serious or critical axe violation. The world gains deal D: supplier A acknowledged and billed its PO, and the customer opened a case on the order. `support@jobwork.test` joins the seeded people. The e2e suite now runs 18 tests, all green.
+- The walk was driven on the booted e2e stack, on a fresh database at each width:
+  - the supplier submits a bill;
+  - the customer adds a note to its case and raises another;
+  - support triages, investigates and proposes a credit note;
+  - finance approves it, issues the credit note against the advance invoice, runs the match (an exception: nothing was accepted yet) and opens margin.
+- The walk found D7–D9, now fixed, and a "1 pieces" caption on the supplier's bill list. `/finance/margin` was empty on the walk because neither order was commercially released yet, which is the view's rule. Margin with data is covered by `margin.api.spec.ts`.
 
 ## TP.6 Phase 2 exit
 
