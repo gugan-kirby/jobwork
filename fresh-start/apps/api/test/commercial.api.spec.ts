@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hashPassword } from '../src/modules/iam/domain/password';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
+import { stageSupplierCopy } from './helpers/supplier-copy';
 
 const PASSWORD = 'commercial-password-1';
 
@@ -108,6 +109,8 @@ describe('Evaluation, award, cost sheet, customer quote (IN-07)', () => {
        VALUES ($1, 1, $2, 'bracket.pdf', 'available', gen_random_uuid()) RETURNING id`,
       [doc.rows[0]!.id, file.rows[0]!.id],
     );
+    // F-FP.5: a clean customer file reaches suppliers only as JobWork's confirmed copy; the stage has one.
+    if ((await pg.query(`SELECT type FROM iam.organization WHERE id = $1`, [orgId])).rows[0]!.type === 'customer') await stageSupplierCopy(pg, version.rows[0]!.id);
     return version.rows[0]!.id;
   }
 

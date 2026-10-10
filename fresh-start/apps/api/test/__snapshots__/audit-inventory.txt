@@ -32,10 +32,12 @@ communication.decide-leakage-review  modules/communication/application/leakage-r
 dms.acknowledge-transmittal  modules/orders/application/production.command.ts
 dms.assemble-baseline  modules/orders/application/production.command.ts
 dms.begin-scan  modules/dms/application/begin-scan.command.ts
+dms.confirm-supplier-copy  modules/dms/application/supplier-copy.command.ts
 dms.finalize-upload  modules/dms/application/finalize-upload.command.ts
 dms.grant-audience  modules/dms/application/grant-audience.command.ts
 dms.initiate-upload  modules/dms/application/initiate-upload.command.ts
 dms.issue-transmittals  modules/orders/application/production.command.ts
+dms.prepare-supplier-copy  modules/dms/application/supplier-copy.command.ts
 dms.record-scan-result  modules/dms/application/record-scan-result.command.ts
 dms.release-baseline  modules/orders/application/production.command.ts
 dms.revoke-grant  modules/dms/application/revoke-grant.command.ts

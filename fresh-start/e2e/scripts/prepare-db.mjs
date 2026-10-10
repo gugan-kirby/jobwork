@@ -91,7 +91,15 @@ for (const title of ['Bracket drawing', 'Flange drawing']) {
     `INSERT INTO dms.file_object (storage_key, byte_size, declared_media_type, sha256, scan_state, owning_organization_id) VALUES ($1, 2048, 'application/pdf', $2, 'clean', $3) RETURNING id`,
     [`e2e/${randomBytes(8).toString('hex')}`, randomBytes(32).toString('hex'), orgs.customer],
   );
-  await db.query(`INSERT INTO dms.document_version (document_id, version_no, file_object_id, original_filename, status, created_by) VALUES ($1, 1, $2, $3, 'available', gen_random_uuid())`, [doc.id, file.id, `${title.toLowerCase().replace(/ /g, '-')}.pdf`]);
+  const version = await one(`INSERT INTO dms.document_version (document_id, version_no, file_object_id, original_filename, status, created_by) VALUES ($1, 1, $2, $3, 'available', gen_random_uuid()) RETURNING id`, [doc.id, file.id, `${title.toLowerCase().replace(/ /g, '-')}.pdf`]);
+  // F-FP.5: suppliers receive JobWork's confirmed copy of a customer file, so each drawing has one.
+  const copyDoc = await one(`INSERT INTO dms.document (owning_organization_id, logical_type, title, current_version_no) VALUES ($1, 'drawing_2d', $2, 1) RETURNING id`, [orgs.internal, `${title} (supplier copy)`]);
+  const copyFile = await one(
+    `INSERT INTO dms.file_object (storage_key, byte_size, declared_media_type, sha256, scan_state, owning_organization_id) VALUES ($1, 2048, 'application/pdf', $2, 'clean', $3) RETURNING id`,
+    [`e2e/${randomBytes(8).toString('hex')}`, randomBytes(32).toString('hex'), orgs.internal],
+  );
+  const copy = await one(`INSERT INTO dms.document_version (document_id, version_no, file_object_id, original_filename, status, created_by) VALUES ($1, 1, $2, 'supplier-copy.pdf', 'available', gen_random_uuid()) RETURNING id`, [copyDoc.id, copyFile.id]);
+  await db.query(`INSERT INTO dms.supplier_copy (source_version_id, copy_version_id, prepared_by, confirmed_by, confirmed_at, confirm_note) VALUES ($1, $2, gen_random_uuid(), gen_random_uuid(), now(), 'staged for the journeys')`, [version.id, copy.id]);
 }
 await db.end();
 console.log(`prepared ${name}: ${PEOPLE.length} people, 2 eligible suppliers, 2 clean drawings`);

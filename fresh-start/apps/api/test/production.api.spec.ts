@@ -8,6 +8,7 @@ import { hashPassword } from '../src/modules/iam/domain/password';
 import { baselineHash } from '../src/modules/orders/domain/production';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
+import { stageSupplierCopy } from './helpers/supplier-copy';
 
 const PASSWORD = 'production-password-1';
 const WEBHOOK_SECRET = 'test-payment-webhook-secret';
@@ -94,6 +95,8 @@ describe('Baseline, production release, milestones (IN-09)', () => {
       `INSERT INTO dms.document_version (document_id, version_no, file_object_id, original_filename, status) VALUES ($1, 1, $2, $3, 'available') RETURNING id`,
       [doc.id, fileId, `${title.toLowerCase().replace(/ /g, '-')}.pdf`],
     );
+    // F-FP.5: a clean customer file reaches suppliers only as JobWork's confirmed copy; the stage has one.
+    if ((opts.scan ?? 'clean') === 'clean' && (await one<{ type: string }>(`SELECT type FROM iam.organization WHERE id = $1`, [orgId])).type === 'customer') await stageSupplierCopy(pg, v.id);
     return { versionId: v.id, fileId, sha };
   }
 
@@ -314,7 +317,10 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     const sent = await engineering.post(`/api/v1/sales-orders/${orderId}/transmittals`, { baselineId });
     expect(sent.status).toBe(201);
     const grants = await pg.query(`SELECT document_version_id FROM dms.audience_grant WHERE organization_id = $1 AND revoked_at IS NULL`, [supplierOrgA]);
-    expect(grants.rows.map((r) => r.document_version_id).sort()).toEqual([drawingV, oldDrawingV, specV].sort());
+    // A customer's file is granted as JobWork's confirmed copy (F-FP.5); JobWork's own as itself.
+    const granted = async (ids: string[]): Promise<string[]> =>
+      (await pg.query(`SELECT COALESCE(c.copy_version_id, v.id) AS id FROM dms.document_version v LEFT JOIN dms.supplier_copy c ON c.source_version_id = v.id AND c.confirmed_at IS NOT NULL WHERE v.id = ANY($1::uuid[])`, [ids])).rows.map((r) => r.id as string);
+    expect(grants.rows.map((r) => r.document_version_id).sort()).toEqual((await granted([drawingV, oldDrawingV, specV])).sort());
     expect((await engineering.post(`/api/v1/sales-orders/${orderId}/transmittals`, { baselineId })).status).toBe(409);
 
     const view = await supplierView(supplierA, poA);

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hashPassword } from '../src/modules/iam/domain/password';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
+import { stageSupplierCopy } from './helpers/supplier-copy';
 
 const PASSWORD = 'revision-password-1';
 type Body = Record<string, unknown>;
@@ -111,6 +112,8 @@ describe('Requirement revision after bids (F-12.5)', () => {
       [doc.id, file.id],
     );
     await pg.query(`INSERT INTO sourcing.enquiry_document (enquiry_id, document_version_id, role) VALUES ($1, $2, 'governing')`, [id, version.id]);
+    // F-FP.5: a clean customer file reaches suppliers only as JobWork's confirmed copy; the stage has one.
+    await stageSupplierCopy(pg, version.id);
     await pg.query(`INSERT INTO sourcing.requirement (enquiry_id, revision_no, kind, snapshot, content_hash) VALUES ($1, 1, 'reviewed', '{"title":"Pump bracket"}'::jsonb, 'req-hash-1')`, [id]);
     return { enquiryId: id, itemId: item.id };
   }
