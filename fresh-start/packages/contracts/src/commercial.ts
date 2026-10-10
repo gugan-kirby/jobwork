@@ -232,12 +232,16 @@ export const sellLineSchema = z.object({
   amountMinor: z.number().int().nonnegative(),
 });
 
-export const saveCostSheetRequestSchema = z.object({
-  components: z.array(costComponentSchema).max(20).default([]),
-  /** Target margin on the sell price, in basis points (1000 = 10 %). Negative is allowed and blocks. */
-  targetMarginBp: z.number().int().min(-10000).max(9000),
-  note: z.string().trim().max(2000).default(''),
-});
+export const saveCostSheetRequestSchema = z
+  .object({
+    components: z.array(costComponentSchema).max(20).default([]),
+    /** Target margin on the sell price, in basis points (1000 = 10 %). Negative is allowed and blocks. */
+    targetMarginBp: z.number().int().min(-10000).max(9000).optional(),
+    /** `FR-409`: or the customer's price per unit for each line, ex GST; the margin then follows. */
+    sellLines: z.array(z.object({ lineNo: z.number().int().positive(), unitSellMinor: z.number().int().positive().max(1_000_000_000_000) })).min(1).max(50).optional(),
+    note: z.string().trim().max(2000).default(''),
+  })
+  .refine((r) => (r.targetMarginBp === undefined) !== (r.sellLines === undefined), { message: 'Give a target margin or a customer price per line, not both.', path: ['sellLines'] });
 
 export const costSheetVersionSchema = z.object({
   costSheetVersionId: z.uuid(),
