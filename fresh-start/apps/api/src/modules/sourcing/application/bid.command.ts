@@ -246,7 +246,8 @@ export class BidCommand {
       {
         operation: 'sourcing.submit-bid',
         handler: async (tx, _ctx, cmd: SubmitBidRequest) => {
-          return this.appendVersion(tx, { actor, organizationId, invitation, rfqId, rfqItems, cmd, validated, late });
+          const written = await this.appendVersion(tx, { actor, organizationId, invitation, rfqId, rfqItems, cmd, validated, late });
+          return { result: written.result, audit: written.audit, outbox: written.outbox };
         },
       },
       contextFromActor({ userId: actor.userId, organizationId }),
