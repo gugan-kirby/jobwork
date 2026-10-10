@@ -135,6 +135,22 @@ Each functionality's tests above, plus the full suite green before the next star
 - [ ] No supplier response, document or download carries customer identity, target or customer price (leak tests).
 - [ ] Docs 01 and 06 updated; the README index lists F-FP.
 
+## Status (paused 2026-10-11)
+
+The owner paused the work after F-FP.5.
+
+| Functionality | State | PR |
+|---|---|---|
+| F-FP.1 Customer target price | done | #67 |
+| F-FP.2 Fixed-price offer | done | #68 |
+| F-FP.3 JobWork sets the customer price | done | #69 |
+| F-FP.4 Neutral filenames for suppliers | done | #70 |
+| F-FP.5 Reviewed supplier copy | done (ops panel included) | #71 |
+| F-FP.6 Screens | **next**. The API is complete but these screens don't exist yet: the ops round-creation pricing-mode choice with offered prices, the cost-sheet "set the customer price" input, the portal supplier offer page (Accept/Decline), and the e2e smoke | — |
+| F-FP.7 Pilot scenario 13 and UAT | not started | — |
+
+Until F-FP.6 lands, the fixed-price path works through the API only. The portal already asks customers for a target price, and the ops supplier-copy panel is live.
+
 ## Deviations recorded during build (protocol rule 3)
 
 - **One migration per functionality.** Each functionality ships in its own PR, so `0029_fixed_price.sql` is split: `0029_enquiry_target_price.sql` (F-FP.1), then the fixed round and the supplier copy in later numbers.
