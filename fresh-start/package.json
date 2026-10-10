@@ -33,6 +33,7 @@
     "fastify ^5.12.5 - @nestjs/platform-fastify 11.2.7 pins fastify 5.11.3 (GHSA-hwr6-493r-vm6h, GHSA-9q9j-q6p8-xq58 and two more highs, plus X-Forwarded-* spoofing under trustProxy).",
     "fast-uri - via fastify's ajv compiler (host case normalization, mailto header injection; moderate).",
     "brace-expansion - via eslint > minimatch 3 (DoS; dev tooling only).",
+    "tinypool ^2.1.2, source-map-js ^1.2.2, sharp ^0.35.5 (added 2026-10-10 by TP.6, the nightly audit had failed since 2026-10-06): tinypool via vitest 3 (two criticals, test runner only; vitest 3 runs on tinypool 2, the full suite is green); source-map-js via vite > postcss (high, build tooling); sharp via next (high, librsvg; the image optimizer at runtime). Drop each once its parent requires the patched version.",
     "Not overridden: vitest < 4.1.11 (moderate, test runner only) - needs the vitest 4 major; tracked in IN-11 F-11.5."
   ],
   "pnpm": {
@@ -46,7 +47,10 @@
       "fastify": "^5.12.5",
       "brace-expansion@<1.1.21": "^1.1.21",
       "fast-uri@>=3.0.0 <3.1.8": "^3.1.8",
-      "fast-uri@>=4.0.0 <4.1.5": "^4.1.5"
+      "fast-uri@>=4.0.0 <4.1.5": "^4.1.5",
+      "tinypool@<2.1.2": "^2.1.2",
+      "source-map-js@<1.2.2": "^1.2.2",
+      "sharp@<0.35.5": "^0.35.5"
     }
   }
 }
