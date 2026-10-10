@@ -120,5 +120,5 @@ Use cases: UC-31, UC-34; pilot scenarios 11–12 completion.
 
 ## Increment exit
 
-- [ ] Pilot scenarios 11 (delivery exception → warranty/return/refund) and 12 green: **deferred to the test pass**.
-- [ ] Phase 2 exit per doc 15 §5 (enquiry-to-acceptance path incl. change and NCR drill, restore drill, security assessment rerun): **deferred to the test pass**.
+- [x] Pilot scenarios 11 (delivery exception → warranty/return/refund) and 12 green: TP.4, 2026-10-10.
+- [x] Phase 2 exit per doc 15 §5 (enquiry-to-acceptance path incl. change and NCR drill, restore drill, security assessment rerun): TP.6, 2026-10-10 ([test pass](tp-phase2-test-pass.md)).

@@ -19,6 +19,10 @@ Scope source: the deferred items recorded in [IN-17](in-17-dispatch-delivery.md)
 | D7 | Ops case page (found by TP.5) | A planned action showed "Reason to cancel" while its proposal still waited for approval, and after the case closed. The API refuses a cancel in both states (D2), so the screen offered something that could only fail. The cancel controls now appear only while the agreed resolution is being carried out. |
 | D8 | Ops case page (found by TP.5) | "Close the case" was enabled while an action was still unverified, and the API then refused with `ACTIONS_UNVERIFIED`. It is now disabled until every action is verified or cancelled, and it says why. |
 | D9 | `AppShell` header, `@jobwork/ui` (found by TP.5) | From 768px up, the operations navigation (19 items) ran in one row with no wrap and no menu. At 1280 it ran off-screen from Approvals on: Held messages, Suppliers, Organizations, Health, Audit and Account could not be reached. The row now wraps. The e2e smoke checks that every primary link sits inside the viewport. |
+| D10 | Three-way match (found by TP.6) | The match read the PO's issued total only. A change that raises the supplier's cost appends an acknowledged amendment, never a rewrite, so a supplier billing the amended amount failed the match. A delta inside the 1 % tolerance passed by accident. The match now commits the PO total plus acknowledged amendments. |
+| D11 | `POST /cases` (found by TP.6's matrix) | A customer posting to the case center's route got 403, yet the case was already written and audited. The shared command let the customer through, and only the internal read-back refused. A retry opened duplicates. |
+| D12 | JobWork-only routes (found by TP.6) | The same class as D6: `/ncrs`, `/shipments` (read, pickup, cancel), `/inspections` and `/ncrs/:id/containment` answered a supplier with its own records. D6, D11 and D12 are now closed by one mechanism, `@InternalOnly()`. The session guard enforces it before the handler runs, on every JobWork-only controller. The per-method audience parameters from D6 were removed. |
+| D13 | Customer deviation view (found by TP.6) | It returned the workshop's own lot codes (`LOT-A`), against IN-17's rule that customers see only JobWork's `JW-` markings. It now shows the markings of the stock lots JobWork holds, and none before receiving. |
 
 ## TP.1 Settlement (F-18.1)
 
@@ -89,8 +93,17 @@ Every IN-18 screen is driven at desktop (1280) and phone (390) widths against th
 | Security assessment rerun | `docs/build-plan/security-review-phase2.md`: the doc 11 §16 gates over the IN-13–IN-18 surfaces, findings fixed or recorded. The external penetration test stays an owner item. |
 | Full local gate + nightly | `pnpm -r build && pnpm typecheck && pnpm lint && TZ=Asia/Kolkata pnpm test`, `pnpm --filter @jobwork/e2e e2e`, `pnpm nightly`; counts recorded here |
 
+**Done (2026-10-10).**
+- **Phase 2 exit pilot.** `phase2-exit.api.spec.ts` has 6 tests. One deal runs through sourcing, a quote the customer accepts, a PO and production. A customer-requested change is priced, approved by sales and the customer, released as a new baseline and acknowledged. The quality plan is revised against the new baseline (`PLAN_BASELINE_STALE` until then). A failed first article becomes an NCR: contained, reworked, passed on reinspection, and closed on a verified corrective action. Both lots are released, shipped and received in full. The change invoice and the balance are paid, the delivery is accepted, and the bill for the amended PO matches (D10) and is paid. The order is `closed` and the margin is complete.
+- **Restore drill.** It failed correctly, on the one known development row and nothing else: [drills-2026-10-10.md](evidence/drills-2026-10-10.md). The drill now counts the Phase 2 records and checks that the stock ledger stays immutable. It also no longer leaves its API running.
+- **Security assessment.** [security-review-phase2.md](security-review-phase2.md). A source audit and 35 new matrix probes found D11–D13 and three low findings, all fixed. No high or critical finding is open. Finding 9, whether customers see changes they did not propose, is the owner's decision. The external penetration test stays an owner item.
+- **Full local gate.** Build, typecheck and lint are green, and `TZ=Asia/Kolkata pnpm test` ran 915 tests: api 543, ui 171, database 110, worker 39, web-kit 22, portal 21, observability 6, service-auth 3. e2e ran 18 tests, all green, at TP.5.
+- **Nightly.** On GitHub, the scheduled nightly had failed every night since 2026-10-06, but only on its dependency audit: two criticals in tinypool via vitest 3, and highs in source-map-js and sharp. A separate PR, `fix/dependency-audit`, overrides all three. `pnpm audit --audit-level=high` now passes, and the full suite is green with the overrides. Locally, `pnpm nightly` passed the UTC suite, the security suites and the load bursts. Two steps failed only for local reasons. The perf smoke needs `SMOKE_SOURCING_TOTP_SECRET` for the dev sourcing account, and the journeys need Playwright's bundled Chromium, which the CI job installs. Both steps pass on CI.
+
 ## Exit
 
-- [ ] TP.1–TP.4 specs green; D1–D3 fixed.
-- [ ] TP.5 walk done; e2e green.
-- [ ] TP.6 evidence recorded; IN-17 and IN-18 exit checklists ticked; README status board updated.
+- [x] TP.1–TP.4 specs green; D1–D3 fixed (and D4–D6).
+- [x] TP.5 walk done; e2e green (D7–D9).
+- [x] TP.6 evidence recorded (D10–D13); IN-17 and IN-18 exit checklists ticked; README status board updated.
+
+**Test pass closed 2026-10-10** (PRs #57–#63, the dependency fix and TP.6). Owner items carried: UAT on staging with the checklist's scenarios 11–12; finding 9 of the Phase 2 security review; the development file with no bytes; the external penetration test; and the Phase 1 owner items.
