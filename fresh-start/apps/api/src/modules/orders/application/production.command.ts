@@ -652,6 +652,7 @@ export class ProductionCommand {
     const [transmittal, wpId] = await Promise.all([this.production.liveTransmittal(purchaseOrderId), this.production.workPackageIdForPurchaseOrder(purchaseOrderId)]);
     const baseline = transmittal ? await this.production.findBaseline(transmittal.baselineId) : null;
     const wp = wpId ? await this.production.findWorkPackage(wpId) : null;
+    const copies = await this.production.supplierCopiesOf(baseline ? baseline.items.map((i) => i.documentVersionId) : []);
     return {
       purchaseOrderId,
       transmittal:
@@ -663,8 +664,13 @@ export class ProductionCommand {
               manifestHash: transmittal.manifestHash,
               acknowledgmentDueAt: transmittal.acknowledgmentDueAt.toISOString(),
               acknowledgedAt: transmittal.acknowledgedAt ? transmittal.acknowledgedAt.toISOString() : null,
-              // F-FP.4: a baseline's documents are never the supplier's own; it meets them under JobWork's names.
-              items: baseline.items.map((i) => ({ documentVersionId: i.documentVersionId, title: neutralTitle(i.documentVersionId), logicalType: i.logicalType, versionNo: i.versionNo, filename: neutralFilename(i.documentVersionId, i.filename), fileSha256: i.fileSha256, purpose: i.purpose })),
+              // F-FP.4: a baseline's documents are never the supplier's own; it meets them under JobWork's
+              // names, and a customer's file as JobWork's confirmed copy (F-FP.5), the version it was granted.
+              items: baseline.items.map((i) => {
+                const copy = copies.get(i.documentVersionId);
+                const id = copy?.copyVersionId ?? i.documentVersionId;
+                return { documentVersionId: id, title: neutralTitle(id), logicalType: i.logicalType, versionNo: i.versionNo, filename: neutralFilename(id, copy?.filename ?? i.filename), fileSha256: copy?.fileSha256 ?? i.fileSha256, purpose: i.purpose };
+              }),
               aggregateVersion: transmittal.aggregateVersion,
             }
           : null,

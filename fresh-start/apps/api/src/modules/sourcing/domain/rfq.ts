@@ -79,6 +79,13 @@ export class ReleaseBlocked extends DomainError {
   }
 }
 
+/** `FR-305` (F-FP.5): a customer file without a confirmed supplier copy cannot travel. */
+export class SupplierCopyRequired extends DomainError {
+  constructor(detail: string) {
+    super('SUPPLIER_COPY_REQUIRED', 422, 'A customer file needs its supplier copy first', detail);
+  }
+}
+
 /** `FR-408`: a fixed-price offer refused, with the rule it broke. */
 export class OfferRefused extends DomainError {
   constructor(code: string, detail: string, status = 422) {

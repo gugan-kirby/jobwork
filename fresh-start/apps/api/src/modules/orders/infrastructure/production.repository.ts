@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 import type { BaselineCandidate, MilestoneStatus } from '@jobwork/contracts';
 import { DatabaseService } from '../../../platform/database/database.service';
 import { parallelReads } from '../../../platform/database/parallel-reads';
+import { DomainError } from '../../../platform/http/domain-error';
 
 type Queryable = Pool | PoolClient;
 
@@ -338,9 +339,15 @@ export class ProductionRepository {
       tx,
     );
     if (live) await this.supersedeTransmittal(live.id, transmittalId, tx);
+    // `FR-305` (F-FP.5): a customer's own file reaches the supplier only as JobWork's confirmed copy.
+    const targets = await this.supplierGrantTargets(input.baseline.items.map((i) => i.documentVersionId), tx);
+    const uncopied = [...targets.values()].filter((t) => t === null).length;
+    if (uncopied > 0) {
+      throw new DomainError('SUPPLIER_COPY_REQUIRED', 422, 'A customer file needs its supplier copy first', `${uncopied} customer file${uncopied === 1 ? ' has' : 's have'} no confirmed supplier copy. Prepare and confirm ${uncopied === 1 ? 'it' : 'them'} before the baseline goes to the supplier.`);
+    }
     let grants = 0;
     for (const item of input.baseline.items) {
-      if (await this.grantVersion({ documentVersionId: item.documentVersionId, organizationId: input.supplierOrganizationId, grantedBy: input.issuedBy }, tx)) grants += 1;
+      if (await this.grantVersion({ documentVersionId: targets.get(item.documentVersionId)!, organizationId: input.supplierOrganizationId, grantedBy: input.issuedBy }, tx)) grants += 1;
     }
     await this.markPurchaseOrderBaselineReleased(input.purchaseOrderId, tx);
     return { transmittalId, number, grants, supersedes: live?.id ?? null };
@@ -351,11 +358,14 @@ export class ProductionRepository {
    * manufacture from it. Evidence rows that referenced it keep referencing it.
    */
   async revokeStaleGrants(input: { organizationId: string; oldBaselineId: string; keepVersionIds: string[]; by: string }, tx: Queryable): Promise<number> {
+    // A version and its supplier copy are one file to the supplier: both are dropped or kept together.
     const res = await tx.query(
       `UPDATE dms.audience_grant SET revoked_at = now(), revoked_by = $4
         WHERE organization_id = $1 AND revoked_at IS NULL
-          AND document_version_id IN (SELECT document_version_id FROM dms.baseline_item WHERE baseline_id = $2)
-          AND NOT (document_version_id = ANY($3::uuid[]))`,
+          AND document_version_id IN (SELECT i.document_version_id FROM dms.baseline_item i WHERE i.baseline_id = $2
+                                      UNION SELECT c.copy_version_id FROM dms.supplier_copy c JOIN dms.baseline_item i ON i.document_version_id = c.source_version_id WHERE i.baseline_id = $2)
+          AND NOT (document_version_id = ANY($3::uuid[])
+                   OR document_version_id IN (SELECT copy_version_id FROM dms.supplier_copy WHERE source_version_id = ANY($3::uuid[])))`,
       [input.organizationId, input.oldBaselineId, input.keepVersionIds, input.by],
     );
     return res.rowCount ?? 0;
@@ -427,6 +437,34 @@ export class ProductionRepository {
   }
 
   /** BR-ENG-02: access to an exact version, for one organization, recorded as a grant. */
+  /**
+   * What a supplier is granted for each version: itself when JobWork or the supplier owns it, its
+   * confirmed supplier copy when it is the customer's, and null when that copy is missing.
+   */
+  async supplierGrantTargets(versionIds: readonly string[], tx?: Queryable): Promise<Map<string, string | null>> {
+    if (versionIds.length === 0) return new Map();
+    const res = await this.q(tx).query<{ id: string; type: string; copy: string | null }>(
+      `SELECT v.id, o.type, c.copy_version_id AS copy
+         FROM dms.document_version v JOIN dms.document d ON d.id = v.document_id JOIN iam.organization o ON o.id = d.owning_organization_id
+         LEFT JOIN dms.supplier_copy c ON c.source_version_id = v.id AND c.confirmed_at IS NOT NULL
+        WHERE v.id = ANY($1::uuid[])`,
+      [versionIds],
+    );
+    return new Map(res.rows.map((r) => [r.id, r.type === 'customer' ? r.copy : r.id]));
+  }
+
+  /** The supplier's view of baseline files: each customer file replaced by its confirmed copy. */
+  async supplierCopiesOf(versionIds: readonly string[], tx?: Queryable): Promise<Map<string, { copyVersionId: string; filename: string; fileSha256: string }>> {
+    if (versionIds.length === 0) return new Map();
+    const res = await this.q(tx).query<{ source: string; copy: string; filename: string; sha256: string }>(
+      `SELECT c.source_version_id AS source, c.copy_version_id AS copy, v.original_filename AS filename, f.sha256
+         FROM dms.supplier_copy c JOIN dms.document_version v ON v.id = c.copy_version_id JOIN dms.file_object f ON f.id = v.file_object_id
+        WHERE c.source_version_id = ANY($1::uuid[]) AND c.confirmed_at IS NOT NULL`,
+      [versionIds],
+    );
+    return new Map(res.rows.map((r) => [r.source, { copyVersionId: r.copy, filename: r.filename, fileSha256: r.sha256 }]));
+  }
+
   async grantVersion(input: { documentVersionId: string; organizationId: string; grantedBy: string }, tx: Queryable): Promise<boolean> {
     const existing = await tx.query(
       `SELECT 1 FROM dms.audience_grant WHERE document_version_id = $1 AND organization_id = $2 AND revoked_at IS NULL`,
