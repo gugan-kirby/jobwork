@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type Body, ok, Pilot } from './pilot/driver';
 
@@ -163,6 +164,39 @@ describe('fixed-price path (F-FP)', () => {
       const po = ok(await p.as.supplierA.get(`/api/v1/supplier/purchase-orders/${pos[0]!['purchaseOrderId']}`), 200, 'supplier PO');
       expect(((po['lines'] as Body[])[0]!)['unitPriceMinor']).toBe(11_000);
       p.expectNothingOf(po, ['14000', '140.00', '13000', 'Kovai'], 'supplier PO');
+    });
+  });
+
+  describe('F-FP.4 neutral names for suppliers', () => {
+    it('shows a supplier JobWork’s name for the customer’s drawing everywhere, and the owner its own', async () => {
+      // The customer uploads its drawing under a name and title that say who it is.
+      const doc = await p.one<{ id: string }>(`INSERT INTO dms.document (owning_organization_id, logical_type, title) VALUES ($1, 'drawing_2d', 'Kovai Pumps bracket') RETURNING id`, [p.orgs.customer]);
+      const file = await p.one<{ id: string }>(
+        `INSERT INTO dms.file_object (storage_key, byte_size, declared_media_type, sha256, scan_state, owning_organization_id) VALUES ($1, 2048, 'application/pdf', $2, 'clean', $3) RETURNING id`,
+        [`clean/${randomBytes(8).toString('hex')}`, randomBytes(32).toString('hex'), p.orgs.customer],
+      );
+      const version = await p.one<{ id: string }>(`INSERT INTO dms.document_version (document_id, version_no, file_object_id, original_filename, status, created_by) VALUES ($1, 1, $2, 'KovaiPumps_bracket_rev2.pdf', 'available', gen_random_uuid()) RETURNING id`, [doc.id, file.id]);
+      await p.pg.query(`UPDATE dms.document SET current_version_no = 1 WHERE id = $1`, [doc.id]);
+      const neutral = `JW-DOC-${version.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+      p.drawingVersionId = version.id;
+
+      const deal = await p.sourceToPurchaseOrder((await p.approvedEnquiry()).enquiryId);
+      const round = ok(await p.as.supplierA.get(`/api/v1/supplier/rfqs/${deal.rfqId}`), 200, 'supplier round');
+      expect((round['documents'] as Body[]).map((d) => d['filename'])).toEqual([`${neutral}.pdf`]);
+      p.expectNothingOf(round, ['Kovai', 'KovaiPumps'], 'supplier round documents');
+
+      const supplierDownload = ok(await p.as.supplierA.get(`/api/v1/documents/versions/${version.id}/download`), 200, 'supplier download');
+      expect(supplierDownload['filename']).toBe(`${neutral}.pdf`);
+      expect(decodeURIComponent(supplierDownload['url'] as string)).not.toContain('KovaiPumps');
+      expect(ok(await p.as.buyer.get(`/api/v1/documents/versions/${version.id}/download`), 200, 'owner download')['filename']).toBe('KovaiPumps_bracket_rev2.pdf');
+
+      await p.intoProduction(deal);
+      const production = await p.supplierProduction('supplierA', deal.purchaseOrderId);
+      expect(((production['transmittal'] as Body)['items'] as Body[])[0]).toMatchObject({ title: neutral, filename: `${neutral}.pdf` });
+      p.expectNothingOf(production, ['Kovai', 'KovaiPumps'], 'supplier transmittal');
+      // JobWork still sees the customer's own name for it.
+      const internal = ok(await p.as.engineering.get(`/api/v1/sales-orders/${deal.orderId}/production`), 200, 'internal production');
+      expect(JSON.stringify(internal)).toContain('KovaiPumps_bracket_rev2.pdf');
     });
   });
 });

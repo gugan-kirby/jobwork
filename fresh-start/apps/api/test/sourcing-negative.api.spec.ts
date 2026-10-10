@@ -362,10 +362,10 @@ describe('Sourcing cross-party isolation (F-06.7, doc 03 §7)', () => {
       'roundNo',
       'status',
     ]);
-    // The released filename is the supplier's only view of the document, and it is the
-    // file's own name — it carries no customer identity either.
+    // The released filename is the supplier's only view of the document, and it is JobWork's
+    // name for the version, never the name the customer uploaded it under (F-FP.4).
     const documents = view.body['documents'] as Array<Record<string, unknown>>;
-    expect(documents[0]!['filename']).toBe('bracket.pdf');
+    expect(documents[0]!['filename']).toMatch(/^JW-DOC-[0-9A-F]{8}\.pdf$/);
   });
 
   it('keeps every bid away from the customer', async () => {
