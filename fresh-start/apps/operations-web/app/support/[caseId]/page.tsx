@@ -87,6 +87,9 @@ export default function CasePage(): React.JSX.Element {
   const closed = ['closed', 'rejected', 'withdrawn'].includes(c.status);
   // A recovery holds the supplier's settlement through the case's purchase order, so a case without one names it.
   const needsPurchaseOrder = !c.purchaseOrderId && drafts.some((d) => d.kind === 'supplier_recovery');
+  // Close needs every action verified or cancelled; cancelling, only while the agreed resolution is carried out.
+  const unverified = c.actions.some((a) => a.status === 'planned' || a.status === 'done');
+  const carryingOut = ['resolution_approved', 'executing'].includes(c.status);
   const execOf = (id: string): Exec => exec[id] ?? { invoiceId: invoices[0]?.invoiceId ?? '', reference: '', note: '', challanNumber: '', from: 'quarantine' };
 
   return (
@@ -121,7 +124,14 @@ export default function CasePage(): React.JSX.Element {
             {c.status === 'verifying' ? (
               <Inline gap={2}>
                 <TextInput label="Closing note to the customer" value={reason} onChange={(e) => setReason(e.target.value)} />
-                <CommandButton receiptLabel="Closed" disabled={reason.length < 3} disabledReason="Write a closing note" onCommand={() => act(`/cases/${c.caseId}/close`, { ...v, reason })}>Close the case</CommandButton>
+                <CommandButton
+                  receiptLabel="Closed"
+                  disabled={unverified || reason.length < 3}
+                  disabledReason={unverified ? 'Every action must be verified or cancelled first' : 'Write a closing note'}
+                  onCommand={() => act(`/cases/${c.caseId}/close`, { ...v, reason })}
+                >
+                  Close the case
+                </CommandButton>
               </Inline>
             ) : null}
           </Stack>
@@ -185,7 +195,7 @@ export default function CasePage(): React.JSX.Element {
               {c.actions.map((a) => {
                 const e = execOf(a.actionId);
                 const set = (patch: Partial<Exec>): void => setExec({ ...exec, [a.actionId]: { ...e, ...patch } });
-                const ready = ['resolution_approved', 'executing'].includes(c.status) && a.status === 'planned';
+                const ready = carryingOut && a.status === 'planned';
                 return (
                   <Stack key={a.actionId} gap={2}>
                     <Inline gap={2}>
@@ -212,7 +222,7 @@ export default function CasePage(): React.JSX.Element {
                         <CommandButton variant="ghost" receiptLabel="Cancelled" disabled={(verifyNote[a.actionId] ?? '').length < 3} disabledReason="Say why in the note beside Verify" onCommand={() => act(`/case-actions/${a.actionId}/cancel`, { note: verifyNote[a.actionId] ?? '' })}>Cancel</CommandButton>
                       </Inline>
                     ) : null}
-                    {a.status === 'done' || a.status === 'planned' ? (
+                    {(a.status === 'done' && !closed) || (a.status === 'planned' && carryingOut) ? (
                       <Inline gap={2}>
                         <TextInput label={a.status === 'done' ? 'Verification note' : 'Reason to cancel'} value={verifyNote[a.actionId] ?? ''} onChange={(ev) => setVerifyNote({ ...verifyNote, [a.actionId]: ev.target.value })} />
                         {a.status === 'done' ? (
