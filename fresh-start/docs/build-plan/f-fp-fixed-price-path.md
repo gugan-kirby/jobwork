@@ -141,4 +141,25 @@ Each functionality's tests above, plus the full suite green before the next star
 - **F-FP.1, where the customer sees the target.** A submitted enquiry's customer detail is a summary with no item lines (`enquiry-projection.ts`). So the customer sees its target in the wizard, on the review step and in a draft. JobWork sees it on every intake item. Item lines on the submitted detail are a separate customer-flow change.
 - **F-FP.1, the snapshot.** The target enters the hashed requirement only when stated, so every requirement frozen before `FR-308` keeps its content hash.
 
+- **F-FP.2, migration.** The fixed round is `0030_fixed_price_round.sql`. Beside the columns, the database guards the rule:
+  - a fixed round's every line carries an offer, and a bid round's none;
+  - an offer never changes once written;
+  - a bid line on an offered item is exactly the offered price with no setup charge.
+- **F-FP.2, decline reason.** A price decline uses the existing `commercial` decline code, so no new `price` code was added.
+- **F-FP.2, the offer's quantity.** The acceptance is written at each item's first quantity breakpoint, and an offer prices that one quantity.
+- **F-FP.2, single source.** A fixed round ends with exactly one bid, so its award meets the existing single-source rule: a fallback note, decided by a second sourcing lead (doc 19 §4). This was kept on purpose rather than bypassed.
+- **F-FP.2, no award change.** The award, cost sheet, quote, order and PO needed no code change, so `award.command.ts` was not edited. Prefilling the award belongs to the screens (F-FP.6).
+
+**F-FP.2 done (2026-10-10).**
+- **Create.** `POST /rfqs` takes `pricingMode: 'fixed'` with `offer { paymentTerms, lines[{lineNo, unitPriceMinor}] }` (`OFFER_LINES` unless there is one price per line).
+- **Supplier view.** It shows `pricingMode`, `offerPaymentTerms` and each item's `offeredUnitPriceMinor`. `bid/submit` and `bid/draft` refuse a fixed round (`FIXED_PRICE_ROUND`).
+- **Accept.** `POST /supplier/rfqs/:id/offer/accept {leadTimeDays, validityUntil, note}` locks the round and writes the bid version at the offer, through the same `appendVersion` as `submit`. It then closes the round for evaluation and marks the other open invitations `offer_taken`. A second acceptance gets `OFFER_TAKEN` (409).
+- **Tests.** `fixed-price.api.spec.ts` gains 5 tests:
+  - creation rules, and the immutable offer;
+  - the supplier sees the offer and nothing of the customer, and a free price is refused;
+  - a decline on price, and an acceptance at exactly the offer, with any price in the body ignored;
+  - two simultaneous accepts give exactly one winner;
+  - award, quote, acceptance and a PO at the offered price, again with nothing of the customer.
+- **Other specs.** The matrix refuses the accept to the other supplier and to customers, and the supplier-view field allowlist gains the two fields.
+
 **F-FP.1 done (2026-10-10).** Migration 0029 adds `enquiry.currency` and `enquiry_item.target_unit_price_minor`. The contracts, repository and snapshot carry them. The portal's "Your target price per unit (optional)" field appears on the review step, and the intake page shows "Customer's target price · JobWork only". `fixed-price.api.spec.ts` has 3 tests: the target is stored, frozen and shown to JobWork; a negative or fractional value is refused; an enquiry without a target keeps its hash; a supplier's round carries no trace of the target.
