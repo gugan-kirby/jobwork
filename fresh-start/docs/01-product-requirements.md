@@ -74,9 +74,10 @@ Requirement identifiers are stable references for design and testing.
 - `FR-302`: Drafts autosave; submission validates category-dependent mandatory fields.
 - `FR-303`: Operations can request structured clarification without changing the submitted requirement silently.
 - `FR-304`: An approved enquiry can create multiple sourcing rounds with requirement snapshots.
-- `FR-305`: RFQ release grants only intended suppliers access to sanitized document versions.
+- `FR-305`: RFQ release grants only intended suppliers access to sanitized document versions: a JobWork-prepared supplier copy of each governing drawing, confirmed by a second person, under a neutral filename. A supplier never receives the customer's own file or its original filename. (Made concrete 2026-10-10, F-FP.)
 - `FR-306`: Supplier feasibility, decline reason, assumptions, exclusions, price, lead time, and validity are structured.
 - `FR-307`: Every enquiry declares a job type — `job_work` (process on customer-owned goods, CGST Act s.2(68)), `new_model` (new part, material sourced) or `correction_ecn` (change to a part already enquired/ordered) — and who supplies the material. A correction must carry its change reference and description; a related enquiry, if named, is the customer's own. The job type is part of the frozen requirement revision. (Added 2026-09-30.)
+- `FR-308`: A customer may state a target price per piece for each item. It is part of the frozen requirement revision, visible to the customer and JobWork staff, and never to a supplier. (Added 2026-10-10.)
 
 ### FR-400 Bid, award, and customer quote
 
@@ -87,6 +88,8 @@ Requirement identifiers are stable references for design and testing.
 - `FR-405`: Margin/discount/terms outside policy require approval by a different authorized actor.
 - `FR-406`: A customer receives only JobWork customer-quote versions.
 - `FR-407`: Acceptance binds exact quote bytes/hash, terms version, actor, organization, authority, time, and idempotency key.
+- `FR-408`: A sourcing round is either bid (suppliers price it) or fixed-price (JobWork sets the supplier price per item). A supplier accepts a fixed offer as offered or declines it with a reason. Acceptance is a supplier commitment at exactly the offered price. The first acceptance takes the offer. (Added 2026-10-10.)
+- `FR-409`: JobWork may set the customer price per line directly instead of a target margin. The margin is computed from the landed cost, and the margin policy and approvals apply unchanged. (Added 2026-10-10.)
 
 ### FR-500 Contract, order, and production
 

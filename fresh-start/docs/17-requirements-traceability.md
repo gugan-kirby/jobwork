@@ -67,6 +67,7 @@ Beyond `FR`/`NFR`/`BR`, later baseline documents mint their own testable rule fa
 | Scenario | Requirements/rules proven |
 |---|---|
 | Two suppliers quote; customer gets one JobWork quote | `FR-300/400`, `BR-COM-01`–`10`, identity boundary |
+| Customer names a target; JobWork offers a fixed supplier price and sets the customer price; the supplier sees neither the customer nor its prices | `FR-305`, `FR-308`, `FR-408`, `FR-409`, `BR-COM-05`, identity boundary; pilot scenario 13 (F-FP) |
 | Accepted quote concurrently expires/supersedes | `FR-407`, `BR-SYS-03/04`, quote state/DB uniqueness |
 | New drawing arrives after production starts | `FR-600`, `BR-ENG-03`–`07`, change workflow |
 | Failed measurement accepted under scoped deviation | `FR-700`, `BR-QLT-01`–`06`, authority/quality evidence |
