@@ -9,6 +9,7 @@ import {
   ChoiceCards,
   CommandButton,
   Inline,
+  MoneyInput,
   Select,
   Stack,
   TextArea,
@@ -342,6 +343,15 @@ export function DetailsStage({
                 }}
               />
             </div>
+
+            <MoneyInput
+              label="Your target price per unit (optional)"
+              hint="What you hope to pay for one piece. JobWork uses it to price your quote; manufacturers never see it."
+              currency="INR"
+              value={item.targetUnitPriceMinor !== undefined ? { amountMinor: item.targetUnitPriceMinor, currency: 'INR' } : null}
+              error={issueFor(`${at}.targetUnitPriceMinor`)}
+              onChange={(value) => editItem(item.lineNo, { targetUnitPriceMinor: value?.amountMinor })}
+            />
 
             <details>
               <summary style={{ cursor: 'pointer', font: 'var(--text-caption)', color: 'var(--color-action)' }}>
