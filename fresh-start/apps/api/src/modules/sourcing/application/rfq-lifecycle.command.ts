@@ -18,6 +18,7 @@ import {
   closeReadiness,
   closingStatus,
   InvitationNotFound,
+  OfferRefused,
   ReleaseBlocked,
   RfqNotFound,
   SupplierNotEligible,
@@ -92,23 +93,35 @@ export class RfqLifecycleCommand {
               deadlineAt: new Date(cmd.deadlineAt),
               lateBidPolicy: cmd.lateBidPolicy,
               instructions: cmd.instructions,
+              pricingMode: cmd.pricingMode,
+              offerPaymentTerms: cmd.offer?.paymentTerms ?? null,
               createdBy: actor.userId,
             },
             tx,
           );
+          // `FR-408`: a fixed round offers JobWork's price on every line, and only on its lines.
+          const offered = new Map((cmd.offer?.lines ?? []).map((l) => [l.lineNo, l.unitPriceMinor]));
+          if (cmd.offer) {
+            const lines = new Set(enquiry.items.map((_item, n) => n + 1));
+            if (offered.size !== cmd.offer.lines.length || offered.size !== lines.size || [...offered.keys()].some((n) => !lines.has(n))) {
+              throw new OfferRefused('OFFER_LINES', 'A fixed-price round offers one price for each line of the requirement, and no other.');
+            }
+          }
 
           // The lines are frozen from the requirement revision, not read live from the
           // enquiry: a round quotes what it quoted (`FR-304`).
           let lineNo = 1;
           for (const item of enquiry.items) {
+            const line = lineNo++;
             await this.rfqs.addItem(
               {
                 rfqId,
                 enquiryItemId: item.enquiryItemId,
-                lineNo: lineNo++,
+                lineNo: line,
                 partName: item.partName,
                 description: item.description,
                 quantityBreakpoints: item.quantityBreakpoints,
+                offeredUnitPriceMinor: offered.get(line) ?? null,
                 specification: {
                   materialGrade: item.materialGrade ?? null,
                   toleranceClass: item.toleranceClass ?? null,
@@ -133,6 +146,9 @@ export class RfqLifecycleCommand {
                   roundNo,
                   requirementId: requirement.id,
                   deadlineAt: cmd.deadlineAt,
+                  pricingMode: cmd.pricingMode,
+                  // The offered prices are internal-audience data; the audit trail is internal.
+                  ...(cmd.offer ? { offer: cmd.offer.lines } : {}),
                 },
               },
             ],
