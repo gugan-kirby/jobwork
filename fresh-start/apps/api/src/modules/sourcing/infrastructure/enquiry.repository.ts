@@ -41,6 +41,7 @@ interface EnquiryRow {
   required_by_date: string | null;
   partial_delivery: 'allowed' | 'not_allowed';
   packaging_note: string;
+  currency: string;
   submitted_revision_no: number | null;
   current_revision_no: number | null;
   aggregate_version: number;
@@ -71,6 +72,7 @@ interface ItemRow {
   quality_note: string;
   target_date: string | null;
   delivery_site_id: string | null;
+  target_unit_price_minor: string | null;
 }
 
 interface DocumentRow {
@@ -174,8 +176,9 @@ export class EnquiryRepository {
            (enquiry_id, line_no, part_name, part_number, description, process_capability_id,
             material_capability_id, material_grade, material_source_restriction,
             quantity_breakpoints, tolerance_class, critical_tolerance, surface_finish,
-            heat_treatment, coating, inspection_level, quality_note, target_date, delivery_site_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13,$14,$15,$16,$17,$18,$19)
+            heat_treatment, coating, inspection_level, quality_note, target_date, delivery_site_id,
+            target_unit_price_minor)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13,$14,$15,$16,$17,$18,$19,$20)
          RETURNING id`,
         [
           enquiryId,
@@ -197,6 +200,7 @@ export class EnquiryRepository {
           item.qualityNote,
           item.targetDate ?? null,
           item.deliverySiteId ?? null,
+          item.targetUnitPriceMinor ?? null,
         ],
       );
       itemIdByLine.set(item.lineNo, res.rows[0]!.id);
@@ -285,6 +289,7 @@ export class EnquiryRepository {
       requiredByDate: row.required_by_date,
       partialDelivery: row.partial_delivery,
       packagingNote: row.packaging_note,
+      currency: row.currency,
       submittedRevisionNo: row.submitted_revision_no,
       currentRevisionNo: row.current_revision_no,
       aggregateVersion: row.aggregate_version,
@@ -320,6 +325,7 @@ export class EnquiryRepository {
           qualityNote: item.quality_note,
           ...(item.target_date ? { targetDate: item.target_date } : {}),
           ...(item.delivery_site_id ? { deliverySiteId: item.delivery_site_id } : {}),
+          ...(item.target_unit_price_minor !== null ? { targetUnitPriceMinor: Number(item.target_unit_price_minor) } : {}),
         }),
       ),
       documents: documents.rows.map(
