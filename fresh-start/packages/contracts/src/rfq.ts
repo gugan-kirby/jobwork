@@ -33,7 +33,12 @@ export const invitationStatusSchema = z.enum([
   'declined',
   'no_response',
   'revoked',
+  /** A fixed-price round another supplier accepted first (FR-408). */
+  'offer_taken',
 ]);
+
+/** `FR-408`: suppliers price a `bid` round; JobWork sets the price of a `fixed` one. */
+export const pricingModeSchema = z.enum(['bid', 'fixed']);
 
 export const bidVersionStatusSchema = z.enum([
   'submitted',
@@ -84,11 +89,28 @@ export const matchResultSchema = z.object({
 
 // ------------------------------------------------------------------ RFQ (internal)
 
-export const createRfqRequestSchema = z.object({
-  enquiryId: z.uuid(),
-  deadlineAt: z.iso.datetime(),
-  lateBidPolicy: lateBidPolicySchema.default('reject'),
-  instructions: z.string().trim().max(4000).default(''),
+export const createRfqRequestSchema = z
+  .object({
+    enquiryId: z.uuid(),
+    deadlineAt: z.iso.datetime(),
+    lateBidPolicy: lateBidPolicySchema.default('reject'),
+    instructions: z.string().trim().max(4000).default(''),
+    pricingMode: pricingModeSchema.default('bid'),
+    /** A fixed round only: JobWork's price per unit for every line, ex GST, and the terms it is offered on. */
+    offer: z
+      .object({
+        paymentTerms: z.string().trim().min(3).max(500),
+        lines: z.array(z.object({ lineNo: z.number().int().positive(), unitPriceMinor: z.number().int().positive().max(1_000_000_000_000) })).min(1).max(50),
+      })
+      .optional(),
+  })
+  .refine((r) => (r.pricingMode === 'fixed') === (r.offer !== undefined), { message: 'A fixed-price round carries an offer, and a bid round none.', path: ['offer'] });
+
+/** `FR-408`: a supplier accepts JobWork's offer as offered. The price is not an input. */
+export const acceptOfferRequestSchema = z.object({
+  leadTimeDays: z.number().int().positive().max(365),
+  validityUntil: z.iso.date(),
+  note: z.string().trim().max(2000).default(''),
 });
 
 export const inviteSupplierRequestSchema = z.object({
@@ -126,6 +148,8 @@ export const rfqItemSchema = z.object({
     }),
   ),
   specification: z.record(z.string(), z.unknown()),
+  /** JobWork's offered price per unit on a fixed round, ex GST; null on a bid round. */
+  offeredUnitPriceMinor: z.number().int().positive().nullable(),
 });
 
 export const rfqReleaseItemSchema = z.object({
@@ -162,6 +186,8 @@ export const rfqSchema = z.object({
   deadlineAt: z.string().nullable(),
   lateBidPolicy: lateBidPolicySchema,
   instructions: z.string(),
+  pricingMode: pricingModeSchema,
+  offerPaymentTerms: z.string().nullable(),
   aggregateVersion: z.number().int().positive(),
   releasedAt: z.string().nullable(),
   closedAt: z.string().nullable(),
@@ -270,6 +296,8 @@ export const supplierRfqSchema = z.object({
   deadlineAt: z.string().nullable(),
   lateBidPolicy: lateBidPolicySchema,
   instructions: z.string(),
+  pricingMode: pricingModeSchema,
+  offerPaymentTerms: z.string().nullable(),
   invitationStatus: invitationStatusSchema,
   invitedAt: z.string().nullable(),
   acknowledgedAt: z.string().nullable(),
@@ -296,6 +324,8 @@ export const supplierRfqListItemSchema = z.object({
 });
 
 export type RfqStatus = z.infer<typeof rfqStatusSchema>;
+export type PricingMode = z.infer<typeof pricingModeSchema>;
+export type AcceptOfferRequest = z.infer<typeof acceptOfferRequestSchema>;
 export type InvitationStatus = z.infer<typeof invitationStatusSchema>;
 export type BidVersionStatus = z.infer<typeof bidVersionStatusSchema>;
 export type LateBidPolicy = z.infer<typeof lateBidPolicySchema>;
