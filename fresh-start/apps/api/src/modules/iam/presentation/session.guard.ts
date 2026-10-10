@@ -12,8 +12,10 @@ import { IamRepository } from '../infrastructure/iam.repository';
 import { ConfigService } from '../../../platform/config/config.service';
 import {
   ALLOW_MFA_PENDING_KEY,
+  INTERNAL_ONLY_KEY,
   IS_PUBLIC_KEY,
 } from '../../../platform/http/public.decorator';
+import { DomainError } from '../../../platform/http/domain-error';
 import { SERVICE_ONLY_KEY } from '../../../platform/http/service-principal.guard';
 
 /**
@@ -71,6 +73,11 @@ export class SessionGuard implements CanActivate {
     }
 
     const isInternal = await this.repo.hasInternalMembership(session.userId);
+    const internalOnly = this.reflector.getAllAndOverride<boolean>(INTERNAL_ONLY_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (internalOnly && !isInternal) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted', 'JobWork staff only.');
 
     // Sliding idle expiry, write-throttled.
     if (now - session.lastSeenAt.getTime() > LAST_SEEN_WRITE_INTERVAL_MS && !session.mfaPending) {

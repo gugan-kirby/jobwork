@@ -293,8 +293,8 @@ export class SettlementCommand {
           if (!s) throw new SettlementRefused('NO_SETTLEMENT', 'The bill is not matched yet');
           if (s.aggregateVersion !== cmd.expectedVersion) throw new DomainError('VERSION_CONFLICT', 409, 'The settlement moved on', 'Reload it and try again.');
           const eligibility = await this.eligibility(b, b.status, tx);
+          // A refusal rolls back, so it records nothing; `recheck` is the command that records a hold.
           if (!eligibility.pass) {
-            await this.repo.updateSettlement(s.id, { eligibility, status: 'held' }, tx);
             throw new SettlementRefused('SETTLEMENT_HELD', 'Not eligible for payment', eligibility.reasons.join(' '));
           }
           const version = await this.repo.updateSettlement(s.id, { eligibility, status: 'scheduled', scheduledFor: cmd.scheduledFor }, tx);
@@ -321,7 +321,6 @@ export class SettlementCommand {
           if (s.aggregateVersion !== cmd.expectedVersion) throw new DomainError('VERSION_CONFLICT', 409, 'The settlement moved on', 'Reload it and try again.');
           const eligibility = await this.eligibility(b, b.status, tx);
           if (!eligibility.pass) {
-            await this.repo.updateSettlement(s.id, { eligibility, status: 'held' }, tx);
             throw new SettlementRefused('SETTLEMENT_HELD', 'No longer eligible for payment', eligibility.reasons.join(' '));
           }
           const po = (await this.repo.purchaseOrder(b.purchaseOrderId, tx))!;
@@ -357,16 +356,14 @@ export class SettlementCommand {
 
   // ----------------------------------------------------------------- reads
 
-  /** `finance` is the JobWork route: it answers JobWork finance only, never a supplier (deny by default). */
-  async list(actor: Actor, filter: { status?: SupplierBillStatus; purchaseOrderId?: string }, audience: 'supplier' | 'finance' = 'supplier'): Promise<SupplierBill[]> {
-    if (actor.isInternal || audience === 'finance') this.requireFinance(actor);
+  async list(actor: Actor, filter: { status?: SupplierBillStatus; purchaseOrderId?: string }): Promise<SupplierBill[]> {
+    if (actor.isInternal) this.requireFinance(actor);
     else if (actor.organizationType !== 'supplier' || !actor.roles.some((r) => SUPPLIER_BILLERS.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');
     const rows = await this.repo.listBills({ ...filter, ...(actor.isInternal ? {} : { supplierOrganizationId: actor.organizationId! }) });
     return Promise.all(rows.map((b) => this.view(actor, b)));
   }
 
-  async get(actor: Actor, billId: string, audience: 'supplier' | 'finance' = 'supplier'): Promise<SupplierBill> {
-    if (audience === 'finance' && !actor.isInternal) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted', 'Requires jobwork_finance.');
+  async get(actor: Actor, billId: string): Promise<SupplierBill> {
     const b = await this.repo.findBill(billId);
     if (!b || (!actor.isInternal && b.supplierOrganizationId !== actor.organizationId)) throw new DomainError('BILL_NOT_FOUND', 404, 'Bill not found');
     if (actor.isInternal && !actor.roles.some((r) => FINANCE.includes(r))) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted');

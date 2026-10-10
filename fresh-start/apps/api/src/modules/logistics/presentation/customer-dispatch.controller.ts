@@ -21,6 +21,7 @@ import { CustomerDeliveries } from '../application/customer-deliveries';
 import { CustomerDispatchCommand } from '../application/customer-dispatch.command';
 import { LogisticsRepository } from '../infrastructure/logistics.repository';
 import { renderConformityCertificate, renderDeliveryNote, renderShippingLabels, type RenderedDocument } from './customer-documents';
+import { InternalOnly } from '../../../platform/http/public.decorator';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -30,6 +31,7 @@ function idempotencyKey(request: FastifyRequest): string | undefined {
 const opts = (request: FastifyRequest) => ({ idempotencyKey: idempotencyKey(request) });
 
 /** JobWork logistics: plan, confirm, override and release a delivery to the customer (doc 08 `dispatch-to-customer`). */
+@InternalOnly()
 @Controller()
 export class CustomerDispatchController {
   constructor(
