@@ -51,7 +51,10 @@ step "3/7 consistency and migration version"
 src_mig=$(q "$SOURCE_DB" "select count(*) || ' ' || max(name) from schema_migrations")
 dst_mig=$(q "$TARGET_DB" "select count(*) || ' ' || max(name) from schema_migrations")
 [ "$src_mig" = "$dst_mig" ] && pass "migrations match: $dst_mig" || fail "migrations differ: $src_mig vs $dst_mig"
-for table in sourcing.enquiry sourcing.rfq sourcing.supplier_bid_version commercial.customer_quote orders.sales_order orders.purchase_order finance.invoice dms.file_object platform.audit_event platform.outbox_event; do
+# Phase 1 records, then Phase 2's (TP.6): change, quality, both logistics legs, settlement, support.
+for table in sourcing.enquiry sourcing.rfq sourcing.supplier_bid_version commercial.customer_quote orders.sales_order orders.purchase_order finance.invoice dms.file_object platform.audit_event platform.outbox_event \
+             change.change_request quality.inspection quality.ncr quality.deviation logistics.shipment logistics.stock_movement \
+             finance.journal_line finance.supplier_bill finance.settlement finance.credit_note support.case support.resolution_action; do
   a=$(q "$SOURCE_DB" "select count(*) from $table"); b=$(q "$TARGET_DB" "select count(*) from $table")
   [ "$a" = "$b" ] && pass "$table: $b rows" || fail "$table: $a in source, $b restored"
 done
@@ -62,6 +65,15 @@ if [ -n "$bid" ]; then
     fail "immutability trigger missing on restored bids"
   else
     pass "restored bids are still immutable"
+  fi
+fi
+# And the stock ledger: a restored movement still refuses an edit.
+movement=$(q "$TARGET_DB" "select id from logistics.stock_movement limit 1")
+if [ -n "$movement" ]; then
+  if psql -X -q -d "$TARGET_DB" -c "update logistics.stock_movement set quantity = quantity + 1 where id = '$movement'" >/dev/null 2>&1; then
+    fail "immutability trigger missing on restored stock movements"
+  else
+    pass "restored stock movements are still immutable"
   fi
 fi
 
