@@ -3,4 +3,5 @@ export { DmsModule } from './dms.module';
 export { ObjectStore, ObjectStoreUnavailable, type StoreBucket } from './infrastructure/object-store';
 export { DmsRepository } from './infrastructure/dms.repository';
 export { assertUploadAllowed } from './domain/upload-policy';
+export { neutralFilename, neutralTitle } from './domain/neutral-name';
 export { DocumentRevisionHooks, type DocumentRevisionHook, type DocumentRevisionInput } from './application/document-revision-hooks';

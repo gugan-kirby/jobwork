@@ -152,6 +152,13 @@ Each functionality's tests above, plus the full suite green before the next star
 
 - **F-FP.3, no migration.** A cost sheet version stores its figures, never the target margin, so the explicit customer price needed no schema change. `computeCostSheet` takes `pricing`: either `{ targetMarginBp }` or `{ unitSellByLine }`.
 
+- **F-FP.4, the name.** A neutral name is `JW-DOC-<8 hex of the version id>.<ext>` rather than `<RFQ reference>-<role>-<n>`. A file then has one name everywhere a supplier meets it (round, transmittal, download), including outside any round. Titles are covered too: an upload's default title is its filename (`titleFrom`), so the supplier transmittal shows `JW-DOC-…` as the title.
+
+**F-FP.4 done (2026-10-10).**
+- **The helper.** `dms/domain/neutral-name.ts` provides `neutralTitle` and `neutralFilename`, exported from the DMS module.
+- **Where it applies.** A download by someone outside JobWork who does not own the file gets the neutral name, both in the response and in the signed URL's disposition. The supplier RFQ view lists release documents under it, and the supplier transmittal names baseline documents by it. The owner and JobWork keep the original name.
+- **Tests.** `fixed-price.api.spec.ts` gains one: a drawing named `KovaiPumps_bracket_rev2.pdf` and titled "Kovai Pumps bracket" reaches the supplier as `JW-DOC-….pdf` in the round, the download and the transmittal, while the customer and JobWork still see the original. The `sourcing-negative` filename assertion now expects the neutral name.
+
 **F-FP.3 done (2026-10-10).**
 - **Request.** `POST /awards/:id/cost-sheet` takes either `targetMarginBp` or `sellLines[{lineNo, unitSellMinor}]`, never both (400). Missing or extra lines get `SELL_LINES_MISMATCH`.
 - **Figures.** Each line is the given price times its quantity, and the margin follows. The margin floor and the approvals are unchanged: under the floor, finance decides.
