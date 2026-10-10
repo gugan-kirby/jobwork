@@ -8,6 +8,7 @@ import { contextFromActor, type AuditSpec, type CommandContext, type OutboxSpec 
 import { CommandExecutor } from '../../../platform/commands/execute';
 import { OutboxWriter } from '../../../platform/commands/outbox.writer';
 import { DomainError } from '../../../platform/http/domain-error';
+import { customerLotMarking } from '../../logistics/domain/lot-marking';
 import { QualityRefused } from '../domain/inspection';
 import { assertNcrTransition } from '../domain/ncr';
 import { Rational } from '../domain/rational';
@@ -343,7 +344,8 @@ export class DeviationCommand implements OnModuleInit {
         actual: defects.filter((x) => x.characteristicId === c.id).map((x) => ({ sampleNo: x.sampleNo, value: x.originalValue, unit: x.originalUnit })),
       })),
       quantity: d.quantity,
-      lots: d.lots,
+      // The workshop's lot codes never reach the customer (D13): JobWork's markings once the lots are in its stock.
+      lots: (await this.repo.stockLotsFor(d.ncrId, d.lots)).map(customerLotMarking),
       serials: d.serials,
       expiresAt: d.expiresAt.toISOString(),
       rationale: d.rationale,

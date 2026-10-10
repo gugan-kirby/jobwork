@@ -488,6 +488,16 @@ export class NcrRepository {
     return res.rows[0]!.aggregate_version;
   }
 
+  /** JobWork's stock lots received for these supplier lot codes of the NCR's work package (none before receiving). */
+  async stockLotsFor(ncrId: string, lotCodes: readonly string[], tx?: Queryable): Promise<string[]> {
+    if (lotCodes.length === 0) return [];
+    const res = await this.q(tx).query<{ id: string }>(
+      `SELECT t.id FROM logistics.stock_lot t JOIN quality.ncr n ON n.work_package_id = t.work_package_id WHERE n.id = $1 AND t.lot_code = ANY($2::text[]) ORDER BY t.created_at, t.id`,
+      [ncrId, lotCodes],
+    );
+    return res.rows.map((r) => r.id);
+  }
+
   async deviationCustomerDecision(deviationId: string, tx?: Queryable): Promise<{ decision: 'approved' | 'rejected'; reason: string; decidedAt: Date } | null> {
     const res = await this.q(tx).query<{ decision: 'approved' | 'rejected'; reason: string; decidedAt: Date }>(
       `SELECT decision, reason, decided_at AS "decidedAt" FROM quality.deviation_customer_decision WHERE deviation_id = $1`,
