@@ -89,6 +89,8 @@ export const enquiryItemInputSchema = z.object({
   qualityNote: z.string().trim().max(2000).default(''),
   targetDate: z.iso.date().optional(),
   deliverySiteId: z.uuid().optional(),
+  /** `FR-308`: what the customer hopes to pay per unit, minor units of the enquiry's currency. Never shown to a supplier. */
+  targetUnitPriceMinor: z.number().int().nonnegative().max(1_000_000_000_000).optional(),
 });
 
 export const enquiryDocumentInputSchema = z.object({
@@ -242,6 +244,8 @@ export const enquirySchema = z.object({
   requiredByDate: z.string().nullable(),
   partialDelivery: partialDeliverySchema,
   packagingNote: z.string(),
+  /** The currency of the customer's target prices. */
+  currency: z.string().length(3),
   submittedRevisionNo: z.number().int().positive().nullable(),
   currentRevisionNo: z.number().int().positive().nullable(),
   aggregateVersion: z.number().int().positive(),
