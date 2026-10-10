@@ -15,6 +15,7 @@ import {
   DataTable,
   DescriptionList,
   ErrorState,
+  formatMoney,
   Inline,
   LoadingState,
   Page,
@@ -245,6 +246,11 @@ export default function IntakeDetailPage() {
                           numeric: true,
                         },
                         { label: 'Inspection', value: item.inspectionLevel.replace(/_/g, ' ') },
+                        {
+                          label: 'Customer’s target price',
+                          value: item.targetUnitPriceMinor !== undefined ? `${formatMoney({ amountMinor: item.targetUnitPriceMinor, currency: enquiry.currency })} per unit · JobWork only` : '—',
+                          numeric: item.targetUnitPriceMinor !== undefined,
+                        },
                       ]}
                     />
                   </div>
