@@ -15,6 +15,7 @@ Scope source: the deferred items recorded in [IN-17](in-17-dispatch-delivery.md)
 | D3 | `CaseCommand.propose` and `SettlementRepository.holdingCases` | A `supplier_recovery` action on a case with no purchase order (every customer-opened case) books a recovery that holds no settlement. The rule says a recovery holds the supplier's settlement. The case must name the purchase order before a recovery is proposed. |
 | D4 | `support.resolution_action` (found by TP.1) | Nothing stopped a done or verified action from being reopened, edited or deleted, so a verified credit note could be set back to planned and carried out twice. Migration 0028 adds a forward-only trigger: planned → done → verified, or planned → cancelled. Only planned actions may be deleted, which a replacing proposal does. |
 | D5 | `@jobwork/contracts` settlement and support `quantity` (found by TP.1) | `'0'` passed validation, then failed the database's `quantity > 0` check with a 500. The schema now refuses it with a 400. |
+| D6 | `FinanceBillsController` (found by TP.4) | The JobWork finance routes `GET /supplier-bills` and `/supplier-bills/:id` answered a supplier with its own bills, because they shared the supplier route's scoping. Nothing leaked, since the view was the supplier projection, but an internal route must refuse anyone outside JobWork (deny by default). They now require JobWork finance. |
 
 ## TP.1 Settlement (F-18.1)
 
@@ -53,6 +54,11 @@ The pilot driver gains `dispatchToCustomer`, `proofOfDelivery`, `stockLots`, `ma
 | `apps/api/test/pilot/scenario-11-delivery-exception.api.spec.ts` | new | F-17.6 delivery half (IN-17 plan steps 1–5) and the IN-18 half: the held exception becomes a case, ending in a return, credit note or refund, and supplier recovery, with every action verified and the case closed. The supplier bill is then matched and paid, and the order is `closed`. |
 | `apps/api/test/pilot/scenario-12-suspension-cross-party.api.spec.ts` | edit | Phase 2 surfaces: a suspended user cannot bill or open a case; a supplier cannot reach cases, margin or another supplier's bills; a customer cannot reach bills or another customer's cases |
 | `docs/build-plan/uat-checklist.md` | edit | UAT 11.x (delivery and case, per role), 12.x additions |
+
+**Done (2026-10-10).** `scenario-11-delivery-exception.api.spec.ts` has 7 tests, and scenario 12 gains 2 (9 in all). D6 is fixed. The UAT checklist gains 11.1–11.21 and 12.7–12.9.
+- Scenario 11 covers IN-17 plan steps 1–5 as written, then the IN-18 half: a case with a credit note, a supplier recovery that holds the settlement, and a concession. The order then reaches `customer_accepted`, and `closed` once the settlement is paid.
+- The return in this scenario is the refused delivery's own leg. The case does not add a second return, which would have sent the accepted pieces back. `cases.api.spec.ts` already covers a case-driven return and rework.
+- Scenario 12 covers the Phase 2 surfaces. A supplier cannot see another supplier's bill (the same 404 as an invented id). Suppliers and customers cannot reach cases, margin or the finance bill routes. Another customer's case gets the same 404. A suspended supplier cannot bill, and a suspended customer cannot open a case.
 
 ## TP.5 Browser walk (F-17.5 remainder, F-18.4)
 
