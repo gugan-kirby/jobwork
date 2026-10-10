@@ -52,4 +52,71 @@ describe('fixed-price path (F-FP)', () => {
       p.expectNothingOf(view, ['13000', '130.00', 'targetUnitPrice', 'Kovai'], 'supplier RFQ view');
     });
   });
+
+  describe('F-FP.2 the fixed-price offer', () => {
+    const offer = (unitPriceMinor: number) => ({ pricingMode: 'fixed', offer: { paymentTerms: '30 days from JobWork’s acceptance of the goods', lines: [{ lineNo: 1, unitPriceMinor }] } });
+    const accept = (actor: 'supplierA' | 'supplierB', rfqId: string, body: Body = {}) =>
+      p.as[actor].post(`/api/v1/supplier/rfqs/${rfqId}/offer/accept`, { leadTimeDays: 21, validityUntil: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10), note: 'Material in stock', ...body });
+    const sourced = async (): Promise<string> => (await p.approvedEnquiry({ targetUnitPriceMinor: 13_000 })).enquiryId;
+    let rfqId: string;
+
+    it('creates a fixed round only with a price for every line, and keeps the price fixed', async () => {
+      const enquiryId = await sourced();
+      const base = { enquiryId, deadlineAt: new Date(Date.now() + 7 * 86_400_000).toISOString() };
+      expect((await p.as.sourcing.post('/api/v1/rfqs', { ...base, pricingMode: 'fixed' })).status).toBe(400);
+      expect((await p.as.sourcing.post('/api/v1/rfqs', { ...base, offer: offer(11_000).offer })).status).toBe(400);
+      expect((await p.as.sourcing.post('/api/v1/rfqs', { ...base, pricingMode: 'fixed', offer: { paymentTerms: '30 days', lines: [{ lineNo: 2, unitPriceMinor: 11_000 }] } })).body['code']).toBe('OFFER_LINES');
+
+      ({ rfqId } = await p.openRound(enquiryId, ['supplierA', 'supplierB'], offer(11_000)));
+      const internal = ok(await p.as.sourcing.get(`/api/v1/rfqs/${rfqId}`), 200, 'internal round')['rfq'] as Body;
+      expect(internal).toMatchObject({ pricingMode: 'fixed', offerPaymentTerms: expect.stringContaining('30 days'), items: [expect.objectContaining({ offeredUnitPriceMinor: 11_000 })] });
+      await expect(p.pg.query(`UPDATE sourcing.rfq_item SET offered_unit_price_minor = 9000 WHERE rfq_id = $1`, [rfqId])).rejects.toThrow(/fixed once written/);
+    });
+
+    it('shows the supplier JobWork’s offer and nothing of the customer, and refuses a free price', async () => {
+      const seen = ok(await p.as.supplierA.get(`/api/v1/supplier/rfqs/${rfqId}`), 200, 'supplier round');
+      expect(seen).toMatchObject({ pricingMode: 'fixed', offerPaymentTerms: expect.any(String), items: [expect.objectContaining({ offeredUnitPriceMinor: 11_000 })] });
+      p.expectNothingOf(seen, ['13000', 'targetUnitPrice', 'Kovai', p.orgs.customer], 'supplier fixed offer');
+      const itemId = ((seen['items'] as Body[])[0]!)['rfqItemId'] as string;
+      expect((await p.as.supplierA.post(`/api/v1/supplier/rfqs/${rfqId}/bid/submit`, p.bidBody(itemId, 10_500))).body['code']).toBe('FIXED_PRICE_ROUND');
+      expect((await p.as.supplierA.post(`/api/v1/supplier/rfqs/${rfqId}/bid/draft`, { draft: { leadTimeDays: 10 } })).body['code']).toBe('FIXED_PRICE_ROUND');
+    });
+
+    it('lets a supplier decline on price, and turns the first acceptance into a bid at exactly the offer', async () => {
+      ok(await p.as.supplierB.post(`/api/v1/supplier/rfqs/${rfqId}/decline`, { declineCode: 'commercial', reason: 'Below our cost at this quantity' }), 201, 'B declines');
+      const accepted = ok(await accept('supplierA', rfqId, { unitPriceMinor: 99_999 }), 201, 'A accepts');
+      const line = await p.one<{ unit_price_minor: string; setup_amount_minor: string; quantity: string }>(`SELECT unit_price_minor::text, setup_amount_minor::text, quantity::text FROM sourcing.bid_line WHERE supplier_bid_version_id = $1`, [accepted['bidVersionId']]);
+      expect(line).toEqual({ unit_price_minor: '11000', setup_amount_minor: '0', quantity: '100.0000' });
+      expect(await p.one(`SELECT payment_terms, status FROM sourcing.supplier_bid_version WHERE id = $1`, [accepted['bidVersionId']])).toEqual({ payment_terms: '30 days from JobWork’s acceptance of the goods', status: 'submitted' });
+      expect((ok(await p.as.sourcing.get(`/api/v1/rfqs/${rfqId}`), 200, 'round')['rfq'] as Body)['status']).toBe('evaluation');
+      expect((await accept('supplierA', rfqId)).body['code']).toBe('OFFER_TAKEN');
+      await expect(p.pg.query(`INSERT INTO sourcing.bid_line (supplier_bid_version_id, rfq_item_id, line_no, quantity, unit, unit_price_minor) SELECT $1, rfq_item_id, 2, 5, 'piece', 1 FROM sourcing.bid_line WHERE supplier_bid_version_id = $1`, [accepted['bidVersionId']])).rejects.toThrow(/offered price only/);
+      expect(await p.auditActions(rfqId)).toContain('sourcing.offer_accepted');
+    });
+
+    it('gives the offer to exactly one of two suppliers accepting at once, and tells the other it was taken', async () => {
+      const { rfqId: race } = await p.openRound(await sourced(), ['supplierA', 'supplierB'], offer(11_500));
+      const [a, b] = await Promise.all([accept('supplierA', race), accept('supplierB', race)]);
+      expect([a.status, b.status].sort()).toEqual([201, 409]);
+      expect([a, b].find((r) => r.status === 409)!.body['code']).toBe('OFFER_TAKEN');
+      const loser = a.status === 409 ? 'supplierA' : 'supplierB';
+      expect(ok(await p.as[loser].get(`/api/v1/supplier/rfqs/${race}`), 200, 'loser view')['invitationStatus']).toBe('offer_taken');
+      expect(await p.one(`SELECT count(*)::int AS n FROM sourcing.supplier_bid_version v JOIN sourcing.supplier_bid b ON b.id = v.supplier_bid_id WHERE b.rfq_id = $1`, [race])).toEqual({ n: 1 });
+    });
+
+    it('carries the accepted offer through award, quote and acceptance to a PO at the offered price', async () => {
+      const seen = ok(await p.as.sourcing.get(`/api/v1/rfqs/${rfqId}`), 200, 'round');
+      const itemId = (((seen['rfq'] as Body)['items'] as Body[])[0]!)['rfqItemId'] as string;
+      const bidVersionId = (await p.one<{ id: string }>(`SELECT v.id FROM sourcing.supplier_bid_version v JOIN sourcing.supplier_bid b ON b.id = v.supplier_bid_id WHERE b.rfq_id = $1`, [rfqId])).id;
+      const { evaluationId } = await p.evaluate(rfqId);
+      // One acceptance means one bid: the single-source rule applies as to any round (doc 19 §4).
+      expect((await p.proposeAward(rfqId, itemId, evaluationId, bidVersionId)).body['code']).toBe('AWARD_FALLBACK_REQUIRED');
+      const award = ok(await p.proposeAward(rfqId, itemId, evaluationId, bidVersionId, { fallbackNote: 'If Anand slips, re-offer to Balaji at the same price.' }), 201, 'propose award');
+      ok(await p.decide('sourcing2', award['approvalRequestId'] as string), 201, 'second sourcing lead approves');
+      const deal = await p.approvedAwardToPurchaseOrder(award['awardId'] as string);
+      const po = ok(await p.as.supplierA.get(`/api/v1/supplier/purchase-orders/${deal.purchaseOrderId}`), 200, 'supplier PO');
+      expect(((po['lines'] as Body[])[0]!)['unitPriceMinor']).toBe(11_000);
+      p.expectNothingOf(po, ['13000', 'Kovai', p.orgs.customer], 'supplier PO');
+    });
+  });
 });

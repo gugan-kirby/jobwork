@@ -355,6 +355,8 @@ describe('Sourcing cross-party isolation (F-06.7, doc 03 §7)', () => {
       'invitedAt',
       'items',
       'lateBidPolicy',
+      'offerPaymentTerms',
+      'pricingMode',
       'reference',
       'rfqId',
       'roundNo',
