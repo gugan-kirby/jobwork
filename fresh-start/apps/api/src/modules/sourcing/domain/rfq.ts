@@ -37,14 +37,16 @@ const INVITATION_TRANSITIONS: Record<InvitationStatus, readonly InvitationStatus
   // `responded` directly from `invited`: submitting a bid is the strongest
   // acknowledgement there is, and doc 06 §4's chain is the happy path, not a gate. A
   // supplier who quotes without clicking "acknowledge" first has still answered.
-  invited: ['acknowledged', 'responded', 'declined', 'no_response', 'revoked'],
-  acknowledged: ['clarifying', 'responded', 'declined', 'no_response', 'revoked'],
-  clarifying: ['responded', 'declined', 'no_response', 'revoked'],
+  invited: ['acknowledged', 'responded', 'declined', 'no_response', 'revoked', 'offer_taken'],
+  acknowledged: ['clarifying', 'responded', 'declined', 'no_response', 'revoked', 'offer_taken'],
+  clarifying: ['responded', 'declined', 'no_response', 'revoked', 'offer_taken'],
   // A responded supplier can still revise (a new version) or withdraw entirely.
   responded: ['clarifying', 'revoked'],
   declined: [],
   no_response: [],
   revoked: [],
+  // Another supplier accepted a fixed-price offer first (FR-408).
+  offer_taken: [],
 };
 
 export class RfqTransitionRejected extends DomainError {
@@ -74,6 +76,13 @@ export class InvitationNotFound extends DomainError {
 export class ReleaseBlocked extends DomainError {
   constructor(detail: string) {
     super('RFQ_RELEASE_BLOCKED', 422, 'This round cannot be released yet', detail);
+  }
+}
+
+/** `FR-408`: a fixed-price offer refused, with the rule it broke. */
+export class OfferRefused extends DomainError {
+  constructor(code: string, detail: string, status = 422) {
+    super(code, status, 'The offer cannot be made or taken', detail);
   }
 }
 

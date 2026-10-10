@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import type { PoolClient } from 'pg';
 import type {
+  AcceptOfferRequest,
   AcknowledgeRfqRequest,
   DeclineRfqRequest,
   SaveBidDraftRequest,
@@ -16,9 +18,9 @@ import {
   lateness,
   validateBid,
 } from '../domain/bid';
-import { assertInvitationTransition, RfqNotFound } from '../domain/rfq';
-import { RfqRepository } from '../infrastructure/rfq.repository';
-import { contextFromActor } from '../../../platform/commands/command';
+import { assertInvitationTransition, OfferRefused, OPEN_INVITATION_STATES, RfqNotFound } from '../domain/rfq';
+import { type InvitationRow, type RfqItemRow, RfqRepository } from '../infrastructure/rfq.repository';
+import { type AuditSpec, contextFromActor, type OutboxSpec } from '../../../platform/commands/command';
 import { CommandExecutor } from '../../../platform/commands/execute';
 
 /** Supplier roles that may answer an RFQ (doc 03 §2). */
@@ -44,6 +46,9 @@ function assertMayBid(actor: Actor): void {
  * Every method resolves the round through the caller's own invitation, so a supplier can
  * only ever reach a round it was invited to, and never another supplier's bid.
  */
+/** `FR-408`: a fixed-price round takes the offer as offered, never a free price. */
+const FIXED_ROUND = (): OfferRefused => new OfferRefused('FIXED_PRICE_ROUND', 'This round is offered at a fixed price: accept the offer or decline it.');
+
 @Injectable()
 export class BidCommand {
   constructor(
@@ -162,6 +167,7 @@ export class BidCommand {
     requireTransactionalStrength(actor);
     const { invitation, organizationId, rfq } = await this.ownInvitation(actor, rfqId);
     if (rfq.status !== 'open') throw new BidRejected('This round is not open for bids.');
+    if (rfq.pricingMode === 'fixed') throw FIXED_ROUND();
 
     return this.executor.execute(
       {
@@ -206,6 +212,7 @@ export class BidCommand {
   ): Promise<{ bidVersionId: string; versionNo: number; late: boolean; contentHash: string }> {
     requireTransactionalStrength(actor);
     const { invitation, organizationId, rfq } = await this.ownInvitation(actor, rfqId);
+    if (rfq.pricingMode === 'fixed') throw FIXED_ROUND();
 
     if (!['open', 'responses_received'].includes(rfq.status)) {
       throw new BidRejected(`This round is ${rfq.status}; it is not taking bids.`);
@@ -239,113 +246,102 @@ export class BidCommand {
       {
         operation: 'sourcing.submit-bid',
         handler: async (tx, _ctx, cmd: SubmitBidRequest) => {
-          const bid = await this.rfqs.ensureBid(
-            {
-              rfqId,
-              rfqSupplierId: invitation.id,
-              supplierOrganizationId: organizationId,
-              createdBy: actor.userId,
-            },
+          const written = await this.appendVersion(tx, { actor, organizationId, invitation, rfqId, rfqItems, cmd, validated, late });
+          return { result: written.result, audit: written.audit, outbox: written.outbox };
+        },
+      },
+      contextFromActor({ userId: actor.userId, organizationId }),
+      input,
+      opts,
+    );
+  }
+
+  /**
+   * `FR-408`: the supplier takes JobWork's fixed-price offer as offered. The acceptance is a
+   * bid version at exactly the offered price (the database refuses any other), and the first
+   * one ends the offer: the round closes for evaluation and every other open invitation is
+   * marked `offer_taken`, in the same transaction. The round row is locked first, so of two
+   * suppliers accepting at once exactly one wins and the other gets `OFFER_TAKEN`.
+   */
+  async acceptOffer(
+    actor: Actor,
+    rfqId: string,
+    input: AcceptOfferRequest,
+    opts: { idempotencyKey?: string | undefined } = {},
+  ): Promise<{ bidVersionId: string; versionNo: number; late: boolean; contentHash: string }> {
+    requireTransactionalStrength(actor);
+    const { organizationId, rfq } = await this.ownInvitation(actor, rfqId);
+    if (rfq.pricingMode !== 'fixed') throw new OfferRefused('NOT_FIXED_PRICE', 'This round asks for bids; it has no offer to accept.');
+    const rfqItems = await this.rfqs.listItems(rfqId);
+
+    return this.executor.execute(
+      {
+        operation: 'sourcing.accept-offer',
+        handler: async (tx, _ctx, cmd: AcceptOfferRequest) => {
+          const locked = await this.rfqs.lockRfq(rfqId, tx);
+          if (!locked || !['open', 'responses_received'].includes(locked.status)) {
+            throw new OfferRefused('OFFER_TAKEN', 'This offer is no longer open: another supplier accepted it, or the round closed.', 409);
+          }
+          const invitation = (await this.rfqs.findInvitationForOrganization(rfqId, organizationId, tx))!;
+          if (!OPEN_INVITATION_STATES.includes(invitation.status)) {
+            throw new OfferRefused(invitation.status === 'offer_taken' ? 'OFFER_TAKEN' : 'INVITATION_CLOSED', `Your invitation is ${invitation.status.replace(/_/g, ' ')}.`, 409);
+          }
+          const now = new Date();
+          const { late } = lateness({ deadlineAt: locked.deadlineAt, now, policy: locked.lateBidPolicy });
+
+          // The offer, written as the supplier's bid: one line per item at its first quantity.
+          const bid: SubmitBidRequest = {
+            currency: locked.currency,
+            taxTreatment: 'gst_extra',
+            lines: rfqItems.map((item) => ({
+              rfqItemId: item.id,
+              lineNo: item.lineNo,
+              quantity: item.quantityBreakpoints[0]!.quantity,
+              unit: item.quantityBreakpoints[0]!.unit,
+              unitPriceMinor: item.offeredUnitPriceMinor!,
+              setupAmountMinor: 0,
+              note: '',
+            })),
+            nreAmountMinor: 0,
+            freightAmountMinor: 0,
+            leadTimeDays: cmd.leadTimeDays,
+            validityUntil: cmd.validityUntil,
+            feasibility: 'feasible',
+            assumptions: '',
+            exclusions: '',
+            paymentTerms: locked.offerPaymentTerms ?? '',
+            note: cmd.note,
+          };
+          const validated = validateBid({
+            draft: bid,
+            rfqLines: rfqItems.map((item) => ({ rfqItemId: item.id, lineNo: item.lineNo, quantityBreakpoints: item.quantityBreakpoints })),
+            rfqCurrency: locked.currency,
+            now,
+          });
+          const written = await this.appendVersion(tx, { actor, organizationId, invitation, rfqId, rfqItems, cmd: bid, validated, late });
+
+          const closed = await this.rfqs.setRfqStatus(
+            { rfqId, expectedVersion: locked.aggregateVersion, status: 'evaluation', closed: { by: actor.userId, reason: 'Fixed-price offer accepted' } },
             tx,
           );
-          const previous = await this.rfqs.findLiveVersion(bid.id, tx);
-          if (previous && !cmd.revisionReason) {
-            throw new BidRejected(
-              'A revision has to say what changed and why.',
-              'BID_REVISION_REASON_REQUIRED',
-            );
-          }
-          if (previous) {
-            assertBidTransition(previous.status, 'superseded');
-            await this.rfqs.setVersionStatus(
-              {
-                versionId: previous.id,
-                status: 'superseded',
-                reason: cmd.revisionReason ?? 'revised',
-              },
-              tx,
-            );
-          }
-
-          const versionNo = (await this.rfqs.countBidVersions(bid.id, tx)) + 1;
-          const lineNoByItem = new Map(rfqItems.map((item) => [item.id, item.lineNo]));
-          const bidVersionId = await this.rfqs.appendBidVersion(
-            {
-              supplierBidId: bid.id,
-              versionNo,
-              currency: cmd.currency,
-              taxTreatment: cmd.taxTreatment,
-              linesTotalMinor: validated.linesTotalMinor,
-              nreAmountMinor: cmd.nreAmountMinor ?? 0,
-              freightAmountMinor: cmd.freightAmountMinor ?? 0,
-              totalAmountMinor: validated.totalAmountMinor,
-              leadTimeDays: cmd.leadTimeDays,
-              validityUntil: cmd.validityUntil,
-              feasibility: cmd.feasibility,
-              assumptions: cmd.assumptions,
-              exclusions: cmd.exclusions,
-              paymentTerms: cmd.paymentTerms,
-              note: cmd.note,
-              contentHash: validated.contentHash,
-              late,
-              submittedBy: actor.userId,
-              supersedesVersionId: previous?.id ?? null,
-              revisionReason: cmd.revisionReason ?? null,
-              lines: cmd.lines.map((line, index) => ({
-                rfqItemId: line.rfqItemId,
-                lineNo: lineNoByItem.get(line.rfqItemId) ?? index + 1,
-                quantity: line.quantity,
-                unit: line.unit,
-                unitPriceMinor: line.unitPriceMinor,
-                setupAmountMinor: line.setupAmountMinor ?? 0,
-                leadTimeDays: line.leadTimeDays ?? null,
-                note: line.note ?? '',
-              })),
-            },
-            tx,
-          );
-
-          if (invitation.status !== 'responded') {
-            assertInvitationTransition(invitation.status, 'responded');
-            await this.rfqs.setInvitationStatus(
-              { invitationId: invitation.id, status: 'responded' },
-              tx,
-            );
-          }
+          if (!closed) throw new OfferRefused('OFFER_TAKEN', 'This offer is no longer open.', 409);
+          const others = (await this.rfqs.listInvitations(rfqId, tx)).filter((i) => i.id !== invitation.id && OPEN_INVITATION_STATES.includes(i.status));
+          for (const other of others) await this.rfqs.setInvitationStatus({ invitationId: other.id, status: 'offer_taken' }, tx);
 
           return {
-            result: {
-              bidVersionId,
-              versionNo,
-              late,
-              contentHash: validated.contentHash,
-            },
+            result: written.result,
             audit: [
+              ...written.audit,
               {
-                action: 'sourcing.bid_submitted',
-                subjectType: 'supplier_bid_version',
-                subjectId: bidVersionId,
-                subjectVersion: versionNo,
-                ...(cmd.revisionReason ? { reason: cmd.revisionReason } : {}),
-                data: {
-                  rfqId,
-                  supplierOrganizationId: organizationId,
-                  versionNo,
-                  late,
-                  contentHash: validated.contentHash,
-                  // The amount is internal-audience data; the audit trail is internal.
-                  totalAmountMinor: validated.totalAmountMinor,
-                },
+                action: 'sourcing.offer_accepted',
+                subjectType: 'rfq',
+                subjectId: rfqId,
+                data: { supplierOrganizationId: organizationId, bidVersionId: written.result.bidVersionId, closedInvitations: others.length },
               },
             ],
             outbox: [
-              {
-                eventType: 'sourcing.bid_submitted.v1',
-                aggregateType: 'supplier_bid_version',
-                aggregateId: bidVersionId,
-                aggregateVersion: versionNo,
-                data: { rfqId, versionNo, late },
-              },
+              ...written.outbox,
+              { eventType: 'sourcing.offer_accepted.v1', aggregateType: 'rfq', aggregateId: rfqId, data: { bidVersionId: written.result.bidVersionId } },
             ],
           };
         },
@@ -354,6 +350,136 @@ export class BidCommand {
       input,
       opts,
     );
+  }
+
+  /**
+   * Writes one submitted bid version and moves the invitation to `responded`, inside the
+   * caller's transaction. `submit` and `acceptOffer` share it, so an accepted offer is a bid
+   * version like any other (`FR-408`).
+   */
+  private async appendVersion(
+    tx: PoolClient,
+    a: {
+      actor: Actor;
+      organizationId: string;
+      invitation: InvitationRow;
+      rfqId: string;
+      rfqItems: RfqItemRow[];
+      cmd: SubmitBidRequest;
+      validated: ReturnType<typeof validateBid>;
+      late: boolean;
+    },
+  ): Promise<{ result: { bidVersionId: string; versionNo: number; late: boolean; contentHash: string }; audit: AuditSpec[]; outbox: OutboxSpec[] }> {
+    const { actor, organizationId, invitation, rfqId, rfqItems, cmd, validated, late } = a;
+    const bid = await this.rfqs.ensureBid(
+      {
+        rfqId,
+        rfqSupplierId: invitation.id,
+        supplierOrganizationId: organizationId,
+        createdBy: actor.userId,
+      },
+      tx,
+    );
+    const previous = await this.rfqs.findLiveVersion(bid.id, tx);
+    if (previous && !cmd.revisionReason) {
+      throw new BidRejected(
+        'A revision has to say what changed and why.',
+        'BID_REVISION_REASON_REQUIRED',
+      );
+    }
+    if (previous) {
+      assertBidTransition(previous.status, 'superseded');
+      await this.rfqs.setVersionStatus(
+        {
+          versionId: previous.id,
+          status: 'superseded',
+          reason: cmd.revisionReason ?? 'revised',
+        },
+        tx,
+      );
+    }
+
+    const versionNo = (await this.rfqs.countBidVersions(bid.id, tx)) + 1;
+    const lineNoByItem = new Map(rfqItems.map((item) => [item.id, item.lineNo]));
+    const bidVersionId = await this.rfqs.appendBidVersion(
+      {
+        supplierBidId: bid.id,
+        versionNo,
+        currency: cmd.currency,
+        taxTreatment: cmd.taxTreatment,
+        linesTotalMinor: validated.linesTotalMinor,
+        nreAmountMinor: cmd.nreAmountMinor ?? 0,
+        freightAmountMinor: cmd.freightAmountMinor ?? 0,
+        totalAmountMinor: validated.totalAmountMinor,
+        leadTimeDays: cmd.leadTimeDays,
+        validityUntil: cmd.validityUntil,
+        feasibility: cmd.feasibility,
+        assumptions: cmd.assumptions,
+        exclusions: cmd.exclusions,
+        paymentTerms: cmd.paymentTerms,
+        note: cmd.note,
+        contentHash: validated.contentHash,
+        late,
+        submittedBy: actor.userId,
+        supersedesVersionId: previous?.id ?? null,
+        revisionReason: cmd.revisionReason ?? null,
+        lines: cmd.lines.map((line, index) => ({
+          rfqItemId: line.rfqItemId,
+          lineNo: lineNoByItem.get(line.rfqItemId) ?? index + 1,
+          quantity: line.quantity,
+          unit: line.unit,
+          unitPriceMinor: line.unitPriceMinor,
+          setupAmountMinor: line.setupAmountMinor ?? 0,
+          leadTimeDays: line.leadTimeDays ?? null,
+          note: line.note ?? '',
+        })),
+      },
+      tx,
+    );
+
+    if (invitation.status !== 'responded') {
+      assertInvitationTransition(invitation.status, 'responded');
+      await this.rfqs.setInvitationStatus(
+        { invitationId: invitation.id, status: 'responded' },
+        tx,
+      );
+    }
+
+    return {
+      result: {
+        bidVersionId,
+        versionNo,
+        late,
+        contentHash: validated.contentHash,
+      },
+      audit: [
+        {
+          action: 'sourcing.bid_submitted',
+          subjectType: 'supplier_bid_version',
+          subjectId: bidVersionId,
+          subjectVersion: versionNo,
+          ...(cmd.revisionReason ? { reason: cmd.revisionReason } : {}),
+          data: {
+            rfqId,
+            supplierOrganizationId: organizationId,
+            versionNo,
+            late,
+            contentHash: validated.contentHash,
+            // The amount is internal-audience data; the audit trail is internal.
+            totalAmountMinor: validated.totalAmountMinor,
+          },
+        },
+      ],
+      outbox: [
+        {
+          eventType: 'sourcing.bid_submitted.v1',
+          aggregateType: 'supplier_bid_version',
+          aggregateId: bidVersionId,
+          aggregateVersion: versionNo,
+          data: { rfqId, versionNo, late },
+        },
+      ],
+    };
   }
 
   /**

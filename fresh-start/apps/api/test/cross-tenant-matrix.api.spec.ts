@@ -105,6 +105,7 @@ const COMMANDS: Array<{ name: string; path: (w: World) => string; body: (w: Worl
   { name: "acknowledge another supplier's purchase order", path: (w) => `/supplier/purchase-orders/${w.purchaseOrderId}/acknowledge`, body: () => ({ expectedVersion: 1, note: '' }), deny: ['supplier2', 'customerA', 'customerB'] },
   { name: "accept another customer's quotation", path: (w) => `/quotations/${w.quoteId}/accept`, body: () => ({ expectedVersion: 1, quoteVersionNo: 1, contentHash: 'a'.repeat(64), termsHash: 'b'.repeat(64), acknowledgeTerms: true }), deny: ['customerB', 'supplier1', 'supplier2'] },
   { name: "post into another customer's enquiry thread", path: (w) => `/conversations/enquiry/${w.enquiryId}/messages`, body: () => ({ audience: 'customer', body: 'probe' }), deny: ['customerB', 'supplier1', 'supplier2'] },
+  { name: "accept another supplier's offer", path: (w) => `/supplier/rfqs/${w.rfqId}/offer/accept`, body: () => ({ leadTimeDays: 10, validityUntil: '2099-01-01' }), deny: ['supplier2', 'customerA', 'customerB'] },
   // Phase 2 (TP.6): JobWork's own commands, refused to every external party.
   { name: 'open an internal case', path: () => '/cases', body: (w) => ({ salesOrderId: w.orderId, kind: 'warranty', title: 'probe', description: 'probe' }), deny: EXTERNAL },
   { name: 'close a case', path: () => `/cases/${NOTHING}/close`, body: () => ({ expectedVersion: 1, reason: 'probe' }), deny: EXTERNAL },

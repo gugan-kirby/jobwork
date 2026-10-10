@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Post, Req } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import {
+  acceptOfferRequestSchema,
   acknowledgeRfqRequestSchema,
   declineRfqRequestSchema,
   saveBidDraftRequestSchema,
@@ -104,6 +105,17 @@ export class SupplierRfqsController {
   ): Promise<{ bidVersionId: string; versionNo: number; late: boolean; contentHash: string }> {
     const body = parseBody(submitBidRequestSchema, request.body);
     return this.bids.submit(actor, rfqId, body, { idempotencyKey: idempotencyKey(request) });
+  }
+
+  /** `FR-408`: take JobWork's fixed-price offer as offered. */
+  @Post(':rfqId/offer/accept')
+  async acceptOffer(
+    @CurrentActor() actor: Actor,
+    @Param('rfqId') rfqId: string,
+    @Req() request: FastifyRequest,
+  ): Promise<{ bidVersionId: string; versionNo: number; late: boolean; contentHash: string }> {
+    const body = parseBody(acceptOfferRequestSchema, request.body);
+    return this.bids.acceptOffer(actor, rfqId, body, { idempotencyKey: idempotencyKey(request) });
   }
 
   @Post(':rfqId/bid/withdraw')

@@ -5,6 +5,7 @@ import type {
   BidVersionStatus,
   InvitationStatus,
   LateBidPolicy,
+  PricingMode,
   RfqStatus,
 } from '@jobwork/contracts';
 import { DatabaseService } from '../../../platform/database/database.service';
@@ -22,6 +23,8 @@ export interface RfqRow {
   deadlineAt: Date | null;
   lateBidPolicy: LateBidPolicy;
   instructions: string;
+  pricingMode: PricingMode;
+  offerPaymentTerms: string | null;
   aggregateVersion: number;
   releasedAt: Date | null;
   closedAt: Date | null;
@@ -36,6 +39,7 @@ export interface RfqItemRow {
   description: string;
   quantityBreakpoints: Array<{ quantity: number; unit: string; kind?: string }>;
   specification: Record<string, unknown>;
+  offeredUnitPriceMinor: number | null;
 }
 
 export interface InvitationRow {
@@ -122,6 +126,8 @@ export class RfqRepository {
       deadlineAt: Date;
       lateBidPolicy: LateBidPolicy;
       instructions: string;
+      pricingMode: PricingMode;
+      offerPaymentTerms: string | null;
       createdBy: string;
     },
     tx: Queryable,
@@ -129,8 +135,8 @@ export class RfqRepository {
     const res = await this.q(tx).query<{ id: string }>(
       `INSERT INTO sourcing.rfq
          (enquiry_id, requirement_id, round_no, deadline_at, late_bid_policy, instructions,
-          created_by, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft') RETURNING id`,
+          created_by, status, pricing_mode, offer_payment_terms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8, $9) RETURNING id`,
       [
         input.enquiryId,
         input.requirementId,
@@ -139,6 +145,8 @@ export class RfqRepository {
         input.lateBidPolicy,
         input.instructions,
         input.createdBy,
+        input.pricingMode,
+        input.offerPaymentTerms,
       ],
     );
     return res.rows[0]!.id;
@@ -323,14 +331,15 @@ export class RfqRepository {
       description: string;
       quantityBreakpoints: unknown;
       specification: unknown;
+      offeredUnitPriceMinor: number | null;
     },
     tx: Queryable,
   ): Promise<string> {
     const res = await this.q(tx).query<{ id: string }>(
       `INSERT INTO sourcing.rfq_item
          (rfq_id, enquiry_item_id, line_no, part_name, description, quantity_breakpoints,
-          specification)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb) RETURNING id`,
+          specification, offered_unit_price_minor)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8) RETURNING id`,
       [
         input.rfqId,
         input.enquiryItemId,
@@ -339,6 +348,7 @@ export class RfqRepository {
         input.description,
         JSON.stringify(input.quantityBreakpoints),
         JSON.stringify(input.specification),
+        input.offeredUnitPriceMinor,
       ],
     );
     return res.rows[0]!.id;
@@ -346,7 +356,7 @@ export class RfqRepository {
 
   async listItems(rfqId: string, tx?: Queryable): Promise<RfqItemRow[]> {
     const res = await this.q(tx).query(
-      `SELECT id, line_no, part_name, description, quantity_breakpoints, specification
+      `SELECT id, line_no, part_name, description, quantity_breakpoints, specification, offered_unit_price_minor
          FROM sourcing.rfq_item WHERE rfq_id = $1 ORDER BY line_no`,
       [rfqId],
     );
@@ -357,6 +367,7 @@ export class RfqRepository {
       description: row['description'] as string,
       quantityBreakpoints: row['quantity_breakpoints'] as RfqItemRow['quantityBreakpoints'],
       specification: row['specification'] as Record<string, unknown>,
+      offeredUnitPriceMinor: row['offered_unit_price_minor'] === null ? null : Number(row['offered_unit_price_minor']),
     }));
   }
 
@@ -871,6 +882,8 @@ function mapRfq(row: Record<string, unknown>): RfqRow {
     deadlineAt: (row['deadline_at'] as Date | null) ?? null,
     lateBidPolicy: row['late_bid_policy'] as LateBidPolicy,
     instructions: row['instructions'] as string,
+    pricingMode: row['pricing_mode'] as PricingMode,
+    offerPaymentTerms: (row['offer_payment_terms'] as string | null) ?? null,
     aggregateVersion: row['aggregate_version'] as number,
     releasedAt: (row['released_at'] as Date | null) ?? null,
     closedAt: (row['closed_at'] as Date | null) ?? null,

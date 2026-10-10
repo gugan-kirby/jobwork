@@ -132,6 +132,7 @@ quality.start-review  modules/quality/application/inspection.command.ts
 quality.submit-results  modules/quality/application/inspection.command.ts
 quality.verify-corrective-action  modules/quality/application/ncr.command.ts
 quality.withdraw-deviation  modules/quality/application/deviation.command.ts
+sourcing.accept-offer  modules/sourcing/application/bid.command.ts
 sourcing.acknowledge-rfq  modules/sourcing/application/bid.command.ts
 sourcing.approve-for-sourcing  modules/sourcing/application/approve-for-sourcing.command.ts
 sourcing.cancel-enquiry  modules/sourcing/application/cancel-enquiry.command.ts

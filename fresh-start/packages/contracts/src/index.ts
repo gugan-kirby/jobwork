@@ -260,6 +260,7 @@ export {
 
 // ------------------------------------------------------------------ sourcing: RFQ & bids
 export {
+  acceptOfferRequestSchema,
   acknowledgeRfqRequestSchema,
   bidDraftSchema,
   bidLineSchema,
@@ -275,6 +276,7 @@ export {
   lateBidPolicySchema,
   matchCandidateSchema,
   matchResultSchema,
+  pricingModeSchema,
   releaseRfqRequestSchema,
   revokeInvitationRequestSchema,
   rfqInvitationSchema,
@@ -289,6 +291,7 @@ export {
   supplierRfqSchema,
   taxTreatmentSchema,
   withdrawBidRequestSchema,
+  type AcceptOfferRequest,
   type AcknowledgeRfqRequest,
   type BidDraft,
   type BidLine,
@@ -308,6 +311,7 @@ export {
   type Rfq,
   type RfqInvitation,
   type RfqItem,
+  type PricingMode,
   type RfqStatus,
   type SaveBidDraftRequest,
   type SubmitBidRequest,

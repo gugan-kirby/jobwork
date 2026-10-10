@@ -46,6 +46,8 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'sourcing.rfq_closed.v1',
   'sourcing.rfq_deadline_passed.v1',
   'sourcing.rfq_declined.v1',
+  // F-FP.2: like a closed round, recorded. The other suppliers see `offer_taken` on the round itself.
+  'sourcing.offer_accepted.v1',
   'sourcing.requirement_revised.v1',
   // IN-13 change control: recorded, nothing to send.
   'change.change_proposed.v1',

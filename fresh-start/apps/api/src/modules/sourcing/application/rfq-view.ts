@@ -61,6 +61,8 @@ export class RfqView {
       deadlineAt: rfq.deadlineAt?.toISOString() ?? null,
       lateBidPolicy: rfq.lateBidPolicy,
       instructions: rfq.instructions,
+      pricingMode: rfq.pricingMode,
+      offerPaymentTerms: rfq.offerPaymentTerms,
       aggregateVersion: rfq.aggregateVersion,
       releasedAt: rfq.releasedAt?.toISOString() ?? null,
       closedAt: rfq.closedAt?.toISOString() ?? null,
@@ -72,6 +74,7 @@ export class RfqView {
         description: item.description,
         quantityBreakpoints: item.quantityBreakpoints,
         specification: item.specification,
+        offeredUnitPriceMinor: item.offeredUnitPriceMinor,
       })),
       release: release.map((item) => ({
         documentVersionId: item.documentVersionId,
@@ -109,6 +112,8 @@ export class RfqView {
       deadlineAt: rfq.deadlineAt?.toISOString() ?? null,
       lateBidPolicy: rfq.lateBidPolicy,
       instructions: rfq.instructions,
+      pricingMode: rfq.pricingMode,
+      offerPaymentTerms: rfq.offerPaymentTerms,
       invitationStatus: invitation.status,
       invitedAt: invitation.invitedAt?.toISOString() ?? null,
       acknowledgedAt: invitation.acknowledgedAt?.toISOString() ?? null,
@@ -119,6 +124,7 @@ export class RfqView {
         description: item.description,
         quantityBreakpoints: item.quantityBreakpoints,
         specification: item.specification,
+        offeredUnitPriceMinor: item.offeredUnitPriceMinor,
       })),
       documents: documents.map((document) => ({
         documentVersionId: document.documentVersionId,

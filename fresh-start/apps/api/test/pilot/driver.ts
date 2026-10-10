@@ -317,9 +317,9 @@ export class Pilot {
   }
 
   /** Create, invite, release; returns the round and its first line as the suppliers see it. */
-  async openRound(enquiryId: string, suppliers: Array<'supplierA' | 'supplierB'> = ['supplierA', 'supplierB']): Promise<{ rfqId: string; itemId: string }> {
+  async openRound(enquiryId: string, suppliers: Array<'supplierA' | 'supplierB'> = ['supplierA', 'supplierB'], create: Body = {}): Promise<{ rfqId: string; itemId: string }> {
     const created = ok(
-      await this.as.sourcing.post('/api/v1/rfqs', { enquiryId, deadlineAt: new Date(Date.now() + 7 * 86_400_000).toISOString(), lateBidPolicy: 'reject', instructions: 'Quote per piece at 100 off.' }),
+      await this.as.sourcing.post('/api/v1/rfqs', { enquiryId, deadlineAt: new Date(Date.now() + 7 * 86_400_000).toISOString(), lateBidPolicy: 'reject', instructions: 'Quote per piece at 100 off.', ...create }),
       201,
       'create rfq',
     );
