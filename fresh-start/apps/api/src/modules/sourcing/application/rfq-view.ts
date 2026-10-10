@@ -7,6 +7,7 @@ import type {
   SupplierRfqListItem,
 } from '@jobwork/contracts';
 import { RfqRepository, type BidVersionRow, type RfqRow } from '../infrastructure/rfq.repository';
+import { neutralFilename } from '../../dms';
 
 /**
  * The two RFQ payloads, built separately on purpose.
@@ -130,7 +131,8 @@ export class RfqView {
         documentVersionId: document.documentVersionId,
         role: document.role as SupplierRfq['documents'][number]['role'],
         sha256: document.sha256,
-        filename: document.filename,
+        // F-FP.4: the customer's own filename never reaches a supplier.
+        filename: neutralFilename(document.documentVersionId, document.filename),
       })),
       bid: bid ? await this.bidView(bid.id, bid) : null,
     };

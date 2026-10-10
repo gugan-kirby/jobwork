@@ -24,6 +24,7 @@ import type {
 } from '@jobwork/contracts';
 import { type Actor, requireOrganization, requireRole, requireTransactionalStrength } from '../../iam';
 import { NotAuthorized } from '../../iam/domain/errors';
+import { neutralFilename, neutralTitle } from '../../dms';
 import { OrderNotFound, OrderVersionConflict, PurchaseOrderNotFound } from '../domain/errors';
 import { baselineHash, computeReleaseGates, defaultMilestones, governingConflicts, todayInIndia } from '../domain/production';
 import { FinanceRepository } from '../infrastructure/finance.repository';
@@ -662,7 +663,8 @@ export class ProductionCommand {
               manifestHash: transmittal.manifestHash,
               acknowledgmentDueAt: transmittal.acknowledgmentDueAt.toISOString(),
               acknowledgedAt: transmittal.acknowledgedAt ? transmittal.acknowledgedAt.toISOString() : null,
-              items: baseline.items.map((i) => ({ documentVersionId: i.documentVersionId, title: i.title, logicalType: i.logicalType, versionNo: i.versionNo, filename: i.filename, fileSha256: i.fileSha256, purpose: i.purpose })),
+              // F-FP.4: a baseline's documents are never the supplier's own; it meets them under JobWork's names.
+              items: baseline.items.map((i) => ({ documentVersionId: i.documentVersionId, title: neutralTitle(i.documentVersionId), logicalType: i.logicalType, versionNo: i.versionNo, filename: neutralFilename(i.documentVersionId, i.filename), fileSha256: i.fileSha256, purpose: i.purpose })),
               aggregateVersion: transmittal.aggregateVersion,
             }
           : null,
