@@ -61,11 +61,13 @@ Guards:
 - `closeRfqForEvaluation`: deadline reached or all invited suppliers dispositioned; late bids follow explicit policy.
 - `approveAward`: comparable bid versions, eligibility still valid, split quantities/routes valid, approval policy satisfied.
 
+A round's pricing mode is `bid` or `fixed` (`FR-408`). A fixed round carries JobWork's offered unit price per item, frozen at release. `acceptOffer` locks the round and requires it open and the invitation live. It records the supplier's bid version at exactly the offer, moves the round to `evaluation` and closes every other open invitation as `offer_taken`, in one transaction. A fixed round takes no free-priced bid. The award, cost sheet (with a JobWork-set customer price, `FR-409`) and quote follow as for a bid round, so the customer is quoted only after a supplier has committed.
+
 Each `rfq_supplier` invitation has its own state:
 
 ```text
 prepared -> invited -> acknowledged -> clarifying -> responded
-                                  \-> declined | no_response | revoked
+                                  \-> declined | no_response | revoked | offer_taken
 ```
 
 ## 5. Supplier bid
