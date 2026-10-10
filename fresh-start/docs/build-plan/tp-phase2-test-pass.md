@@ -31,6 +31,13 @@ Scope source: the deferred items recorded in [IN-17](in-17-dispatch-delivery.md)
 |---|---|---|
 | `apps/api/test/cases.api.spec.ts` | new | Case machine from open to closed. A customer opens a case but cannot link exceptions or purchase orders, and withdraws only before work starts. Resolution goes through the approval rail: money to finance, physical remedies to quality. Every action is carried out by its owning role and verified by another person. Close is refused while any action is unverified. A credit note leaves the invoice unchanged and is refused beyond the invoice's total. The customer-paid, supplier-failed path ends in a refund plus a supplier recovery that holds settlement. Returns conserve the ledger. Closing lifts the hold. The customer view never shows the supplier, its purchase order, the recovery or internal notes. Regression tests for D1–D3. |
 
+**Done (2026-10-08).** `cases.api.spec.ts` has 8 tests, and D1–D3 are fixed in `CaseCommand`:
+- A cancel now runs only while the agreed resolution is being carried out. The last cancellation moves the case on to verification.
+- A proposal with a recovery must name the purchase order, which links it to a customer-opened case. The ops proposal form asks for it.
+- Opening a case with a purchase order now checks that the PO belongs to the case's order. Before, any PO id was accepted.
+
+The pilot driver gains `dispatchToCustomer`, `proofOfDelivery`, `stockLots`, `markingOf` and `ledger`.
+
 ## TP.3 Margin (F-18.3)
 
 | File | Action | Contents |

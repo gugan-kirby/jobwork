@@ -733,6 +733,53 @@ export class Pilot {
     return { deal, workPackageId, inbound };
   }
 
+  /** IN-17: the stock lots of an order waiting at JobWork, by the supplier's lot code (internal only). */
+  async stockLots(orderId: string): Promise<Record<string, string>> {
+    const context = ok(await this.as.logistics.get(`/api/v1/logistics/sales-orders/${orderId}/dispatch-context`), 200, 'dispatch context');
+    return Object.fromEntries((context['lots'] as Body[]).map((l) => [l['lotCode'] as string, l['stockLotId'] as string]));
+  }
+
+  /**
+   * IN-17: a leg-2 delivery of `lots` planned, the balance invoiced and paid on the first one, the
+   * address confirmed, released and picked up, every guard green. Returns the shipment as logistics sees it.
+   */
+  async dispatchToCustomer(orderId: string, lots: Array<[string, string]>, trackingReference = `SX-${randomUUID().slice(0, 6)}`): Promise<Body> {
+    const packingCheck = { neutralCartons: true, supplierMarksRemoved: true, jobworkLabelsApplied: true, packagingNoteFollowed: true };
+    const ids = await this.stockLots(orderId);
+    const packages = lots.map(([code, quantity], n) => ({ packageNo: n + 1, weightG: 5000, items: [{ stockLotId: ids[code], quantity }] }));
+    let s = ok(await this.as.logistics.post('/api/v1/customer-dispatches', { salesOrderId: orderId, packages, packingCheck }), 201, 'plan dispatch');
+    const balance = (ok(await this.as.finance.get(`/api/v1/sales-orders/${orderId}`), 200, 'order')['invoices'] as Body[]).find((i) => i['kind'] === 'balance')!;
+    if (balance['status'] !== 'paid') await this.payInvoice(balance['invoiceId'] as string);
+    s = ok(await this.as.logistics.post(`/api/v1/customer-dispatches/${s['shipmentId']}/replan`, { expectedVersion: s['aggregateVersion'], packages, documents: { invoiceNumber: balance['number'] }, packingCheck }), 201, 'replan dispatch');
+    s = ok(await this.as.sales.post(`/api/v1/customer-dispatches/${s['shipmentId']}/address-confirmations`, { expectedVersion: s['aggregateVersion'], note: 'Confirmed by phone with stores' }), 201, 'confirm address');
+    s = ok(await this.as.logistics.post(`/api/v1/customer-dispatches/${s['shipmentId']}/submit`, { expectedVersion: s['aggregateVersion'] }), 201, 'submit dispatch');
+    s = ok(await this.as.logistics.post(`/api/v1/customer-dispatches/${s['shipmentId']}/release`, { expectedVersion: s['aggregateVersion'] }), 201, 'release dispatch');
+    return ok(await this.as.logistics.post(`/api/v1/shipments/${s['shipmentId']}/pickup`, { expectedVersion: s['aggregateVersion'], carrierMode: 'carrier', carrierName: 'Safexpress', trackingReference }), 201, 'pickup dispatch');
+  }
+
+  /** IN-17: the driver's proof of delivery; the acceptance window opens. */
+  async proofOfDelivery(shipment: Body, extra: Body = {}): Promise<Body> {
+    return ok(
+      await this.as.logistics.post(`/api/v1/shipments/${shipment['shipmentId']}/pod`, { expectedVersion: shipment['aggregateVersion'], receivedByName: 'R. Kumar', receivedAt: new Date().toISOString(), packagesReceived: (shipment['packages'] as Body[]).length, remarks: 'clean', source: 'driver', ...extra }),
+      201,
+      'proof of delivery',
+    );
+  }
+
+  /** The JobWork marking of the n-th item of a leg-2 shipment, as the customer sees it. */
+  markingOf(shipment: Body, n = 0): string {
+    return (shipment['packages'] as Body[]).flatMap((pk) => pk['items'] as Body[])[n]!['lotCode'] as string;
+  }
+
+  /** Quantity per custody location for an order's lots. */
+  async ledger(orderId: string): Promise<Record<string, string>> {
+    const rows = await this.rows<{ code: string; quantity: string }>(
+      `SELECT c.code, SUM(b.quantity)::text AS quantity FROM logistics.stock_balance b JOIN logistics.custody_location c ON c.id = b.location_id JOIN logistics.stock_lot t ON t.id = b.lot_id WHERE t.sales_order_id = $1 GROUP BY c.code`,
+      [orderId],
+    );
+    return Object.fromEntries(rows.map((r) => [r.code, String(Number(r.quantity))]));
+  }
+
   /**
    * A new version of an existing document, uploaded and scanned the way the product does
    * it: initiate with the document id, PUT the bytes, finalize, then the scanner's verdict.

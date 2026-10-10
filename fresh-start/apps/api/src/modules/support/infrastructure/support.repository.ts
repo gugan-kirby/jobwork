@@ -101,12 +101,13 @@ export class SupportRepository {
     return res.rows;
   }
 
-  async update(id: string, fields: Partial<{ status: CaseStatus; ownerId: string; approvalRequestId: string; closeNote: string; closed: boolean }>, tx: Queryable): Promise<number> {
+  async update(id: string, fields: Partial<{ status: CaseStatus; ownerId: string; approvalRequestId: string; closeNote: string; closed: boolean; purchaseOrderId: string }>, tx: Queryable): Promise<number> {
     const res = await tx.query<{ aggregate_version: number }>(
       `UPDATE support.case SET status = COALESCE($2, status), owner_id = COALESCE($3, owner_id), approval_request_id = COALESCE($4, approval_request_id),
-              close_note = COALESCE($5, close_note), closed_at = CASE WHEN $6 THEN now() ELSE closed_at END, aggregate_version = aggregate_version + 1, updated_at = now()
+              close_note = COALESCE($5, close_note), closed_at = CASE WHEN $6 THEN now() ELSE closed_at END, purchase_order_id = COALESCE($7, purchase_order_id),
+              aggregate_version = aggregate_version + 1, updated_at = now()
         WHERE id = $1 RETURNING aggregate_version`,
-      [id, fields.status ?? null, fields.ownerId ?? null, fields.approvalRequestId ?? null, fields.closeNote ?? null, fields.closed ?? false],
+      [id, fields.status ?? null, fields.ownerId ?? null, fields.approvalRequestId ?? null, fields.closeNote ?? null, fields.closed ?? false, fields.purchaseOrderId ?? null],
     );
     return res.rows[0]!.aggregate_version;
   }

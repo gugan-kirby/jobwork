@@ -123,7 +123,7 @@ export class CaseCommand {
           const order = await this.orders.findSalesOrder(cmd.salesOrderId, tx);
           if (!order || (!actor.isInternal && order.customerOrganizationId !== actor.organizationId)) throw new DomainError('ORDER_NOT_FOUND', 404, 'Order not found');
           if (!actor.isInternal && (cmd.deliveryExceptionIds.length > 0 || cmd.purchaseOrderId)) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted', 'JobWork links exceptions and purchase orders.');
-          if (cmd.purchaseOrderId && !(await this.orders.findPurchaseOrder(cmd.purchaseOrderId, tx))) throw new DomainError('PURCHASE_ORDER_NOT_FOUND', 404, 'Purchase order not found');
+          if (cmd.purchaseOrderId && (await this.orders.findPurchaseOrder(cmd.purchaseOrderId, tx))?.salesOrderId !== order.id) throw new DomainError('PURCHASE_ORDER_NOT_FOUND', 404, 'Purchase order not found on this order');
           for (const id of cmd.evidenceDocumentVersionIds) {
             if (!(await this.repo.ownCleanVersion(id, actor.organizationId!, tx))) throw new CaseRefused('EVIDENCE_UNAVAILABLE', 'Upload the files first', 'Each must be your own file and scanned clean.', 422);
           }
@@ -262,6 +262,11 @@ export class CaseCommand {
             if (MONEY.includes(a.kind) && !a.amountMinor) throw new CaseRefused('AMOUNT_REQUIRED', `Give the amount of the ${a.kind.replace(/_/g, ' ')}`, undefined, 422);
             if ((a.kind === 'return_to_supplier' || a.kind === 'rework') && (!a.stockLotId || !a.quantity)) throw new CaseRefused('LOT_REQUIRED', 'Name the stock lot and quantity that go back', undefined, 422);
           }
+          // A recovery holds the supplier's settlement through the case's purchase order (BR-FIN-04), so it names one.
+          if (cmd.purchaseOrderId && c.purchaseOrderId && cmd.purchaseOrderId !== c.purchaseOrderId) throw new CaseRefused('PURCHASE_ORDER_FIXED', `${c.number} already concerns another purchase order`);
+          if (cmd.purchaseOrderId && (await this.orders.findPurchaseOrder(cmd.purchaseOrderId, tx))?.salesOrderId !== c.salesOrderId) throw new DomainError('PURCHASE_ORDER_NOT_FOUND', 404, 'Purchase order not found on this order');
+          const purchaseOrderId = c.purchaseOrderId ?? cmd.purchaseOrderId ?? null;
+          if (!purchaseOrderId && cmd.actions.some((a) => a.kind === 'supplier_recovery')) throw new CaseRefused('PURCHASE_ORDER_REQUIRED', 'Name the supplier’s purchase order the recovery is against', undefined, 422);
           await this.repo.replacePlanned(c.id, cmd.actions.map((a) => ({ kind: a.kind, description: a.description, amountMinor: a.amountMinor ?? null, quantity: a.quantity ?? null, stockLotId: a.stockLotId ?? null })), tx);
           const money = cmd.actions.some((a) => MONEY.includes(a.kind));
           const total = cmd.actions.reduce((t, a) => t + (a.amountMinor ?? 0), 0);
@@ -283,7 +288,7 @@ export class CaseCommand {
             },
             tx,
           );
-          const version = await this.repo.update(c.id, { status: 'resolution_proposed', approvalRequestId: requestId }, tx);
+          const version = await this.repo.update(c.id, { status: 'resolution_proposed', approvalRequestId: requestId, ...(purchaseOrderId && !c.purchaseOrderId ? { purchaseOrderId } : {}) }, tx);
           await this.repo.addEvent({ caseId: c.id, audience: 'internal', kind: 'resolution_proposed', note: cmd.actions.map((a) => a.description).join('; '), evidence: [], by: actor.userId, party: 'jobwork' }, tx);
           return {
             result: undefined,
@@ -418,11 +423,15 @@ export class CaseCommand {
           const found = await this.repo.findAction(actionId, tx);
           if (!found) throw new DomainError('ACTION_NOT_FOUND', 404, 'Action not found');
           const c = await this.locked(found.caseId, null, tx);
+          // Only an agreed resolution is cut back; a proposal still waiting is replaced, not edited.
+          this.move(c, ['resolution_approved', 'executing'], 'executing');
           if (found.status !== 'planned') throw new CaseRefused('ACTION_STATUS', 'Only an action not yet carried out is cancelled');
           await this.repo.markAction(found.id, { status: 'cancelled', by: actor.userId }, tx);
           const actions = await this.repo.actions(c.id, tx);
           const allDone = actions.every((a) => a.status !== 'planned');
-          const version = await this.repo.update(c.id, allDone && c.status === 'executing' ? { status: 'verifying' } : {}, tx);
+          // With nothing left to carry out, the case goes on to verification, through executing as the machine requires.
+          if (allDone && c.status === 'resolution_approved') await this.repo.update(c.id, { status: 'executing' }, tx);
+          const version = await this.repo.update(c.id, allDone ? { status: 'verifying' } : {}, tx);
           return { result: c.id, audit: [this.audit(c, version, 'support.resolution_action_cancelled', { action: found.seq, kind: found.kind }, cmd.note)] };
         },
       },
