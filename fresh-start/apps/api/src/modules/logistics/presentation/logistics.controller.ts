@@ -29,6 +29,7 @@ import { DispatchCommand } from '../application/dispatch.command';
 import { LogisticsView } from '../application/logistics-view';
 import { MaterialCommand } from '../application/material.command';
 import { ReceivingCommand } from '../application/receiving.command';
+import { InternalOnly } from '../../../platform/http/public.decorator';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -93,6 +94,7 @@ export class SupplierShipmentController {
 }
 
 /** JobWork logistics: release, record the carrier, and see every leg. */
+@InternalOnly()
 @Controller('shipments')
 export class ShipmentController {
   constructor(
@@ -138,6 +140,7 @@ export class ShipmentController {
 }
 
 /** Receiving discrepancies are resolved once each (BR-LOG-04). */
+@InternalOnly()
 @Controller('receiving-discrepancies')
 export class DiscrepancyController {
   constructor(private readonly receiving: ReceivingCommand) {}
@@ -149,6 +152,7 @@ export class DiscrepancyController {
 }
 
 /** JobWork's view of a work package's quantities and stock (doc 19 §8). */
+@InternalOnly()
 @Controller('logistics')
 export class LogisticsViewController {
   constructor(

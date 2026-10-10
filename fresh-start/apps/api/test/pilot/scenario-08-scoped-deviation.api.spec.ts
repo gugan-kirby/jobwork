@@ -109,7 +109,7 @@ describe('Pilot 8: scoped customer-approved deviation', () => {
     expect(deviation).toMatchObject({ customerApprovalRequired: true, status: 'pending_internal' });
     ok(await p.decide('quality2', deviation['approvalRequestId'] as string), 201, 'internal approval');
     const card = (ok(await p.as.approver.get(`/api/v1/orders/${deal.orderId}/deviations`), 200, 'customer list') as unknown as Body[])[0]!;
-    expect(card).toMatchObject({ decisionNeeded: true, lots: ['LOT-B'], effects: expect.objectContaining({ labeling: 'LOT-B boxes labelled with the deviation number' }) });
+    expect(card).toMatchObject({ decisionNeeded: true, lots: [], effects: expect.objectContaining({ labeling: 'LOT-B boxes labelled with the deviation number' }) });
     ok(await p.as.approver.post(`/api/v1/customer/deviations/${deviation['deviationId']}/decide`, { expectedVersion: card['aggregateVersion'], decision: 'approved', acknowledgeScope: true }), 201, 'customer approves');
     expect(ok(await p.as.quality.get(`/api/v1/ncrs/${ncr['ncrId']}`), 200, 'ncr')['status']).toBe('accepted_under_deviation');
   });

@@ -168,6 +168,12 @@ export class SupportRepository {
     return res.rows;
   }
 
+  /** Whether a shipment is a delivery of this order to its customer (leg 2), the only kind a case names. */
+  async deliveryOfOrder(shipmentId: string, salesOrderId: string, tx?: Queryable): Promise<boolean> {
+    const res = await this.q(tx).query(`SELECT 1 FROM logistics.shipment WHERE id = $1 AND sales_order_id = $2 AND leg = 'jobwork_to_customer'`, [shipmentId, salesOrderId]);
+    return (res.rowCount ?? 0) > 0;
+  }
+
   async ownCleanVersion(documentVersionId: string, organizationId: string, tx?: Queryable): Promise<boolean> {
     const res = await this.q(tx).query(
       `SELECT 1 FROM dms.document_version v JOIN dms.document d ON d.id = v.document_id JOIN dms.file_object f ON f.id = v.file_object_id

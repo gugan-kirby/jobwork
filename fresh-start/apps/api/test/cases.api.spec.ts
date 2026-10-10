@@ -14,6 +14,7 @@ describe('support cases and remedies (F-18.2)', () => {
   let d1: Body;
   let d2: Body;
   let damage: Body;
+  let inbound: Body;
 
   const caseOf = async (id: unknown): Promise<Body> => ok(await p.as.support.get(`/api/v1/cases/${id}`), 200, 'read case');
   const customerCase = async (id: unknown): Promise<Body> => ok(await p.as.buyer.get(`/api/v1/support/cases/${id}`), 200, 'customer reads case');
@@ -42,7 +43,7 @@ describe('support cases and remedies (F-18.2)', () => {
   beforeAll(async () => {
     p = await Pilot.start('cases');
     await p.customerSite();
-    ({ deal } = await p.atJobWork());
+    ({ deal, inbound } = await p.atJobWork());
     // The customer allowed partial deliveries at enquiry.
     await p.pg.query(`UPDATE sourcing.enquiry SET partial_delivery = 'allowed' WHERE id = (SELECT enquiry_id FROM orders.sales_order WHERE id = $1)`, [deal.orderId]);
     d1 = await p.proofOfDelivery(await p.dispatchToCustomer(deal.orderId, [['LOT-A', '30']]));
@@ -281,6 +282,17 @@ describe('support cases and remedies (F-18.2)', () => {
     b = ok(await p.as.finance.post(`/api/v1/supplier-bills/${bill['billId']}/settlement/recheck`, {}), 201, 'recheck');
     expect((b['settlement'] as Body)['status']).toBe('eligible');
     ok(await p.as.support.post(`/api/v1/cases/${c['caseId']}/close`, { expectedVersion: c['aggregateVersion'], reason: 'Refunded and recovered' }), 201, 'close');
+  });
+
+  it('names only a delivery of the case’s own order (TP.6)', async () => {
+    const body = { salesOrderId: deal.orderId, kind: 'delivery_issue', title: 'Wrong leg', description: 'Names the supplier’s shipment' };
+    expect((await p.as.support.post('/api/v1/cases', { ...body, shipmentId: inbound['shipmentId'] })).body['code']).toBe('SHIPMENT_NOT_FOUND');
+    expect((await p.as.buyer.post('/api/v1/support/cases', { ...body, shipmentId: inbound['shipmentId'] })).body['code']).toBe('SHIPMENT_NOT_FOUND');
+    expect((await p.as.buyer.post('/api/v1/support/cases', { ...body, shipmentId: '00000000-0000-4000-8000-000000000099' })).body['code']).toBe('SHIPMENT_NOT_FOUND');
+    // The case center is JobWork's: a customer is refused before anything is written.
+    const before = await p.one<{ n: number }>(`SELECT count(*)::int AS n FROM support.case`);
+    expect((await p.as.buyer.post('/api/v1/cases', { salesOrderId: deal.orderId, kind: 'warranty', title: 'Via the wrong door', description: 'Probe' })).status).toBe(403);
+    expect(await p.one(`SELECT count(*)::int AS n FROM support.case`)).toEqual(before);
   });
 
   it('keeps every case out of the supplier’s sight and the case center to JobWork', async () => {

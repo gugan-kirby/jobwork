@@ -123,9 +123,10 @@ describe('Deviation (F-15.3)', () => {
     const list = ok(await p.as.approver.get(`/api/v1/orders/${deal.orderId}/deviations`), 200, 'customer list') as unknown as Body[];
     expect(list).toHaveLength(1);
     const view = list[0]!;
-    expect(view).toMatchObject({ decisionNeeded: true, canDecide: true, quantity: '20.0000', lots: ['LOT-A'] });
+    // The lots are still at the supplier: the customer gets no lot code at all, only JobWork's markings once received (D13).
+    expect(view).toMatchObject({ decisionNeeded: true, canDecide: true, quantity: '20.0000', lots: [] });
     expect((view['requirements'] as Body[])[0]).toMatchObject({ name: 'Bore diameter', drawingReference: '7', limits: '≥ 11.98 and ≤ 12.02 mm', actual: [{ sampleNo: 1, value: '12.030', unit: 'mm' }] });
-    p.expectNothingOf(view, ['Anand', 'BG-01', 'supplier'], 'customer deviation view');
+    p.expectNothingOf(view, ['Anand', 'BG-01', 'supplier', 'LOT-A'], 'customer deviation view');
     // The requester may not decide for the company.
     expect((await p.as.buyer.post(`/api/v1/customer/deviations/${dv['deviationId']}/decide`, { expectedVersion: view['aggregateVersion'], decision: 'approved', acknowledgeScope: true })).status).toBe(403);
     const decided = ok(await p.as.approver.post(`/api/v1/customer/deviations/${dv['deviationId']}/decide`, { expectedVersion: view['aggregateVersion'], decision: 'approved', acknowledgeScope: true }), 201, 'customer approves');

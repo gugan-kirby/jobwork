@@ -51,6 +51,7 @@ import { InstrumentCommand } from '../application/instrument.command';
 import { NcrCommand } from '../application/ncr.command';
 import { QualityPlanCommand } from '../application/quality-plan.command';
 import { QualityReleaseCommand } from '../application/quality-release.command';
+import { InternalOnly } from '../../../platform/http/public.decorator';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -69,36 +70,43 @@ export class QualityPlanController {
     return this.plans.units(actor);
   }
 
+  @InternalOnly()
   @Get('quality-templates')
   templates(@CurrentActor() actor: Actor): Promise<QualityTemplate[]> {
     return this.plans.templates(actor);
   }
 
+  @InternalOnly()
   @Get('quality-plans')
   list(@CurrentActor() actor: Actor, @Query('workPackageId') workPackageId: string): Promise<QualityPlan[]> {
     return this.plans.forWorkPackage(actor, workPackageId);
   }
 
+  @InternalOnly()
   @Post('quality-plans')
   create(@CurrentActor() actor: Actor, @Req() request: FastifyRequest): Promise<QualityPlan> {
     return this.plans.create(actor, parseBody(createQualityPlanRequestSchema, request.body), opts(request));
   }
 
+  @InternalOnly()
   @Get('quality-plans/:planId')
   get(@CurrentActor() actor: Actor, @Param('planId') planId: string): Promise<QualityPlan> {
     return this.plans.get(actor, planId);
   }
 
+  @InternalOnly()
   @Post('quality-plans/:planId/draft')
   saveDraft(@CurrentActor() actor: Actor, @Param('planId') planId: string, @Req() request: FastifyRequest): Promise<QualityPlan> {
     return this.plans.saveDraft(actor, planId, parseBody(saveQualityPlanDraftRequestSchema, request.body), opts(request));
   }
 
+  @InternalOnly()
   @Post('quality-plans/:planId/approve')
   approve(@CurrentActor() actor: Actor, @Param('planId') planId: string, @Req() request: FastifyRequest): Promise<QualityPlan> {
     return this.plans.approve(actor, planId, parseBody(qualityPlanVersionRequestSchema, request.body), opts(request));
   }
 
+  @InternalOnly()
   @Post('quality-plans/:planId/revise')
   revise(@CurrentActor() actor: Actor, @Param('planId') planId: string, @Req() request: FastifyRequest): Promise<QualityPlan> {
     return this.plans.revise(actor, planId, parseBody(qualityPlanVersionRequestSchema, request.body), opts(request));
@@ -106,6 +114,7 @@ export class QualityPlanController {
 }
 
 /** JobWork's inspection desk (doc 08 §5 `/inspections`; doc 06 §10). */
+@InternalOnly()
 @Controller('inspections')
 export class InspectionController {
   constructor(private readonly inspections: InspectionCommand) {}
@@ -225,6 +234,7 @@ export class InstrumentController {
 }
 
 /** JobWork's NCR desk (doc 08 §5 `/ncrs`; doc 06 §10). */
+@InternalOnly()
 @Controller('ncrs')
 export class NcrController {
   constructor(private readonly ncrs: NcrCommand) {}
@@ -317,6 +327,7 @@ export class SupplierNcrController {
 }
 
 /** Deviations inside JobWork: requested on an NCR, decided through the approval rail. */
+@InternalOnly()
 @Controller()
 export class DeviationController {
   constructor(private readonly deviations: DeviationCommand) {}
@@ -364,6 +375,7 @@ export class CustomerDeviationController {
 }
 
 /** Quality release (doc 08 §5 `/quality-releases`; doc 09 §14): checklist, authorize, history, and the facts dispatch reads. */
+@InternalOnly()
 @Controller()
 export class QualityReleaseController {
   constructor(private readonly releases: QualityReleaseCommand) {}

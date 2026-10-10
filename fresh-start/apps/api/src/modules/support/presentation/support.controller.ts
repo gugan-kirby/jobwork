@@ -16,6 +16,7 @@ import type { Actor } from '../../iam';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
 import { CaseCommand } from '../application/case.command';
+import { InternalOnly } from '../../../platform/http/public.decorator';
 
 const opts = (request: FastifyRequest) => {
   const header = request.headers['idempotency-key'];
@@ -57,6 +58,7 @@ export class CustomerCasesController {
 }
 
 /** JobWork's case center (doc 06 §15). */
+@InternalOnly()
 @Controller()
 export class CasesController {
   constructor(private readonly cases: CaseCommand) {}

@@ -22,6 +22,7 @@ import type { Actor } from '../../iam';
 import { ChangeCommand } from '../application/change.command';
 import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
+import { InternalOnly } from '../../../platform/http/public.decorator';
 
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const header = request.headers['idempotency-key'];
@@ -29,6 +30,7 @@ function idempotencyKey(request: FastifyRequest): string | undefined {
 }
 
 /** JobWork's change desk (IN-13): every step of doc 06 §9, by name. */
+@InternalOnly()
 @Controller('changes')
 export class ChangeController {
   constructor(private readonly changes: ChangeCommand) {}

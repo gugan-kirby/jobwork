@@ -375,6 +375,8 @@ Taken as safe defaults so the build can proceed; each is reversible and recorded
 - F-17.6, pilot scenario 11's delivery half, and UAT 11.x;
 - a full local gate after F-17.5: CI was green on #50, but the local run was stopped.
 
+**Testing done 2026-10-10** in the [test pass](tp-phase2-test-pass.md): scenario 11's delivery half and UAT 11.x in TP.4, the browser walk in TP.5, and the full local gate in TP.6. The scenario 11 spec is no longer deferred.
+
 Owner items carried:
 
 - the defaults above for review;

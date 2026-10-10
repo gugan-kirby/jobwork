@@ -68,7 +68,9 @@ export class SettlementRepository {
 
   async purchaseOrder(id: string, tx?: Queryable): Promise<{ id: string; number: string; status: string; salesOrderId: string; supplierOrganizationId: string; currency: string; totalMinor: number; quantity: number; workPackageId: string | null; workPackageStatus: string | null } | null> {
     const res = await this.q(tx).query<{ id: string; number: string; status: string; salesOrderId: string; supplierOrganizationId: string; currency: string; totalMinor: number; quantity: string; workPackageId: string | null; workPackageStatus: string | null }>(
-      `SELECT p.id, p.number, p.status, p.sales_order_id AS "salesOrderId", p.supplier_organization_id AS "supplierOrganizationId", p.currency, p.total_minor::int AS "totalMinor",
+      `SELECT p.id, p.number, p.status, p.sales_order_id AS "salesOrderId", p.supplier_organization_id AS "supplierOrganizationId", p.currency,
+              -- What the PO commits now: the issued total plus every change amendment the supplier acknowledged (D10).
+              (p.total_minor + COALESCE((SELECT SUM(a.cost_delta_minor) FROM orders.purchase_order_amendment a WHERE a.purchase_order_id = p.id AND a.acknowledged_at IS NOT NULL), 0))::int AS "totalMinor",
               (SELECT COALESCE(SUM(quantity), 0)::text FROM orders.purchase_order_line WHERE purchase_order_id = p.id) AS quantity, w.id AS "workPackageId", w.status AS "workPackageStatus"
          FROM orders.purchase_order p LEFT JOIN orders.work_package w ON w.purchase_order_id = p.id WHERE p.id = $1`,
       [id],

@@ -20,10 +20,7 @@ export const PACKING_CHECKS: ReadonlyArray<{ key: keyof PackingCheck; label: str
   { key: 'packagingNoteFollowed', label: 'The customer’s packaging instructions followed' },
 ];
 
-/** JobWork's own lot marking for a stock lot: the supplier's lot code never reaches the customer. */
-export function customerLotMarking(stockLotId: string): string {
-  return `JW-${stockLotId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
-}
+export { customerLotMarking } from './lot-marking';
 
 /** What an override is bound to: the exact reasons its owner saw. */
 export function reasonsHash(reasons: readonly string[]): string {

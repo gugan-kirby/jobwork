@@ -17,6 +17,7 @@ import { CurrentActor } from '../../../platform/http/actor.decorator';
 import { parseBody } from '../../../platform/http/validation';
 import { JobMarginView } from '../application/job-margin';
 import { SettlementCommand } from '../application/settlement.command';
+import { InternalOnly } from '../../../platform/http/public.decorator';
 
 const opts = (request: FastifyRequest) => {
   const header = request.headers['idempotency-key'];
@@ -47,6 +48,7 @@ export class SupplierBillsController {
 }
 
 /** JobWork finance: match, decide exceptions, settle (doc 10 §5; BR-FIN-07). */
+@InternalOnly()
 @Controller('supplier-bills')
 export class FinanceBillsController {
   constructor(private readonly settlement: SettlementCommand) {}
@@ -54,12 +56,12 @@ export class FinanceBillsController {
   @Get()
   list(@CurrentActor() actor: Actor, @Query() query: unknown): Promise<SupplierBill[]> {
     const { status, purchaseOrderId } = parseBody(listQuerySchema, query ?? {});
-    return this.settlement.list(actor, { ...(status ? { status } : {}), ...(purchaseOrderId ? { purchaseOrderId } : {}) }, 'finance');
+    return this.settlement.list(actor, { ...(status ? { status } : {}), ...(purchaseOrderId ? { purchaseOrderId } : {}) });
   }
 
   @Get(':billId')
   get(@CurrentActor() actor: Actor, @Param('billId') id: string): Promise<SupplierBill> {
-    return this.settlement.get(actor, parseBody(z.uuid(), id), 'finance');
+    return this.settlement.get(actor, parseBody(z.uuid(), id));
   }
 
   @Post(':billId/match')
@@ -94,6 +96,7 @@ export class FinanceBillsController {
 }
 
 /** Planned against realized margin per order (F-18.3), internal only. */
+@InternalOnly()
 @Controller('finance/margin')
 export class MarginController {
   constructor(private readonly margin: JobMarginView) {}

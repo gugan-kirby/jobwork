@@ -32,6 +32,8 @@ type Probe = {
 const EXTERNAL: ActorKey[] = ['customerA', 'customerB', 'supplier1', 'supplier2'];
 const externalBut = (...keep: ActorKey[]): ActorKey[] => EXTERNAL.filter((a) => !keep.includes(a));
 const DENIED = [401, 403, 404];
+/** A well-formed id that names no record. */
+const NOTHING = '00000000-0000-4000-8000-0000000000aa';
 
 const READS: Probe[] = [
   { name: 'customer enquiry', path: (w, id) => `/enquiries/${id ?? w.enquiryId}`, allow: ['customerA'], deny: externalBut('customerA') },
@@ -60,6 +62,33 @@ const READS: Probe[] = [
   { name: 'work queues', path: () => '/queues', allow: ['sourcing'], deny: EXTERNAL },
   { name: 'controls panel', path: () => '/operations/controls', allow: ['sourcing', 'admin'], deny: EXTERNAL },
   { name: 'dead letters', path: () => '/operations/dead-letters', allow: ['admin'], deny: [...EXTERNAL, 'sourcing'] },
+  // Phase 2 (TP.6): change, quality, logistics, settlement and support. The world holds none of
+  // these records, so an id-addressed probe uses a well-formed id that names nothing: every
+  // external party must get the same refusal for it as for any other id.
+  { name: 'order deliveries', path: (w, id) => `/orders/${id ?? w.orderId}/deliveries`, allow: ['customerA'], deny: externalBut('customerA') },
+  { name: 'order documents', path: (w, id) => `/orders/${id ?? w.orderId}/documents`, allow: ['customerA'], deny: externalBut('customerA') },
+  { name: 'dispatch context', path: (w, id) => `/logistics/sales-orders/${id ?? w.orderId}/dispatch-context`, allow: [], deny: EXTERNAL },
+  { name: 'order margin', path: (w, id) => `/finance/margin/${id ?? w.orderId}`, allow: ['finance', 'sales'], deny: [...EXTERNAL, 'quality', 'admin'] },
+  { name: 'margin list', path: () => '/finance/margin', allow: ['finance', 'sales'], deny: [...EXTERNAL, 'quality', 'admin'] },
+  { name: 'finance bills', path: () => '/supplier-bills', allow: ['finance'], deny: [...EXTERNAL, 'sourcing', 'admin'] },
+  { name: 'finance bill', path: (_w, id) => `/supplier-bills/${id ?? NOTHING}`, allow: [], deny: [...EXTERNAL, 'sourcing'] },
+  { name: 'supplier bill', path: (_w, id) => `/supplier/bills/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'case center', path: () => '/cases', allow: [], deny: EXTERNAL },
+  { name: 'internal case', path: (_w, id) => `/cases/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'customer case', path: (_w, id) => `/support/cases/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'internal change', path: (_w, id) => `/changes/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'supplier change', path: (_w, id) => `/supplier/changes/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'customer change', path: (_w, id) => `/customer/changes/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'NCR list', path: () => '/ncrs', allow: ['quality'], deny: EXTERNAL },
+  { name: 'internal NCR', path: (_w, id) => `/ncrs/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'supplier NCR', path: (_w, id) => `/supplier/ncrs/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'internal inspection', path: (_w, id) => `/inspections/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'supplier inspection', path: (_w, id) => `/supplier/inspections/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'quality plan', path: (_w, id) => `/quality-plans/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'internal shipment', path: (_w, id) => `/shipments/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'supplier shipment', path: (_w, id) => `/supplier/shipments/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'customer delivery', path: (_w, id) => `/deliveries/${id ?? NOTHING}`, allow: [], deny: EXTERNAL },
+  { name: 'dispatch label', path: (_w, id) => `/customer-dispatches/${id ?? NOTHING}/label`, allow: [], deny: EXTERNAL },
 ];
 
 /**
@@ -76,6 +105,17 @@ const COMMANDS: Array<{ name: string; path: (w: World) => string; body: (w: Worl
   { name: "acknowledge another supplier's purchase order", path: (w) => `/supplier/purchase-orders/${w.purchaseOrderId}/acknowledge`, body: () => ({ expectedVersion: 1, note: '' }), deny: ['supplier2', 'customerA', 'customerB'] },
   { name: "accept another customer's quotation", path: (w) => `/quotations/${w.quoteId}/accept`, body: () => ({ expectedVersion: 1, quoteVersionNo: 1, contentHash: 'a'.repeat(64), termsHash: 'b'.repeat(64), acknowledgeTerms: true }), deny: ['customerB', 'supplier1', 'supplier2'] },
   { name: "post into another customer's enquiry thread", path: (w) => `/conversations/enquiry/${w.enquiryId}/messages`, body: () => ({ audience: 'customer', body: 'probe' }), deny: ['customerB', 'supplier1', 'supplier2'] },
+  // Phase 2 (TP.6): JobWork's own commands, refused to every external party.
+  { name: 'open an internal case', path: () => '/cases', body: (w) => ({ salesOrderId: w.orderId, kind: 'warranty', title: 'probe', description: 'probe' }), deny: EXTERNAL },
+  { name: 'close a case', path: () => `/cases/${NOTHING}/close`, body: () => ({ expectedVersion: 1, reason: 'probe' }), deny: EXTERNAL },
+  { name: 'verify a case action', path: () => `/case-actions/${NOTHING}/verify`, body: () => ({ note: 'probe' }), deny: EXTERNAL },
+  { name: 'match a supplier bill', path: () => `/supplier-bills/${NOTHING}/match`, body: () => ({ expectedVersion: 1 }), deny: EXTERNAL },
+  { name: 'pay a settlement', path: () => `/supplier-bills/${NOTHING}/settlement/pay`, body: () => ({ expectedVersion: 1, paymentReference: 'UTR-PROBE' }), deny: EXTERNAL },
+  { name: 'close an NCR', path: () => `/ncrs/${NOTHING}/close`, body: () => ({ expectedVersion: 1, note: 'probe' }), deny: EXTERNAL },
+  { name: 'release a change', path: () => `/changes/${NOTHING}/release`, body: () => ({ expectedVersion: 1 }), deny: EXTERNAL },
+  { name: 'quality-release a lot', path: () => '/quality-releases', body: () => ({ workPackageId: NOTHING, quantity: '1', lots: ['L1'], serials: [] }), deny: EXTERNAL },
+  { name: 'plan a customer dispatch', path: () => '/customer-dispatches', body: (w) => ({ salesOrderId: w.orderId, packages: [{ packageNo: 1, items: [{ stockLotId: NOTHING, quantity: '1' }] }] }), deny: EXTERNAL },
+  { name: 'record a proof of delivery', path: () => `/shipments/${NOTHING}/pod`, body: () => ({ expectedVersion: 1, receivedByName: 'probe', receivedAt: new Date().toISOString(), packagesReceived: 1, remarks: 'clean', source: 'driver' }), deny: EXTERNAL },
 ];
 
 describe('Cross-tenant authorization matrix (F-11.5)', () => {
