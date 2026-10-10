@@ -124,6 +124,7 @@ export class CaseCommand {
           if (!order || (!actor.isInternal && order.customerOrganizationId !== actor.organizationId)) throw new DomainError('ORDER_NOT_FOUND', 404, 'Order not found');
           if (!actor.isInternal && (cmd.deliveryExceptionIds.length > 0 || cmd.purchaseOrderId)) throw new DomainError('NOT_AUTHORIZED', 403, 'Not permitted', 'JobWork links exceptions and purchase orders.');
           if (cmd.purchaseOrderId && (await this.orders.findPurchaseOrder(cmd.purchaseOrderId, tx))?.salesOrderId !== order.id) throw new DomainError('PURCHASE_ORDER_NOT_FOUND', 404, 'Purchase order not found on this order');
+          if (cmd.shipmentId && !(await this.repo.deliveryOfOrder(cmd.shipmentId, order.id, tx))) throw new DomainError('SHIPMENT_NOT_FOUND', 404, 'Delivery not found on this order');
           for (const id of cmd.evidenceDocumentVersionIds) {
             if (!(await this.repo.ownCleanVersion(id, actor.organizationId!, tx))) throw new CaseRefused('EVIDENCE_UNAVAILABLE', 'Upload the files first', 'Each must be your own file and scanned clean.', 422);
           }
@@ -365,6 +366,7 @@ export class CaseCommand {
             case 'rework': {
               const purchaseOrderId = cmd.purchaseOrderId ?? c.purchaseOrderId;
               if (!purchaseOrderId) throw new CaseRefused('PURCHASE_ORDER_REQUIRED', 'Name the purchase order it goes back on', undefined, 422);
+              if ((await this.orders.findPurchaseOrder(purchaseOrderId, tx))?.salesOrderId !== c.salesOrderId) throw new DomainError('PURCHASE_ORDER_NOT_FOUND', 404, 'Purchase order not found on this order');
               const done = await this.logistics.toSupplier({ purchaseOrderId, stockLotId: found.stockLotId!, quantity: found.quantity!, from: cmd.from, purpose: found.kind === 'rework' ? 'rework' : 'return', challanNumber: cmd.challanNumber, by: actor.userId }, tx);
               audit.push(...done.audit);
               result = { ...result, shipmentId: done.shipmentId, shipmentNumber: done.number };
