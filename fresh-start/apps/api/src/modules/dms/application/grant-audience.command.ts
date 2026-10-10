@@ -8,6 +8,7 @@ import { DmsRepository, type GrantRow } from '../infrastructure/dms.repository';
 import { IamRepository } from '../../iam';
 import { contextFromActor } from '../../../platform/commands/command';
 import { CommandExecutor } from '../../../platform/commands/execute';
+import { DomainError } from '../../../platform/http/domain-error';
 
 /**
  * grant-audience (`BR-ENG-02`, `BR-ENG-08`). Release is explicit, per immutable
@@ -53,6 +54,10 @@ export class GrantAudienceCommand {
       }
       if (target.id === version.owningOrganizationId) {
         throw new NotAuthorized('The owning organization already has access');
+      }
+      // `FR-305` (F-FP.5): a supplier receives JobWork's confirmed copy of a customer file, never the file.
+      if (target.type === 'supplier' && (await this.repo.ownerTypes([documentVersionId])).get(documentVersionId) === 'customer') {
+        throw new DomainError('SUPPLIER_COPY_REQUIRED', 422, 'A customer file needs its supplier copy first', 'Send the supplier JobWork’s confirmed copy of this file instead.');
       }
     }
 

@@ -703,6 +703,58 @@ export class DmsRepository {
       createdAt: row.created_at,
     }));
   }
+
+  // ----------------------------------------------------------------- supplier copies (F-FP.5)
+
+  async findSupplierCopy(sourceVersionId: string, tx?: Queryable, forUpdate = false): Promise<SupplierCopyRow | null> {
+    const res = await this.client(tx).query(
+      `SELECT c.*, v.original_filename AS copy_filename, f.sha256 AS copy_sha256
+         FROM dms.supplier_copy c JOIN dms.document_version v ON v.id = c.copy_version_id JOIN dms.file_object f ON f.id = v.file_object_id
+        WHERE c.source_version_id = $1${forUpdate ? ' FOR UPDATE OF c' : ''}`,
+      [sourceVersionId],
+    );
+    const row = res.rows[0] as Record<string, unknown> | undefined;
+    return row ? mapSupplierCopy(row) : null;
+  }
+
+  /** Confirmed copies of these customer versions, by source version id. */
+  async confirmedCopies(sourceVersionIds: readonly string[], tx?: Queryable): Promise<Map<string, SupplierCopyRow>> {
+    if (sourceVersionIds.length === 0) return new Map();
+    const res = await this.client(tx).query(
+      `SELECT c.*, v.original_filename AS copy_filename, f.sha256 AS copy_sha256
+         FROM dms.supplier_copy c JOIN dms.document_version v ON v.id = c.copy_version_id JOIN dms.file_object f ON f.id = v.file_object_id
+        WHERE c.source_version_id = ANY($1::uuid[]) AND c.confirmed_at IS NOT NULL`,
+      [sourceVersionIds],
+    );
+    return new Map(res.rows.map((r: Record<string, unknown>) => [r['source_version_id'] as string, mapSupplierCopy(r)]));
+  }
+
+  /** The owning organization's type of each version: a customer's own file needs a supplier copy. */
+  async ownerTypes(versionIds: readonly string[], tx?: Queryable): Promise<Map<string, 'customer' | 'supplier' | 'internal'>> {
+    if (versionIds.length === 0) return new Map();
+    const res = await this.client(tx).query(
+      `SELECT v.id, o.type FROM dms.document_version v JOIN dms.document d ON d.id = v.document_id JOIN iam.organization o ON o.id = d.owning_organization_id
+        WHERE v.id = ANY($1::uuid[])`,
+      [versionIds],
+    );
+    return new Map(res.rows.map((r: Record<string, unknown>) => [r['id'] as string, r['type'] as 'customer' | 'supplier' | 'internal']));
+  }
+
+  /** A prepared copy replaces an unconfirmed one; a confirmed copy is kept (trigger). */
+  async prepareSupplierCopy(input: { sourceVersionId: string; copyVersionId: string; preparedBy: string; note: string }, tx: Queryable): Promise<void> {
+    await this.client(tx).query(`DELETE FROM dms.supplier_copy WHERE source_version_id = $1 AND confirmed_at IS NULL`, [input.sourceVersionId]);
+    await this.client(tx).query(
+      `INSERT INTO dms.supplier_copy (source_version_id, copy_version_id, prepared_by, note) VALUES ($1, $2, $3, $4)`,
+      [input.sourceVersionId, input.copyVersionId, input.preparedBy, input.note],
+    );
+  }
+
+  async confirmSupplierCopy(input: { sourceVersionId: string; confirmedBy: string; note: string }, tx: Queryable): Promise<void> {
+    await this.client(tx).query(
+      `UPDATE dms.supplier_copy SET confirmed_by = $2, confirmed_at = now(), confirm_note = $3 WHERE source_version_id = $1 AND confirmed_at IS NULL`,
+      [input.sourceVersionId, input.confirmedBy, input.note],
+    );
+  }
 }
 
 function mapSession(row: Record<string, unknown>): UploadSessionRow {
@@ -775,5 +827,33 @@ function mapDocument(row: Record<string, unknown>): DocumentRow {
     currentVersionNo: row['current_version_no'] as number,
     aggregateVersion: row['aggregate_version'] as number,
     createdAt: row['created_at'] as Date,
+  };
+}
+
+export interface SupplierCopyRow {
+  sourceVersionId: string;
+  copyVersionId: string;
+  copyFilename: string;
+  copySha256: string;
+  preparedBy: string;
+  preparedAt: Date;
+  note: string;
+  confirmedBy: string | null;
+  confirmedAt: Date | null;
+  confirmNote: string | null;
+}
+
+function mapSupplierCopy(row: Record<string, unknown>): SupplierCopyRow {
+  return {
+    sourceVersionId: row['source_version_id'] as string,
+    copyVersionId: row['copy_version_id'] as string,
+    copyFilename: row['copy_filename'] as string,
+    copySha256: row['copy_sha256'] as string,
+    preparedBy: row['prepared_by'] as string,
+    preparedAt: row['prepared_at'] as Date,
+    note: row['note'] as string,
+    confirmedBy: (row['confirmed_by'] as string | null) ?? null,
+    confirmedAt: (row['confirmed_at'] as Date | null) ?? null,
+    confirmNote: (row['confirm_note'] as string | null) ?? null,
   };
 }
