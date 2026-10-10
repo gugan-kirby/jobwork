@@ -30,6 +30,7 @@ import {
 import { api, ApiError } from '../../../lib/api';
 import { ThreadPanel } from '../../thread-panel';
 import { RevisePanel } from './revise-panel';
+import { SupplierCopyPanel } from '../../supplier-copy-panel';
 
 const TOPICS: ClarificationTopic[] = [
   'material',
@@ -284,6 +285,7 @@ export default function IntakeDetailPage() {
                             line {doc.lineNo}
                           </span>
                         ) : null}
+                        <SupplierCopyPanel versionId={doc.documentVersionId} />
                       </li>
                     ))}
                   </ul>
