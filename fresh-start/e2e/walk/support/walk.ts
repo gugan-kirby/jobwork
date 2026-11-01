@@ -95,7 +95,18 @@ const IGNORED_CONSOLE = [
  * Every walk test gets `guard`: uncaught page errors, console errors and API 5xx responses
  * fail the test at its end, with the list, so a broken screen cannot pass by looking right.
  */
+/**
+ * FW_MOBILE=1 records the customer's side of the walk on a phone (390 × 844, touch), for the
+ * client cut `walk:videos` makes in that mode; JobWork staff and suppliers stay on desktop.
+ */
+const MOBILE = process.env.FW_MOBILE === '1';
+const onPhone = (title: string): boolean => MOBILE && /^(customer|public) ·/.test(title);
+
 export const test = base.extend<{ guard: string[] }>({
+  viewport: async ({ viewport }, use, testInfo) => use(onPhone(testInfo.title) ? { width: 390, height: 844 } : viewport),
+  isMobile: async ({ isMobile }, use, testInfo) => use(onPhone(testInfo.title) || isMobile),
+  hasTouch: async ({ hasTouch }, use, testInfo) => use(onPhone(testInfo.title) || hasTouch),
+  deviceScaleFactor: async ({ deviceScaleFactor }, use, testInfo) => use(onPhone(testInfo.title) ? 2 : deviceScaleFactor),
   guard: [
     async ({ page }, use, testInfo) => {
       const problems: string[] = [];
