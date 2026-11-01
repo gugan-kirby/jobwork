@@ -7,7 +7,9 @@
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "walk": "playwright test -c playwright.walk.config.ts",
-    "walk:videos": "node scripts/stitch-videos.mjs"
+    "walk:videos": "node scripts/stitch-videos.mjs",
+    "demo": "playwright test -c playwright.demo.config.ts",
+    "demo:video": "node scripts/demo-video.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
