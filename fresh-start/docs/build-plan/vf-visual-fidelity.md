@@ -38,7 +38,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-09 | `JobWork Quotes Received Screen.png` | `/quotations` | **done** 2026-11-03 |
 | VF-10 | `Precision Metals Quote Details.png` | `/quotations/[quotationId]` | **done** 2026-11-03 |
 | VF-11 | `JobWork My Orders Dashboard.png` | `/orders` | **done** 2026-11-03 |
-| VF-12 | `Order Tracking Dashboard UI.png` | `/orders/[orderId]` | |
+| VF-12 | `Order Tracking Dashboard UI.png` | `/orders/[orderId]` | **done** 2026-11-03 |
 | VF-13 | `JobWork Invoice Management Dashboard.png` | `/invoices` | |
 | VF-14 | `JobWork Payments Dashboard.png` | `/payments` | |
 | VF-15 | `Modern JobWork Vendor Dashboard.png` | `/supplier` | |
@@ -204,3 +204,16 @@ Corrections: no vendor line (`F-09.5`); filters are All · Needs you · In Progr
 | `packages/ui/src/base.css` | edit | `.jw-record-progress`, `.jw-progress` |
 | `apps/portal-web/app/orders/page.tsx` | edit | Title, search and sort, five filters, rich cards with progress |
 | `packages/ui/test/dropzone.spec.tsx` | edit | Progress bar role and value |
+
+## VF-12 Order tracking
+
+Deltas found: "Order details" with the next-step card and a seven-row tick list (reference: tinted summary card; four-milestone progress rail; a Current Status panel with percentage and bar; a vertical Production Timeline with the current step tinted; Contact Vendor / Order Details at the foot).
+Corrections: no vendor block or "Contact Vendor" — **Contact JobWork** jumps to the order's message thread with JobWork, **Order Details** to what was ordered (`F-09.5`, IN-10). The four milestones group the seven curated lanes (confirmed = accepted + advance + technical; in production = manufacturing + final checks; out for delivery = on the way; delivered); dates are the curated lane dates, never a workshop's plan. The next-step card now shows only when the step is the customer's (pay, confirm an address or a delivery) — JobWork's own step is the Current Status panel. Deliveries, checkpoints, payment schedule, deviations, changes, contract record and messages are unchanged below; Documents moves into What you ordered.
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/portal-web/lib/order-progress.ts` | new | `ORDER_PROGRESS` (shared with VF-11), `milestones(timeline)` |
+| `apps/portal-web/app/orders/[orderId]/page.tsx` | edit | "Order Tracking"; summary card, milestones, current status, timeline, action pair; anchors `#order-details`, `#messages` |
+| `apps/portal-web/app/orders/page.tsx` | edit | Uses the shared progress map |
+| `packages/ui/src/base.css` | edit | `.jw-milestones`, `.jw-milestone*`, `.jw-status-panel`, `.jw-status-head`, `.jw-progress-lg`, `.jw-timeline*` |
+| `apps/portal-web/test/order-progress.spec.ts` | new | Milestone grouping and dates; progress never goes backwards |

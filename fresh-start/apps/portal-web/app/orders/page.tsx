@@ -22,6 +22,7 @@ import {
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../lib/api';
+import { ORDER_PROGRESS } from '../../lib/order-progress';
 
 /**
  * Orders (prototype tile 11, corrected): JobWork's commitment to you, from acceptance to
@@ -60,19 +61,6 @@ function bucket(order: CustomerOrderListItem): Exclude<Filter, 'all'> {
   if (order.actionNeeded || order.status === 'payment_needed' || order.status === 'delivery_confirmation_needed') return 'needs_you';
   return 'in_progress';
 }
-
-/** Where the order stands on the customer timeline, as a share of the way to delivery. */
-const PROGRESS: Record<CustomerOrderListItem['status'], number> = {
-  payment_needed: 10,
-  technical_confirmation: 20,
-  manufacturing_in_progress: 45,
-  quality_review: 65,
-  final_checks: 80,
-  on_the_way: 90,
-  delivery_confirmation_needed: 95,
-  completed: 100,
-  cancelled: 0,
-};
 
 const TILE: Record<Exclude<Filter, 'all'>, RecordTint> = {
   needs_you: 'orange',
@@ -195,7 +183,7 @@ export default function OrdersPage() {
                 status={<StatusChip tone={TONE[o.status]}>{o.statusLabel}</StatusChip>}
                 icon={{ name: 'factory', tint: TILE[bucket(o)] }}
                 date={when(o.acceptedAt)}
-                {...(bucket(o) === 'in_progress' || bucket(o) === 'needs_you' ? { progress: PROGRESS[o.status] } : {})}
+                {...(bucket(o) === 'in_progress' || bucket(o) === 'needs_you' ? { progress: ORDER_PROGRESS[o.status] } : {})}
               />
             ))}
           </RecordList>
