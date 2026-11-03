@@ -251,8 +251,12 @@ describe('WorkshopIllustration', () => {
     const svg = container.querySelector('svg');
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
     expect(svg?.getAttribute('focusable')).toBe('false');
-    const fills = [...container.querySelectorAll<SVGElement>('[style]')].map((node) => node.style.fill || node.style.stroke);
-    expect(fills.every((value) => value.startsWith('var(--'))).toBe(true);
+    // jsdom drops custom-property values from the CSSOM, so read the declared style text.
+    const paints = [...container.querySelectorAll('[style]')]
+      .map((node) => node.getAttribute('style') ?? '')
+      .filter((style) => /fill|stroke/.test(style));
+    expect(paints.length).toBeGreaterThan(20);
+    expect(paints.filter((style) => /#[0-9a-f]{3,8}|rgb\(/i.test(style))).toEqual([]);
   });
 });
 
