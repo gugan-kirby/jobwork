@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CustomerInvoice, CustomerPaymentIntent } from '@jobwork/contracts';
 import {
   ButtonLink,
   Card,
-  CommandButton,
   EmptyState,
   ErrorState,
   FilterChips,
@@ -17,12 +15,11 @@ import {
   Page,
   Select,
   Stack,
-  StatusChip,
   formatMoney,
-  type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../lib/api';
-import { dueWords, fmt, isOpen } from '../../lib/invoice-due';
+import { isOpen } from '../../lib/invoice-due';
+import { InvoiceCard } from '../invoice-card';
 
 /**
  * Invoices (prototype tile 13): what JobWork has billed you and what is still open.
@@ -33,13 +30,6 @@ import { dueWords, fmt, isOpen } from '../../lib/invoice-due';
  * strip with Pay Now beside it (a separate control, never nested in the card's link).
  * Payment goes to JobWork through the existing intent flow (`F-08.4`).
  */
-
-const TONE: Record<CustomerInvoice['status'], Tone> = {
-  unpaid: 'attention',
-  partially_paid: 'attention',
-  paid: 'positive',
-  void: 'neutral',
-};
 
 type Filter = 'all' | 'open' | 'paid' | 'overdue';
 
@@ -151,56 +141,9 @@ export default function InvoicesPage() {
           </Card>
         ) : (
           <div className="jw-record-list">
-            {visible.map((i) => {
-              const due = isOpen(i) ? dueWords(i, now) : null;
-              const paid = i.status === 'paid';
-              return (
-                <article key={i.invoiceId} className="jw-invoice">
-                  <Link href={`/invoices/${i.invoiceId}`} className="jw-record jw-record-rich jw-invoice-main">
-                    <span className={`jw-record-tile ${paid ? 'jw-record-tile-green' : 'jw-record-tile-sky'}`} aria-hidden="true">
-                      <Icon name={paid ? 'checkCircle' : 'invoice'} size={1.9} />
-                    </span>
-                    <span className="jw-record-main">
-                      <span className="jw-record-top">
-                        <span className="jw-record-title">{i.number}</span>
-                        <StatusChip tone={TONE[i.status]}>{i.statusLabel}</StatusChip>
-                      </span>
-                      <span className="jw-record-caption">
-                        Order #<span className="mono">{i.orderNumber}</span> •{' '}
-                        {i.kind === 'advance' ? 'Advance' : i.kind === 'balance' ? 'Balance' : i.kind === 'change' ? 'Change' : 'Final'}
-                      </span>
-                      <span className="jw-record-foot">
-                        <span className="jw-record-date">
-                          <Icon name="calendar" size={1.15} />
-                          {fmt(i.issuedAt)}
-                        </span>
-                        <span className="jw-invoice-amount numeric">
-                          {formatMoney({ amountMinor: paid ? i.totalMinor : i.openMinor, currency: i.currency })}
-                        </span>
-                      </span>
-                    </span>
-                    <span className="jw-record-chevron">
-                      <Icon name="chevron" size={1.4} />
-                    </span>
-                  </Link>
-                  {due ? (
-                    <div className={due.overdue ? 'jw-due jw-due-overdue' : 'jw-due'}>
-                      <span className="jw-due-text">
-                        <Icon name="clock" size={1.2} />
-                        {due.text}
-                      </span>
-                      {i.pendingPayment ? (
-                        <span className="jw-due-text">Verifying payment…</span>
-                      ) : (
-                        <CommandButton size="sm" receiptLabel="Opening payment" onCommand={() => pay(i.invoiceId)}>
-                          Pay Now<span className="jw-visually-hidden">, {i.number}</span>
-                        </CommandButton>
-                      )}
-                    </div>
-                  ) : null}
-                </article>
-              );
-            })}
+            {visible.map((i) => (
+              <InvoiceCard key={i.invoiceId} invoice={i} now={now} onPay={pay} />
+            ))}
           </div>
         )}
       </Stack>
