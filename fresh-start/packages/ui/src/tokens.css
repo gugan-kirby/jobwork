@@ -132,6 +132,12 @@
   --accent-sky: #1677c9;
   /* The select chevron for the portal phone theme (neutral-700 stroke). */
   --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5468' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  /* Categorical chart slots, fixed order (validated 2026-11-03 with the dataviz
+     validator, light surface: CVD ΔE ≥ 23; slot 3 is below 3:1, so every use carries a
+     visible label and count). */
+  --chart-1: #3d53df;
+  --chart-2: #16a34a;
+  --chart-3: #a78bfa;
   /* Illustration fills (the welcome workshop); decorative only, never carry meaning. */
   --illus-skin: #f1c6a3;
   --illus-hair: #1b2042;

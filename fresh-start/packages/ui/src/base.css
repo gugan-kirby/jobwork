@@ -2944,3 +2944,192 @@ code,
   grid-template-columns: auto minmax(0, 1fr);
   cursor: default;
 }
+
+/* VF-15 donut with its legend. */
+.jw-donut {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: center;
+  margin: 0;
+}
+
+.jw-donut-total {
+  font: 700 20px/1 var(--font-sans);
+  fill: var(--color-ink);
+}
+
+.jw-donut-caption {
+  font: 500 10px/1 var(--font-sans);
+  fill: var(--color-ink-muted);
+}
+
+.jw-donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.jw-donut-legend li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-donut-legend li + li {
+  border-top: 1px solid var(--neutral-200);
+}
+
+.jw-donut-key {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.jw-donut-value {
+  font-weight: 600;
+}
+
+/* VF-15 supplier home: welcome banner, tinted stat tiles, panel lists. */
+.jw-welcome {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--blue-50);
+}
+
+.jw-welcome-eyebrow {
+  font: 500 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-welcome-title {
+  font: 700 22px/28px var(--font-sans);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.jw-welcome-sub {
+  font: 400 15px/21px var(--font-sans);
+  color: var(--color-ink-muted);
+  margin-top: var(--space-1);
+}
+
+.jw-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.jw-tile {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--neutral-200);
+  text-decoration: none;
+  color: var(--color-ink);
+}
+
+.jw-tile:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.jw-tile-blue { background: var(--blue-50); border-color: var(--blue-100); }
+.jw-tile-violet { background: var(--status-special-bg); border-color: var(--status-special-border); }
+.jw-tile-green { background: var(--status-positive-bg); border-color: var(--status-positive-border); }
+.jw-tile-orange { background: var(--status-attention-bg); border-color: var(--status-attention-border); }
+
+.jw-tile-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.jw-tile-blue .jw-tile-glyph { color: var(--brand-strong); }
+.jw-tile-violet .jw-tile-glyph { color: var(--status-special-fg); }
+.jw-tile-green .jw-tile-glyph { color: var(--status-positive-fg); }
+.jw-tile-orange .jw-tile-glyph { color: var(--accent-orange); }
+
+.jw-tile-value {
+  font: 700 26px/30px var(--font-sans);
+}
+
+.jw-tile-label {
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+@media (min-width: 768px) {
+  .jw-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.jw-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) 0 var(--space-3);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.jw-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font: 700 19px/24px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  color: var(--brand-strong);
+  font: 500 15px/20px var(--font-sans);
+  text-decoration: none;
+}
+
+.jw-panel-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0;
+}
+
+.jw-panel-row + .jw-panel-row {
+  border-top: 1px solid var(--neutral-200);
+}
+
+.jw-panel-row .jw-record-tile {
+  width: 46px;
+  height: 46px;
+}
+
+.jw-panel-body {
+  padding: var(--space-4) 0;
+}
+
+.jw-cta-xs {
+  min-height: 40px;
+  min-width: 96px;
+  padding: 0 var(--space-3);
+  font-size: 15px;
+}

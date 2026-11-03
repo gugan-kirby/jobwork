@@ -41,7 +41,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-12 | `Order Tracking Dashboard UI.png` | `/orders/[orderId]` | **done** 2026-11-03 |
 | VF-13 | `JobWork Invoice Management Dashboard.png` | `/invoices` | **done** 2026-11-03 |
 | VF-14 | `JobWork Payments Dashboard.png` | `/payments` | **done** 2026-11-03 |
-| VF-15 | `Modern JobWork Vendor Dashboard.png` | `/supplier` | |
+| VF-15 | `Modern JobWork Vendor Dashboard.png` | `/supplier` | **done** 2026-11-03 |
 | VF-16 | `JobWork Profile Settings Screen.png` | `/profile` | |
 
 ## VF-01 Splash
@@ -241,3 +241,21 @@ Corrections (`D-03`, `F-08.4`): the summary is what was paid to JobWork and what
 | `apps/portal-web/app/invoices/page.tsx` | edit | Uses `InvoiceCard` |
 | `apps/portal-web/app/payments/page.tsx` | edit | Title and subtitle, summary, four filters, payment and refund cards, pending invoices |
 | `packages/ui/src/base.css` | edit | `.jw-pay-summary`, `.jw-pay-figure`, `.jw-record-static` |
+
+## VF-15 Supplier home
+
+Deltas found: an identity card, a plain stat grid and a menu (reference: tinted welcome banner with a machine illustration, four tinted count tiles, an "Enquiry Requests" panel with Quote Now, an "Orders Overview" donut, a revenue panel and chart).
+Corrections (F-MX.9, identity shield): "Vendor Dashboard" is **Supplier home**; the banner says the work comes **from JobWork**, not "from buyers"; the tiles are the supplier's own Open RFQs, Bids Sent, Purchase Orders and Settlements Due (no "Total Revenue"); the requests are RFQs with **Bid Now** (Revise once a bid exists) and carry no customer name or part title; the donut splits the supplier's own purchase orders — to acknowledge, awaiting baseline, in production. The revenue panel and its trend chart are not drawn. Queues, quick actions, status, checklist, availability and submit keep their place below.
+Chart: three categorical slots `--chart-1..3`, validated with the dataviz validator (light surface; CVD ΔE ≥ 23; slot 3 under 3:1 against the surface, so every slot has a visible label and count in the legend); 2 px surface gaps; the total in the centre; one `img` label for the whole; native per-segment tooltips. A donut over the skill's stacked-bar default because it is the reference's form and has three slots.
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/data/Donut.tsx` | new | Part-to-whole donut with legend |
+| `packages/ui/src/primitives/IndustryArt.tsx` | edit | `ProcessArt` `size` |
+| `packages/ui/src/tokens.css` | edit | `--chart-1..3` |
+| `packages/ui/src/base.css` | edit | `.jw-donut*`, `.jw-welcome*`, `.jw-tiles`, `.jw-tile*`, `.jw-panel-head/-title/-link/-row/-body`, `.jw-cta-xs` |
+| `apps/portal-web/app/supplier/page.tsx` | edit | Welcome banner, tiles, RFQ panel, orders overview |
+| `e2e/walk/02-supplier-admission.spec.ts` | edit | Tile names matched case-insensitively |
+| `packages/ui/test/dropzone.spec.tsx` | edit | Donut label and legend |
+
+Checked against stub API fixtures in the browser (no supplier session in the dev database is known to this run); the walk's supplier chapter covers it with real data.

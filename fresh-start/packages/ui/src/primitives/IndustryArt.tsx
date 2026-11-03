@@ -136,9 +136,9 @@ export function processArtFor(code: string): ArtName {
   return 'milling';
 }
 
-export function ProcessArt({ name }: { name: ArtName }): React.JSX.Element {
+export function ProcessArt({ name, size = 56 }: { name: ArtName; size?: number }): React.JSX.Element {
   return (
-    <svg viewBox="0 0 64 64" width="56" height="56" aria-hidden="true" focusable="false" style={{ display: 'block' }}>
+    <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden="true" focusable="false" style={{ display: 'block' }}>
       {ART[name]}
     </svg>
   );

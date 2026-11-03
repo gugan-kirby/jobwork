@@ -58,3 +58,13 @@ describe('RecordCard progress (VF-11)', () => {
     expect(bar.getAttribute('aria-valuenow')).toBe('45');
   });
 });
+
+import { Donut } from '../src/data/Donut';
+
+describe('Donut (VF-15)', () => {
+  it('names the whole in one image label and lists every count in the legend', () => {
+    render(<Donut totalLabel="Orders" slices={[{ label: 'To acknowledge', value: 4 }, { label: 'In production', value: 0 }, { label: 'Awaiting baseline', value: 3 }]} />);
+    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('7 Orders: 4 To acknowledge, 0 In production, 3 Awaiting baseline');
+    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['To acknowledge4', 'In production0', 'Awaiting baseline3']);
+  });
+});
