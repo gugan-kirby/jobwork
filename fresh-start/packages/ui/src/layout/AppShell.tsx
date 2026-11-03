@@ -113,13 +113,7 @@ export function AppShell({
       ) : null}
 
       <header
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
-          background: 'var(--color-surface)',
-          borderBottom: '1px solid var(--color-border)',
-        }}
+        className="jw-shell-header"
       >
         <div
           style={{
@@ -133,17 +127,21 @@ export function AppShell({
             position: 'relative',
           }}
         >
+          {/* VF-04: on phones the menu sits left of the name, the bell alone on the right. */}
+          <button
+            type="button"
+            className="jw-nav-toggle jw-icon-button"
+            aria-expanded={navOpen}
+            aria-controls="jw-primary-nav"
+            aria-label="Menu"
+            onClick={() => setNavOpen((open) => !open)}
+          >
+            <Icon name={navOpen ? 'close' : 'menu'} size={1.4} />
+          </button>
+
           <UiLink
             href="/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
-              font: 'var(--text-heading-2)',
-              color: 'var(--color-text)',
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
+            className="jw-shell-brand"
           >
             <span className="jw-brand-mark" aria-hidden="true">
               <Icon name="wrench" size={1} />
@@ -204,16 +202,6 @@ export function AppShell({
               </UiLink>
             ) : null}
 
-            <button
-              type="button"
-              className="jw-nav-toggle jw-icon-button"
-              aria-expanded={navOpen}
-              aria-controls="jw-primary-nav"
-              aria-label="Menu"
-              onClick={() => setNavOpen((open) => !open)}
-            >
-              <Icon name={navOpen ? 'close' : 'menu'} size={1.4} />
-            </button>
 
             {account ? (
               <UiLink

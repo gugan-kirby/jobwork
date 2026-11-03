@@ -1684,3 +1684,185 @@ code,
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+/* VF-04 shell header: sticky white bar; on phones menu · name · bell, no rule under it. */
+.jw-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.jw-shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--text-heading-2);
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .jw-shell-header {
+    border-bottom-color: transparent;
+  }
+
+  .jw-shell-brand {
+    font: 700 26px/32px var(--font-sans);
+    color: var(--color-ink);
+    margin-left: var(--space-2);
+  }
+
+  .jw-shell-brand .jw-brand-mark {
+    display: none;
+  }
+
+  .jw-shell-header .jw-icon-button {
+    color: var(--color-ink);
+  }
+}
+
+/* VF-04 home banner: brand gradient card, copy left, machines right. */
+.jw-banner {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 46%);
+  align-items: center;
+  min-width: 0;
+  min-height: 142px;
+  border-radius: var(--radius-lg);
+  background: var(--brand-splash-bg-solid);
+  background-image: var(--brand-banner-bg);
+  color: var(--brand-hero-fg);
+  padding: var(--space-4) 0 var(--space-4) var(--space-5);
+}
+
+.jw-banner-title {
+  font: 700 22px/28px var(--font-sans);
+}
+
+.jw-banner-sub {
+  font: 500 17px/24px var(--font-sans);
+  margin-top: var(--space-1);
+}
+
+.jw-banner-art {
+  align-self: end;
+  margin-bottom: calc(var(--space-4) * -1);
+}
+
+/* VF-04 home sections are grid items; without this a sideways row widens the page. */
+.jw-home-section {
+  min-width: 0;
+}
+
+/* VF-04 section headings on the phone home. */
+.jw-home-title {
+  font: 700 21px/28px var(--font-sans);
+  color: var(--color-ink);
+  margin-bottom: var(--space-4);
+}
+
+/* VF-04 quick-action tile: white card, coloured glyph, no disc. */
+.jw-quick-accent {
+  min-height: 104px;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 18px rgb(16 28 102 / 0.07);
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+}
+
+.jw-quick-accent .jw-quick-label {
+  font: 500 16px/20px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-quick-accent:hover {
+  box-shadow: 0 6px 22px rgb(16 28 102 / 0.13);
+}
+
+.jw-quick-glyph { display: inline-flex; }
+.jw-quick-glyph-blue { color: var(--brand-strong); }
+.jw-quick-glyph-orange { color: var(--accent-orange); }
+.jw-quick-glyph-green { color: var(--accent-green); }
+.jw-quick-glyph-ink { color: var(--neutral-800); }
+.jw-quick-glyph-sky { color: var(--accent-sky); }
+
+/* VF-04 category row: four illustrated tiles, scrolling sideways when there are more. */
+.jw-category-row {
+  min-width: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 3 * var(--space-3)) / 4);
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: var(--space-1) var(--space-1) var(--space-3);
+  margin: 0 calc(var(--space-1) * -1);
+}
+
+.jw-category-row::-webkit-scrollbar {
+  display: none;
+}
+
+.jw-category {
+  scroll-snap-align: start;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-2);
+  min-height: 108px;
+  padding: var(--space-3) var(--space-1);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 4px 18px rgb(16 28 102 / 0.07);
+  color: var(--color-ink);
+  text-decoration: none;
+  text-align: center;
+  font: 500 13px/17px var(--font-sans);
+}
+
+.jw-category:hover {
+  box-shadow: 0 6px 22px rgb(16 28 102 / 0.13);
+}
+
+.jw-category:focus-visible,
+.jw-quick:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* VF-04 tab bar: rounded top, reference blue for the current tab and the raised action. */
+.jw-tabbar {
+  border-top: 0;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgb(16 28 102 / 0.08);
+}
+
+.jw-tab {
+  font: 500 14px/18px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-tab-current {
+  color: var(--brand-strong);
+  font: 600 14px/18px var(--font-sans);
+}
+
+.jw-tab-primary-disc {
+  width: 58px;
+  height: 58px;
+  background: var(--brand-strong);
+  box-shadow: 0 8px 20px rgb(11 34 212 / 0.35);
+  transform: translateY(-18px);
+}
+
+.jw-tab-primary:hover .jw-tab-primary-disc {
+  background: var(--brand-strong-hover);
+}

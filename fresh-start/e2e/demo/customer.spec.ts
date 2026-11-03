@@ -74,7 +74,7 @@ test('scene · 1 · Sign in and look around', async ({ page, director }) => {
 test('scene · 2 · Ask for a part', async ({ page, director }) => {
   await signIn(page, director, BUYER, 'The buyer');
   director.say('Tap + to ask JobWork to make a part');
-  await tap(page, link(page, 'Create enquiry'), 'Step 1 of 3 — what to make, from what, and how many');
+  await tap(page, link(page, 'New Enquiry'), 'Step 1 of 3 — what to make, from what, and how many');
   await expect(page).toHaveURL(/\/enquiries\/new/);
 
   await tap(page, page.locator('.jw-choice-item').filter({ hasText: /Job work/ }).first());
