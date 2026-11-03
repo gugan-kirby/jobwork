@@ -281,7 +281,7 @@ test('scene · 8 · Receive the parts', async ({ page, director }) => {
   await page.goto(`${PORTAL}/orders/${orderId}/documents`);
   await read(page);
   await tap(page, link(page, /^Profile/), 'Sign out from the profile');
-  await tap(page, button(page, 'Logout'));
+  await tap(page, button(page, 'Log Out'));
   await expect(page).toHaveURL(/\/welcome$/);
   director.say('JobWork — custom parts, made and delivered');
   await pause(page, 3000);

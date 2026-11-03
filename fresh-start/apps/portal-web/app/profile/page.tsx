@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { MeResponse } from '@jobwork/contracts';
 import {
-  ButtonLink,
   Card,
   ErrorState,
   Icon,
@@ -45,7 +44,8 @@ interface MenuRow {
   href: string;
   icon: IconName;
   label: string;
-  detail?: string;
+  detail: string;
+  tint: 'blue' | 'violet' | 'green' | 'orange' | 'sky' | 'neutral';
 }
 
 export default function ProfilePage() {
@@ -93,84 +93,77 @@ export default function ProfilePage() {
 
   const rows: MenuRow[] = supplier
     ? [
-        { href: '/supplier/company', icon: 'factory', label: 'Company profile' },
-        { href: '/supplier/compliance', icon: 'shield', label: 'Compliance & evidence' },
-        { href: '/capabilities', icon: 'capabilities', label: 'Capabilities & machines' },
-        { href: '/documents', icon: 'document', label: 'My documents' },
-        { href: '/supplier/team', icon: 'team', label: 'Team' },
-        { href: '/notifications', icon: 'bell', label: 'Notifications' },
-        { href: '/account/security', icon: 'settings', label: 'Security', detail: 'Password, two-factor, sessions' },
+        { href: '/supplier/company', icon: 'factory', label: 'Company Profile', detail: 'Your company, sites and contacts', tint: 'blue' },
+        { href: '/supplier/compliance', icon: 'shield', label: 'Compliance & Evidence', detail: 'Registrations and certificates', tint: 'violet' },
+        { href: '/capabilities', icon: 'capabilities', label: 'Capabilities & Machines', detail: 'What you make and with what', tint: 'green' },
+        { href: '/documents', icon: 'document', label: 'My Documents', detail: 'Files you have shared', tint: 'sky' },
+        { href: '/supplier/team', icon: 'team', label: 'Team', detail: 'People in your company', tint: 'neutral' },
+        { href: '/notifications', icon: 'bell', label: 'Notifications', detail: 'Your alerts and updates', tint: 'orange' },
+        { href: '/account/security', icon: 'shieldCheck', label: 'Privacy & Security', detail: 'Password, two-factor, sessions', tint: 'violet' },
+        { href: '/help', icon: 'help', label: 'Help & Support', detail: 'Get help or raise a request', tint: 'blue' },
       ]
     : [
-        { href: '/account/addresses', icon: 'location', label: 'My addresses' },
-        { href: '/documents', icon: 'document', label: 'My documents' },
-        { href: '/team', icon: 'team', label: 'Team' },
-        { href: '/notifications', icon: 'bell', label: 'Notifications' },
-        { href: '/account/security', icon: 'settings', label: 'Security', detail: 'Password, two-factor, sessions' },
+        { href: '/account/addresses', icon: 'location', label: 'My Addresses', detail: 'Where your parts are delivered', tint: 'blue' },
+        { href: '/documents', icon: 'document', label: 'My Documents', detail: 'Drawings and files you have shared', tint: 'sky' },
+        { href: '/team', icon: 'team', label: 'Team', detail: 'People in your organization', tint: 'green' },
+        { href: '/notifications', icon: 'bell', label: 'Notifications', detail: 'Your alerts and updates', tint: 'orange' },
+        { href: '/account/security', icon: 'shieldCheck', label: 'Privacy & Security', detail: 'Password, two-factor, sessions', tint: 'violet' },
+        { href: '/help', icon: 'help', label: 'Help & Support', detail: 'Get help or raise a request', tint: 'blue' },
       ];
 
-  const about: MenuRow[] = [
-    { href: '/help', icon: 'help', label: 'Help & support' },
+  const about: Array<{ href: string; icon: IconName; label: string }> = [
     { href: '/about', icon: 'info', label: 'About JobWork' },
-    { href: '/terms', icon: 'document', label: 'Terms & conditions' },
+    { href: '/terms', icon: 'document', label: 'Terms & Conditions' },
   ];
 
   return (
-    <Page title="Profile" back={{ href: supplier ? '/supplier' : '/', label: 'Back to home' }}>
+    <Page title="Profile" description="Manage your account, company and preferences">
       <Stack gap={4}>
-        <Card>
-          <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 'var(--space-9)',
-                height: 'var(--space-9)',
-                borderRadius: '50%',
-                background: 'var(--status-progress-bg)',
-                color: 'var(--color-action)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                font: 'var(--text-heading-1)',
-              }}
-            >
-              {initials(me.displayName || me.email)}
+        <Link href="/profile/edit" className="jw-tinted-card jw-identity">
+          <span className="jw-identity-avatar" aria-hidden="true">
+            {initials(me.displayName || me.email)}
+            <span className="jw-identity-badge">
+              <Icon name="edit" size={0.9} />
             </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ font: 'var(--text-heading-2)' }}>{me.displayName || me.email}</p>
-              <p style={{ color: 'var(--color-text-muted)', font: 'var(--text-caption)' }}>
-                {organization?.organizationName ?? 'No organization selected'}
-                {roleLine ? ` · ${roleLine}` : ''}
-              </p>
-              <p style={{ color: 'var(--color-text-muted)', font: 'var(--text-caption)' }}>{me.email}</p>
-            </div>
-            <ButtonLink
-              href="/profile/edit"
-              variant="secondary"
-              size="sm"
-              iconStart={<Icon name="edit" size={1} />}
-            >
-              Edit profile
-            </ButtonLink>
-          </div>
-        </Card>
+          </span>
+          <span className="jw-identity-main">
+            <span className="jw-identity-top">
+              <span className="jw-counterpart-name">{me.displayName || me.email}</span>
+              <span className="jw-count-badge">{supplier ? 'Supplier' : 'Customer'}</span>
+            </span>
+            <span className="jw-counterpart-line">
+              {organization?.organizationName ?? 'No organization selected'}
+              {roleLine ? ` · ${roleLine}` : ''}
+            </span>
+            <span className="jw-summary-fact">
+              <Icon name="mail" size={1.15} />
+              {me.email}
+            </span>
+            {me.phone ? (
+              <span className="jw-summary-fact">
+                <Icon name="phone" size={1.15} />
+                {me.phone}
+              </span>
+            ) : null}
+            <span className="jw-visually-hidden">Edit profile</span>
+          </span>
+          <span className="jw-record-chevron" aria-hidden="true">
+            <Icon name="chevron" size={1.4} />
+          </span>
+        </Link>
 
-        <nav aria-label="Account" className="jw-menu">
+        <nav aria-label="Account" className="jw-menu jw-menu-rich">
           {rows.map((row) => (
             <Link key={row.href} href={row.href} className="jw-menu-row">
-              <span className="jw-menu-icon">
-                <Icon name={row.icon} size={1.3} />
+              <span className={`jw-record-tile jw-record-tile-${row.tint}`} aria-hidden="true">
+                <Icon name={row.icon} size={1.4} />
               </span>
               <span className="jw-menu-label">
-                {row.label}
-                {row.detail ? (
-                  <span style={{ display: 'block', font: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-                    {row.detail}
-                  </span>
-                ) : null}
+                <span className="jw-menu-title">{row.label}</span>
+                <span className="jw-menu-detail">{row.detail}</span>
               </span>
               <span className="jw-menu-chevron">
-                <Icon name="chevron" />
+                <Icon name="chevron" size={1.3} />
               </span>
             </Link>
           ))}
@@ -190,12 +183,10 @@ export default function ProfilePage() {
           ))}
         </nav>
 
-        <div className="jw-menu">
-          <button type="button" className="jw-menu-row jw-menu-row-danger" onClick={() => void logout()} disabled={busy}>
-            <Icon name="logout" size={1.2} />
-            Logout
-          </button>
-        </div>
+        <button type="button" className="jw-logout" onClick={() => void logout()} disabled={busy}>
+          <Icon name="logout" size={1.3} />
+          Log Out
+        </button>
       </Stack>
     </Page>
   );
