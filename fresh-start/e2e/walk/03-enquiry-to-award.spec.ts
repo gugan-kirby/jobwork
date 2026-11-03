@@ -10,7 +10,7 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
   await signInAs(page, 'buyer');
   await open(page, `${PORTAL}/`);
   await axe(page, 'customer home');
-  await page.getByRole('link', { name: 'Create enquiry' }).first().click();
+  await page.getByRole('link', { name: 'New Enquiry' }).first().click();
   await expect(page).toHaveURL(/\/enquiries\/new/);
   await page.getByRole('radio', { name: /Job work/ }).check();
   await field(page, 'Part / job name').fill('Walk impeller housing');

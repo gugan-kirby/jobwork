@@ -9,6 +9,7 @@ import { BrandGlyph } from '../src/primitives/BrandGlyph';
 import { WorkshopIllustration } from '../src/primitives/WorkshopIllustration';
 import { IconTextInput } from '../src/forms/IconTextInput';
 import { TopBar } from '../src/layout/TopBar';
+import { processArtFor } from '../src/primitives/IndustryArt';
 import { activeHref, isActivePath } from '../src/layout/paths';
 import { QuickAction, QuickActionGrid } from '../src/status/QuickAction';
 import { FilterChips } from '../src/data/FilterChips';
@@ -278,6 +279,25 @@ describe('TopBar', () => {
     render(<TopBar title="Register" back="/start" />);
     expect(screen.getByRole('heading', { level: 1, name: 'Register' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/start');
+  });
+});
+
+describe('QuickAction accent (VF-04)', () => {
+  it('draws the glyph without a disc and still speaks the count', () => {
+    render(<QuickAction href="/quotations" icon="quote" label="Quotations" accent="green" count={2} countLabel="to decide" />);
+    const link = screen.getByRole('link', { name: /Quotations\s*2\s*to decide/ });
+    expect(link.querySelector('.jw-quick-glyph-green')).toBeTruthy();
+    expect(link.querySelector('.jw-quick-disc')).toBeNull();
+  });
+});
+
+describe('processArtFor (VF-04)', () => {
+  it('maps the taxonomy codes to a picture, with a fallback', () => {
+    expect(processArtFor('vmc_machining')).toBe('vmc');
+    expect(processArtFor('cnc_turning')).toBe('turning');
+    expect(processArtFor('fabrication_welding')).toBe('welding');
+    expect(processArtFor('sheet_metal_bending')).toBe('sheet');
+    expect(processArtFor('something_new')).toBe('milling');
   });
 });
 

@@ -30,7 +30,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-01 | `JobWork_Screen_01_Splash.png` | `/welcome` | **done** 2026-11-03 |
 | VF-02 | `JobWork Industrial Welcome Screen.png` | `/start` | **done** 2026-11-03 |
 | VF-03 | `Mobile Register Screen UI.png` | `/register` | **done** 2026-11-03 |
-| VF-04 | `JobWork Precision Dashboard.png` | `/` | |
+| VF-04 | `JobWork Precision Dashboard.png` | `/` | **done** 2026-11-03 |
 | VF-05 | `JobWork New Enquiry Form.png` | `/enquiries/new` stage 1 | |
 | VF-06 | `New Enquiry Requirements Form.png` | `/enquiries/new` stage 2 | |
 | VF-07 | `Mobile Review Enquiry Form UI.png` | `/enquiries/new` stage 3 | |
@@ -92,3 +92,20 @@ Validation added in the browser (the API still decides): full name ≥ 2, Indian
 | `apps/portal-web/app/register/page.tsx` | rewrite | Both forms on the above, client validation, shared terms line and submit |
 | `e2e/walk/01-public.spec.ts` | edit | Agreement label is "I agree to Terms & Conditions" |
 | `packages/ui/test/mobile.spec.tsx` | edit | `IconTextInput` label/error chain; `TopBar` h1 and named back link |
+
+## VF-04 Customer home
+
+Deltas found: phone header is menu · "JobWork" · bell with no rule (was mark + name left, bell and menu right); a compact banner with machines on the right (was a tall hero with a button and three icons); white quick-action cards with large coloured glyphs (were tinted discs); illustrated process tiles four across (were six family icon tiles); rounded tab bar with a larger raised action.
+Kept and moved: "Waiting on you" follows the categories; every quick action still carries its count. Dropped: the "Your account" card (the Profile tab holds it) and the banner's "Create enquiry" button (New Enquiry tile and the raised + do the same).
+Corrections: "RFQ / Quotes" is **Quotations** — the customer receives JobWork's quotation, never an RFQ or a bid.
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/primitives/IndustryArt.tsx` | new | `BannerMachines` (light on brand), `ProcessArt` (eight process pictures), `processArtFor(code)` |
+| `packages/ui/src/status/QuickAction.tsx` | edit | `accent` prop: coloured glyph, no disc |
+| `packages/ui/src/layout/AppShell.tsx` | edit | Menu toggle before the name; header and brand styles moved to `base.css` |
+| `packages/ui/src/tokens.css` | edit | `--brand-banner-bg`, `--accent-orange/green/sky` |
+| `packages/ui/src/base.css` | edit | `.jw-shell-header`, `.jw-shell-brand` (phone), `.jw-banner*`, `.jw-home-*`, `.jw-quick-accent`, `.jw-quick-glyph-*`, `.jw-category-row`, `.jw-category`, tab bar refresh |
+| `apps/portal-web/app/page.tsx` | edit | Banner, quick actions, process row (featured: milling, VMC, turning, welding), waiting list |
+| `e2e/walk/03-enquiry-to-award.spec.ts`, `e2e/demo/customer.spec.ts` | edit | Home entry link is "New Enquiry" |
+| `packages/ui/test/mobile.spec.tsx` | edit | Accent tile speaks its count without a disc; process art mapping |

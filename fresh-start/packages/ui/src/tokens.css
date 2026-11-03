@@ -125,6 +125,11 @@
   --brand-strong-hover: #081ab0;
   --color-ink: #0a0d3c;
   --color-ink-muted: #3e425b;
+  --brand-banner-bg: linear-gradient(110deg, #0b1d9e 0%, #1531d6 55%, #2a4cf0 100%);
+  /* Quick-action glyph accents (reference home); each tile also has a text label. */
+  --accent-orange: #e8580a;
+  --accent-green: #15803d;
+  --accent-sky: #1677c9;
   /* Illustration fills (the welcome workshop); decorative only, never carry meaning. */
   --illus-skin: #f1c6a3;
   --illus-hair: #1b2042;

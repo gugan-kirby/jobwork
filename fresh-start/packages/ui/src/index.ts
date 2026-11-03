@@ -36,6 +36,7 @@ export { ReasonField, type ReasonFieldProps } from './primitives/ReasonField';
 export { Icon, ICON_NAMES, type IconName, type IconProps } from './primitives/Icon';
 export { BrandGlyph } from './primitives/BrandGlyph';
 export { WorkshopIllustration } from './primitives/WorkshopIllustration';
+export { BannerMachines, ProcessArt, processArtFor } from './primitives/IndustryArt';
 export { ErrorSummary, type ErrorSummaryProps } from './primitives/ErrorSummary';
 
 // ---------------------------------------------------------------- layout
@@ -72,7 +73,7 @@ export { LiveRegion, type LiveRegionProps } from './feedback/LiveRegion';
 export { Chip, StatusChip, type StatusChipProps } from './status/StatusChip';
 export { ActionNeededCard, type ActionNeededCardProps } from './status/ActionNeededCard';
 export { QueueCard, describeAge, type QueueCardProps } from './status/QueueCard';
-export { QuickAction, QuickActionGrid, type QuickActionProps } from './status/QuickAction';
+export { QuickAction, QuickActionGrid, type QuickAccent, type QuickActionProps } from './status/QuickAction';
 export { GateMatrix, type GateMatrixGate, type GateMatrixProps } from './gates/GateMatrix';
 export { ManifestHeader, ManifestRow, type ManifestRowProps } from './document/ManifestRow';
 export {
