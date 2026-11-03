@@ -1383,3 +1383,120 @@ code,
 .jw-notification-unread .jw-notification-time {
   color: var(--color-text-muted-on-tint);
 }
+
+/* VF-02 entry fork (/start): white field, display headline, workshop art, stacked actions. */
+.jw-entry {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  padding: 72px var(--space-5) calc(var(--space-6) + var(--safe-bottom));
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.jw-entry-eyebrow {
+  font: 700 30px/36px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-entry-title {
+  font: 800 58px/64px var(--font-sans);
+  letter-spacing: -1px;
+  color: var(--brand-strong);
+}
+
+.jw-entry-lede {
+  margin-top: var(--space-4);
+  font: 400 19px/27px var(--font-sans);
+  color: var(--color-ink);
+  max-width: 300px;
+}
+
+.jw-entry-art {
+  margin: var(--space-6) calc(var(--space-2) * -1) 0;
+}
+
+.jw-entry-actions {
+  display: grid;
+  gap: var(--space-4);
+  align-content: end;
+  padding-top: var(--space-6);
+}
+
+.jw-cta,
+.jw-cta-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 54px;
+  border-radius: 12px;
+  font: 600 18px/24px var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.jw-cta {
+  background: var(--brand-strong);
+  color: var(--brand-hero-fg);
+  border: 2px solid var(--brand-strong);
+}
+
+.jw-cta:hover {
+  background: var(--brand-strong-hover);
+  border-color: var(--brand-strong-hover);
+}
+
+.jw-cta-outline {
+  background: var(--color-surface);
+  color: var(--brand-strong);
+  border: 2px solid var(--brand-strong);
+}
+
+.jw-cta-outline:hover {
+  background: var(--blue-50);
+}
+
+.jw-text-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font: 600 18px/24px var(--font-sans);
+  color: var(--brand-strong);
+  text-decoration: none;
+}
+
+.jw-text-cta:hover {
+  text-decoration: underline;
+}
+
+.jw-cta:focus-visible,
+.jw-cta-outline:focus-visible,
+.jw-text-cta:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+.jw-assurance {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--space-7);
+  text-align: center;
+}
+
+.jw-assurance li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink-muted);
+  font: 500 17px/22px var(--font-sans);
+}
+
+.jw-assurance svg {
+  color: var(--brand-strong);
+}

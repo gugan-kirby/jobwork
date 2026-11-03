@@ -35,6 +35,7 @@ export {
 export { ReasonField, type ReasonFieldProps } from './primitives/ReasonField';
 export { Icon, ICON_NAMES, type IconName, type IconProps } from './primitives/Icon';
 export { BrandGlyph } from './primitives/BrandGlyph';
+export { WorkshopIllustration } from './primitives/WorkshopIllustration';
 export { ErrorSummary, type ErrorSummaryProps } from './primitives/ErrorSummary';
 
 // ---------------------------------------------------------------- layout

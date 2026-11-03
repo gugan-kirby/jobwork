@@ -6,6 +6,7 @@ import { AppShell } from '../src/layout/AppShell';
 import { Page } from '../src/layout/Page';
 import { Hero } from '../src/layout/Hero';
 import { BrandGlyph } from '../src/primitives/BrandGlyph';
+import { WorkshopIllustration } from '../src/primitives/WorkshopIllustration';
 import { activeHref, isActivePath } from '../src/layout/paths';
 import { QuickAction, QuickActionGrid } from '../src/status/QuickAction';
 import { FilterChips } from '../src/data/FilterChips';
@@ -241,6 +242,17 @@ describe('BrandGlyph', () => {
     const ids = [...container.querySelectorAll('mask')].map((mask) => mask.id);
     expect(ids).toHaveLength(4);
     expect(new Set(ids).size).toBe(4);
+  });
+});
+
+describe('WorkshopIllustration', () => {
+  it('is decorative and draws only from tokens (VF-02)', () => {
+    const { container } = render(<WorkshopIllustration />);
+    const svg = container.querySelector('svg');
+    expect(svg?.getAttribute('aria-hidden')).toBe('true');
+    expect(svg?.getAttribute('focusable')).toBe('false');
+    const fills = [...container.querySelectorAll<SVGElement>('[style]')].map((node) => node.style.fill || node.style.stroke);
+    expect(fills.every((value) => value.startsWith('var(--'))).toBe(true);
   });
 });
 
