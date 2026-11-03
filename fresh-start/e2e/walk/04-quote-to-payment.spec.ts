@@ -95,7 +95,7 @@ test('customer · reads both options, downloads one and asks for a revision of t
   await expect(page.locator('body')).not.toContainText(/Anand|Balaji/);
   const download = page.waitForEvent('download').catch(() => null);
   const popup = page.waitForEvent('popup').catch(() => null);
-  await button(page, 'Download').click();
+  await button(page, 'Download Quote').click();
   expect((await Promise.race([download, popup, page.waitForTimeout(5000).then(() => 'none')])) ?? 'none').not.toBe('none');
   await axe(page, 'customer quotation');
   await open(page, `${PORTAL}/quotations/${recall('quoteFast')}`);
@@ -119,7 +119,7 @@ test('ops · sales replaces the fast quotation with version 2', async ({ page })
 test('customer · the approver accepts the standard quotation and places the order', async ({ page }) => {
   await signInAs(page, 'approver');
   await open(page, `${PORTAL}/quotations/${recall('quoteStandard')}`);
-  await page.getByRole('link', { name: 'Accept quote' }).click();
+  await page.getByRole('link', { name: 'Accept Quote' }).click();
   await expect(page).toHaveURL(/\/accept$/);
   await expect(button(page, 'Accept and place order')).toBeDisabled();
   await page.getByRole('checkbox', { name: /I have read the quotation/ }).check();

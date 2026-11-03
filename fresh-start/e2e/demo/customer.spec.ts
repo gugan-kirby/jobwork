@@ -165,7 +165,7 @@ test('scene · 4 · Read the quotation', async ({ page, director }) => {
   await read(page);
   director.say('The quotation can be downloaded as a PDF');
   const download = page.waitForEvent('download', { timeout: 10_000 }).catch(() => null);
-  await tap(page, button(page, 'Download'));
+  await tap(page, button(page, 'Download Quote'));
   await download;
   director.say('The manager, who can approve purchases, will accept it');
   await pause(page, 2500);
@@ -175,7 +175,7 @@ test('scene · 5 · Accept the quotation and pay the advance', async ({ page, di
   await signIn(page, director, APPROVER, 'The manager (approver)', 'The manager reviews the quotation');
   await page.goto(`${PORTAL}/quotations/${quoteId}`);
   await read(page, 400, 800);
-  await tap(page, link(page, 'Accept quote'), 'Confirms the terms and places the order');
+  await tap(page, link(page, 'Accept Quote'), 'Confirms the terms and places the order');
   await expect(page).toHaveURL(/\/accept$/);
   await read(page, 400, 800);
   await tap(page, page.getByRole('checkbox', { name: /I have read the quotation/ }));

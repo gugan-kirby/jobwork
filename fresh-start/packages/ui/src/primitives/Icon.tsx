@@ -59,6 +59,9 @@ const PATHS = {
   sliders: 'M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z M9 14.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
   layers: 'M12 3l9 5-9 5-9-5z M3 12.5l9 5 9-5 M3 16.5l9 5 9-5',
   hexagon: 'M7.5 4h9l4.5 8-4.5 8h-9L3 12z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  download: 'M12 4v11 M7.5 10.5L12 15l4.5-4.5 M5 19h14',
+  message: 'M4 5h16v11H9l-5 4z M8.5 10.5h.01 M12 10.5h.01 M15.5 10.5h.01',
+  checkCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M8 12.5l2.7 2.7L16.5 9.5',
 } as const;
 
 export type IconName = keyof typeof PATHS;
