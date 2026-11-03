@@ -35,7 +35,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-06 | `New Enquiry Requirements Form.png` | `/enquiries/new` stage 2 | **done** 2026-11-03 |
 | VF-07 | `Mobile Review Enquiry Form UI.png` | `/enquiries/new` stage 3 | **done** 2026-11-03 |
 | VF-08 | `JobWork Enquiry Dashboard.png` | `/enquiries` | **done** 2026-11-03 |
-| VF-09 | `JobWork Quotes Received Screen.png` | `/quotations` | |
+| VF-09 | `JobWork Quotes Received Screen.png` | `/quotations` | **done** 2026-11-03 |
 | VF-10 | `Precision Metals Quote Details.png` | `/quotations/[quotationId]` | |
 | VF-11 | `JobWork My Orders Dashboard.png` | `/orders` | |
 | VF-12 | `Order Tracking Dashboard UI.png` | `/orders/[orderId]` | |
@@ -170,3 +170,13 @@ Corrections and decisions: the filters stay the curated customer statuses (All �
 | `packages/ui/src/tokens.css`, `base.css` | edit | `--chip-*`; `.jw-record-rich*`, `.jw-record-tile-*`; tab-strip chips and tab-root title on the phone theme; `.jw-search-row`, `.jw-square-button`, `.jw-desktop-only` |
 | `apps/portal-web/app/enquiries/page.tsx` | edit | Title and subtitle, search row with sort, tiles per job type |
 | `packages/ui/test/dropzone.spec.tsx` | edit | Rich record card |
+
+## VF-09 Quotes received
+
+Deltas found: a flat list of compact record cards (reference: an enquiry summary card with a "3 Quotes" badge, then one offer card each with an icon tile, a three-column metric row and View Details / Accept Quote).
+Corrections (identity shield, `F-07.6`): the reference's offer cards are three named suppliers with city, rating and a "Verified" badge. Here every card is **JobWork · Standard / Fast / Premium** with its reference, version and status; the metric row is Quote Amount · Valid Until · Option (the list projection has no lead time or minimum quantity, and the detail page carries the terms). The "Enquiry Details" tab is not drawn: the list item carries the enquiry reference, not its id. Accept Quote shows only while the offer is open for decision and goes to the acceptance page, where approval limit and terms are checked.
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/portal-web/app/quotations/page.tsx` | edit | "Quotes Received"; offers grouped by enquiry; summary card with count; offer cards with metrics and the two actions |
+| `packages/ui/src/base.css` | edit | `.jw-offer-groups`, `.jw-offer-summary*`, `.jw-count-badge`, `.jw-offer*`, `.jw-offer-metrics`, `.jw-cta-sm` |
