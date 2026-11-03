@@ -40,7 +40,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-11 | `JobWork My Orders Dashboard.png` | `/orders` | **done** 2026-11-03 |
 | VF-12 | `Order Tracking Dashboard UI.png` | `/orders/[orderId]` | **done** 2026-11-03 |
 | VF-13 | `JobWork Invoice Management Dashboard.png` | `/invoices` | **done** 2026-11-03 |
-| VF-14 | `JobWork Payments Dashboard.png` | `/payments` | |
+| VF-14 | `JobWork Payments Dashboard.png` | `/payments` | **done** 2026-11-03 |
 | VF-15 | `Modern JobWork Vendor Dashboard.png` | `/supplier` | |
 | VF-16 | `JobWork Profile Settings Screen.png` | `/profile` | |
 
@@ -229,3 +229,15 @@ Decisions: the outstanding total moves into the subtitle while anything is open.
 | `apps/portal-web/app/invoices/page.tsx` | edit | Title and subtitle, search and sort, four filters, invoice cards with due strip and Pay Now |
 | `packages/ui/src/base.css` | edit | `.jw-invoice*`, `.jw-due*`; record dates never wrap |
 | `apps/portal-web/test/invoice-due.spec.ts` | new | Due wording ahead / today / overdue; open statuses |
+
+## VF-14 Payments
+
+Deltas found: a flat list of payment rows (reference: tab root with a Total Paid / Pending Payment summary, All · Paid · Pending · Refunds, and invoice-style cards — pending ones with a due strip and Pay Now).
+Corrections (`D-03`, `F-08.4`): the summary is what was paid to JobWork and what JobWork has invoiced and is still open — not a wallet balance, and there is no "Add Money". Pending lists the open invoices themselves (same card and Pay Now as VF-13, now a shared component); Refunds lists refund and credit entries; unapplied credit keeps its callout.
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/portal-web/app/invoice-card.tsx` | new | `InvoiceCard` — record link plus due strip and Pay Now, used by Invoices and Payments |
+| `apps/portal-web/app/invoices/page.tsx` | edit | Uses `InvoiceCard` |
+| `apps/portal-web/app/payments/page.tsx` | edit | Title and subtitle, summary, four filters, payment and refund cards, pending invoices |
+| `packages/ui/src/base.css` | edit | `.jw-pay-summary`, `.jw-pay-figure`, `.jw-record-static` |
