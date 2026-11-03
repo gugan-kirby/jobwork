@@ -109,7 +109,7 @@ test('scene · 2 · Ask for a part', async ({ page, director }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Review Enquiry');
   await read(page);
   director.say('Submit — JobWork receives the enquiry');
-  await run(page, button(page, 'Submit enquiry'), 'The enquiry has a reference number and shows its progress');
+  await run(page, button(page, 'Submit Enquiry'), 'The enquiry has a reference number and shows its progress');
   await expect(page).toHaveURL(/\/enquiries\/[0-9a-f-]{36}$/);
   enquiryId = page.url().split('/').pop()!;
   await read(page);

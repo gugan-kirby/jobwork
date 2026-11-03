@@ -33,7 +33,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-04 | `JobWork Precision Dashboard.png` | `/` | **done** 2026-11-03 |
 | VF-05 | `JobWork New Enquiry Form.png` | `/enquiries/new` stage 1 | **done** 2026-11-03 |
 | VF-06 | `New Enquiry Requirements Form.png` | `/enquiries/new` stage 2 | **done** 2026-11-03 |
-| VF-07 | `Mobile Review Enquiry Form UI.png` | `/enquiries/new` stage 3 | |
+| VF-07 | `Mobile Review Enquiry Form UI.png` | `/enquiries/new` stage 3 | **done** 2026-11-03 |
 | VF-08 | `JobWork Enquiry Dashboard.png` | `/enquiries` | |
 | VF-09 | `JobWork Quotes Received Screen.png` | `/quotations` | |
 | VF-10 | `Precision Metals Quote Details.png` | `/quotations/[quotationId]` | |
@@ -142,3 +142,17 @@ Added: drag-and-drop onto the zone runs the same upload as the picker. Kept: tol
 | `packages/ui/src/base.css` | edit | `.jw-dropzone*`; passed-step disc and rail |
 | `apps/portal-web/app/enquiries/new/wizard/RequirementsStage.tsx` | edit | Purpose options from `UPLOAD_POLICY` labels; title-case headings |
 | `packages/ui/test/dropzone.spec.tsx` | new | Hidden input carries the action and purpose; caption lists the types |
+
+## VF-07 Enquiry wizard — Review
+
+Deltas found: stacked label-over-value list (reference: muted label left, value right, one row each); files in a separate card with a role caption (reference: a "File" row with a PDF badge); full-width Back under a full-width Submit (reference: Back and Submit Enquiry side by side); section headings without the rule.
+Kept: job type, material supply, target price, required-by, confidentiality and the "What happens when you submit" note — what is frozen must be read back in full.
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/data/DescriptionList.tsx` | edit | `layout="split"` |
+| `packages/ui/src/base.css` | edit | `.jw-dl-split`, `.jw-file-row`, `.jw-file-badge`, flat section heading rule and size, `.jw-action-pair` |
+| `apps/portal-web/app/enquiries/new/wizard/ReviewStage.tsx` | edit | Split list with the file row; Back beside "Submit Enquiry" (`onBack`) |
+| `apps/portal-web/app/enquiries/new/page.tsx` | edit | Last stage draws no separate Back |
+| `e2e/walk/03-enquiry-to-award.spec.ts`, `e2e/tests/portal-enquiry.spec.ts`, `e2e/demo/customer.spec.ts` | edit | "Submit Enquiry" |
+| `packages/ui/test/dropzone.spec.tsx` | edit | Split list keeps dt/dd pairs |

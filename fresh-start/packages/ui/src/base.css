@@ -2120,3 +2120,83 @@ code,
   color: var(--brand-strong);
 }
 .jw-step-passed .jw-step-label { font-weight: 500; color: var(--color-ink-muted); }
+
+/* VF-07 split description list: muted label left, value right, generous rows. */
+.jw-dl-split {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.jw-dl-split > div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-3) 0;
+}
+
+.jw-dl-split dt {
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-dl-split dd {
+  margin: 0;
+  text-align: right;
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+/* VF-07 file-type badge beside a file name. */
+.jw-file-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.jw-file-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 40px;
+  padding: 0 var(--space-1);
+  border-radius: 4px;
+  border: 1.5px solid var(--status-blocked-border);
+  background: var(--color-surface);
+  color: var(--color-surface);
+  font: 700 11px/1 var(--font-sans);
+  position: relative;
+}
+
+.jw-file-badge span {
+  background: var(--status-blocked-fg);
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+/* VF-07 flat sections keep a rule under their heading, and the heading is larger. */
+.jw-flat {
+  --text-heading-2: 700 20px/26px var(--font-sans);
+}
+
+@media (max-width: 767px) {
+  .jw-flat .jw-card-head {
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-2);
+    border-bottom: 1px solid var(--neutral-200);
+  }
+
+  .jw-flat .jw-card-head h2 {
+    color: var(--color-ink);
+  }
+}
+
+.jw-action-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
