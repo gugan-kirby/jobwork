@@ -34,7 +34,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-05 | `JobWork New Enquiry Form.png` | `/enquiries/new` stage 1 | **done** 2026-11-03 |
 | VF-06 | `New Enquiry Requirements Form.png` | `/enquiries/new` stage 2 | **done** 2026-11-03 |
 | VF-07 | `Mobile Review Enquiry Form UI.png` | `/enquiries/new` stage 3 | **done** 2026-11-03 |
-| VF-08 | `JobWork Enquiry Dashboard.png` | `/enquiries` | |
+| VF-08 | `JobWork Enquiry Dashboard.png` | `/enquiries` | **done** 2026-11-03 |
 | VF-09 | `JobWork Quotes Received Screen.png` | `/quotations` | |
 | VF-10 | `Precision Metals Quote Details.png` | `/quotations/[quotationId]` | |
 | VF-11 | `JobWork My Orders Dashboard.png` | `/orders` | |
@@ -156,3 +156,17 @@ Kept: job type, material supply, target price, required-by, confidentiality and 
 | `apps/portal-web/app/enquiries/new/page.tsx` | edit | Last stage draws no separate Back |
 | `e2e/walk/03-enquiry-to-award.spec.ts`, `e2e/tests/portal-enquiry.spec.ts`, `e2e/demo/customer.spec.ts` | edit | "Submit Enquiry" |
 | `packages/ui/test/dropzone.spec.tsx` | edit | Split list keeps dt/dd pairs |
+
+## VF-08 Enquiries list
+
+Deltas found: a back-chevron "Enquiries" with a "New enquiry" button (reference: tab root under the app bar, "My Enquiries" with a subtitle); a labelled search box under the chips (reference: glyph search with a filter button, above a tab strip); pill chips (reference: bordered tab strip, tinted underlined selection, "All (12)"); compact record cards with the reference in mono on top (reference: tinted glyph tile, title + status pill, caption, calendar date, chevron).
+Corrections and decisions: the filters stay the curated customer statuses (All · Needs you · In review · Sourcing · Drafts · Closed), not "Pending / Quoted / Ordered" — quotation and order state live on their own lists, and an enquiry's customer status is the projection's (`FR-303`). The caption is reference • job type • parts: the customer projection carries no process or material label, and adding one is not a visual change. The filter button opens **Sort by** (newest, oldest, part name).
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/data/RecordCard.tsx` | edit | `icon` + `date` → rich layout; empty reference renders nothing |
+| `packages/ui/src/status/StatusChip.tsx` | edit | Padding, radius and font through `--chip-*` tokens (pill on the portal phone theme) |
+| `packages/ui/src/primitives/Icon.tsx` | edit | `calendar`, `sliders`, `layers`, `hexagon` |
+| `packages/ui/src/tokens.css`, `base.css` | edit | `--chip-*`; `.jw-record-rich*`, `.jw-record-tile-*`; tab-strip chips and tab-root title on the phone theme; `.jw-search-row`, `.jw-square-button`, `.jw-desktop-only` |
+| `apps/portal-web/app/enquiries/page.tsx` | edit | Title and subtitle, search row with sort, tiles per job type |
+| `packages/ui/test/dropzone.spec.tsx` | edit | Rich record card |

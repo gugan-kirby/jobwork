@@ -47,12 +47,12 @@ export function StatusChip({ tone, children, silent }: StatusChipProps): React.J
         display: 'inline-flex',
         alignItems: 'center',
         gap: 'var(--space-1)',
-        padding: '2px var(--space-2)',
-        borderRadius: 'var(--radius-sm)',
+        padding: 'var(--chip-pad)',
+        borderRadius: 'var(--chip-radius)',
         background: `var(--status-${tone}-bg)`,
         border: `1px solid var(--status-${tone}-border)`,
         color: `var(--status-${tone}-fg)`,
-        font: 'var(--text-caption)',
+        font: 'var(--chip-font)',
         whiteSpace: 'nowrap',
       }}
     >

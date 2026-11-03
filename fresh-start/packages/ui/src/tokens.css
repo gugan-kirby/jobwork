@@ -157,6 +157,9 @@
   --button-border-width: 1px;
   --button-secondary-border: var(--color-border);
   --button-font: var(--text-body-strong);
+  --chip-pad: 2px var(--space-2);
+  --chip-radius: var(--radius-sm);
+  --chip-font: var(--text-caption);
   --field-border: var(--color-border);
   --field-border-invalid: var(--status-blocked-fg);
   --field-bg: var(--color-surface);
