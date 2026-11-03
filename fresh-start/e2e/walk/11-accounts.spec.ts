@@ -126,7 +126,7 @@ test('customer · the owner turns on two-factor sign-in and signs in with a code
 test('customer · signs out from the profile', async ({ page }) => {
   await signInAs(page, 'buyer');
   await open(page, `${PORTAL}/profile`);
-  await button(page, 'Logout').click();
+  await button(page, 'Log Out').click();
   await expect(page).toHaveURL(/\/welcome$/);
   await page.goto(`${PORTAL}/orders`);
   // On a phone the header's links sit behind the menu button.

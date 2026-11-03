@@ -3133,3 +3133,117 @@ code,
   padding: 0 var(--space-3);
   font-size: 15px;
 }
+
+/* VF-16 profile: identity card, rich menu rows, tinted log-out. */
+.jw-identity {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  text-decoration: none;
+  color: var(--color-ink);
+  border: 1.5px solid var(--blue-100);
+}
+
+.jw-identity:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.jw-identity-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 16px;
+  background: var(--blue-100);
+  color: var(--brand-strong);
+  font: 700 26px/1 var(--font-sans);
+}
+
+.jw-identity-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--blue-900);
+  color: var(--brand-hero-fg);
+  border: 2px solid var(--color-surface);
+}
+
+.jw-identity-main {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.jw-identity-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.jw-identity-top .jw-count-badge {
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
+.jw-menu-rich {
+  border: 1.5px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  padding: 0 var(--space-3);
+}
+
+.jw-menu-rich .jw-menu-row {
+  min-height: 72px;
+  padding: var(--space-2) 0;
+  gap: var(--space-4);
+}
+
+.jw-menu-rich .jw-record-tile {
+  width: 46px;
+  height: 46px;
+}
+
+.jw-menu-title {
+  display: block;
+  font: 700 16px/22px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-menu-detail {
+  display: block;
+  font: 400 14px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 54px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--status-blocked-border);
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+  font: 600 18px/24px var(--font-sans);
+  cursor: pointer;
+}
+
+.jw-logout:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.jw-logout:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

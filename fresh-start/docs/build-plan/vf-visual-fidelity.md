@@ -42,7 +42,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-13 | `JobWork Invoice Management Dashboard.png` | `/invoices` | **done** 2026-11-03 |
 | VF-14 | `JobWork Payments Dashboard.png` | `/payments` | **done** 2026-11-03 |
 | VF-15 | `Modern JobWork Vendor Dashboard.png` | `/supplier` | **done** 2026-11-03 |
-| VF-16 | `JobWork Profile Settings Screen.png` | `/profile` | |
+| VF-16 | `JobWork Profile Settings Screen.png` | `/profile` | **done** 2026-11-03 |
 
 ## VF-01 Splash
 
@@ -259,3 +259,14 @@ Chart: three categorical slots `--chart-1..3`, validated with the dataviz valida
 | `packages/ui/test/dropzone.spec.tsx` | edit | Donut label and legend |
 
 Checked against stub API fixtures in the browser (no supplier session in the dev database is known to this run); the walk's supplier chapter covers it with real data.
+
+## VF-16 Profile
+
+Deltas found: back-chevron page with a white card and an Edit profile button (reference: tab root "Profile" with a subtitle; a tinted identity card — photo with camera badge, name, role pill, email, phone, chevron — that opens editing; rows with tinted glyph tiles and a line of detail; a tinted Log Out; app version).
+Decisions: initials stand in for the photo (no profile image is stored; the badge is an edit glyph, not a camera) and the role pill reads Customer / Supplier; the whole card is the Edit profile link. "Payment Methods" is not drawn — JobWork stores no cards or mandates, each invoice is paid through the gateway (`F-08.4`). "Company Details" is the supplier's Company Profile; a customer's organization is its team and addresses. The app-version line is not drawn (no version is published to the client yet). "Logout" reads **Log Out**.
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/portal-web/app/profile/page.tsx` | edit | Title and subtitle, identity card link, rich rows for customer and supplier, About/Terms, Log Out |
+| `packages/ui/src/base.css` | edit | `.jw-identity*`, `.jw-menu-rich`, `.jw-menu-title/-detail`, `.jw-logout` |
+| `e2e/walk/11-accounts.spec.ts`, `e2e/demo/customer.spec.ts` | edit | "Log Out" |
