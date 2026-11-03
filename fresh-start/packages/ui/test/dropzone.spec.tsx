@@ -50,3 +50,11 @@ describe('RecordCard rich layout', () => {
     expect(container.querySelector('.jw-record-date')?.textContent).toBe('12 Mar 2026');
   });
 });
+
+describe('RecordCard progress (VF-11)', () => {
+  it('exposes progress as a named progressbar with its value', () => {
+    render(<RecordCard href="/orders/1" reference="Order #SO-1" title="Bracket" icon={{ name: 'factory', tint: 'blue' }} progress={45} />);
+    const bar = screen.getByRole('progressbar', { name: 'Progress' });
+    expect(bar.getAttribute('aria-valuenow')).toBe('45');
+  });
+});
