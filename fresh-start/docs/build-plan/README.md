@@ -45,7 +45,7 @@ This directory decomposes the [Implementation plan](../24-implementation-plan.md
 | [TP Phase 2 test pass](tp-phase2-test-pass.md) | TP.1–TP.6 | **done** 2026-10-10 (PRs #57–#63 and TP.6): IN-17/IN-18 specs, scenarios 11–12, browser walk, Phase 2 exit; D1–D13 fixed; owner items carried |
 | [F-FP Fixed-price path](f-fp-fixed-price-path.md) | F-FP.1–F-FP.7 | **in progress**: F-FP.1–F-FP.5 done (PRs #66–#71, 2026-10-10); paused by the owner before F-FP.6 (screens) and F-FP.7 (pilot scenario 13) |
 | [FW Full portal walk](fw-full-portal-walk.md) | FW.0–FW.11 | **done** 2026-11-01: 118 walk tests over every screen and command of the three portals, recorded as video on the pull request; W1–W15 fixed |
-| [VF Visual fidelity](vf-visual-fidelity.md) | VF-01–VF-16 | **in progress**: VF-01–VF-12 done 2026-11-03 |
+| [VF Visual fidelity](vf-visual-fidelity.md) | VF-01–VF-16 | **in progress**: VF-01–VF-13 done 2026-11-03 |
 
 **F-CX** closes the customer-side dead ends the same audit found on the internal side: a draft nobody could reopen, an enquiry nobody could withdraw or repeat, and an enquiry that never said where it ships. **F-OPS** builds the console the queue screens were hanging off: a command center with real counts, and the organization/user administration that existed only as API routes. **F-SO** is likewise cross-cutting: IN-04 built the supplier domain but neither surface that admits a supplier or lets it describe itself, and IN-06 cannot invite a supplier that was never admitted.
 
