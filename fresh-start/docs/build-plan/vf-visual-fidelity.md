@@ -39,7 +39,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-10 | `Precision Metals Quote Details.png` | `/quotations/[quotationId]` | **done** 2026-11-03 |
 | VF-11 | `JobWork My Orders Dashboard.png` | `/orders` | **done** 2026-11-03 |
 | VF-12 | `Order Tracking Dashboard UI.png` | `/orders/[orderId]` | **done** 2026-11-03 |
-| VF-13 | `JobWork Invoice Management Dashboard.png` | `/invoices` | |
+| VF-13 | `JobWork Invoice Management Dashboard.png` | `/invoices` | **done** 2026-11-03 |
 | VF-14 | `JobWork Payments Dashboard.png` | `/payments` | |
 | VF-15 | `Modern JobWork Vendor Dashboard.png` | `/supplier` | |
 | VF-16 | `JobWork Profile Settings Screen.png` | `/profile` | |
@@ -217,3 +217,15 @@ Corrections: no vendor block or "Contact Vendor" — **Contact JobWork** jumps t
 | `apps/portal-web/app/orders/page.tsx` | edit | Uses the shared progress map |
 | `packages/ui/src/base.css` | edit | `.jw-milestones`, `.jw-milestone*`, `.jw-status-panel`, `.jw-status-head`, `.jw-progress-lg`, `.jw-timeline*` |
 | `apps/portal-web/test/order-progress.spec.ts` | new | Milestone grouping and dates; progress never goes backwards |
+
+## VF-13 Invoices
+
+Deltas found: back-chevron page with an "Outstanding" card and three chips (reference: tab root with search and filter button; All · Unpaid · Paid · Overdue; cards with a document tile, number, order, issue date, status pill and a large blue amount; an open invoice adds a due strip with Pay Now).
+Decisions: the outstanding total moves into the subtitle while anything is open. Pay Now is a separate control under the card's link (an interactive element inside a link is invalid), and it starts the same payment intent as the order page (`F-08.4`, payments to JobWork only); while an intent is in flight the strip says "Verifying payment…" instead. The tab bar keeps Profile in its fifth slot (the reference swaps it for Invoices on this screen only).
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/portal-web/lib/invoice-due.ts` | new | `isOpen`, `dueWords`, `fmt` |
+| `apps/portal-web/app/invoices/page.tsx` | edit | Title and subtitle, search and sort, four filters, invoice cards with due strip and Pay Now |
+| `packages/ui/src/base.css` | edit | `.jw-invoice*`, `.jw-due*`; record dates never wrap |
+| `apps/portal-web/test/invoice-due.spec.ts` | new | Due wording ahead / today / overdue; open statuses |
