@@ -36,7 +36,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-07 | `Mobile Review Enquiry Form UI.png` | `/enquiries/new` stage 3 | **done** 2026-11-03 |
 | VF-08 | `JobWork Enquiry Dashboard.png` | `/enquiries` | **done** 2026-11-03 |
 | VF-09 | `JobWork Quotes Received Screen.png` | `/quotations` | **done** 2026-11-03 |
-| VF-10 | `Precision Metals Quote Details.png` | `/quotations/[quotationId]` | |
+| VF-10 | `Precision Metals Quote Details.png` | `/quotations/[quotationId]` | **done** 2026-11-03 |
 | VF-11 | `JobWork My Orders Dashboard.png` | `/orders` | |
 | VF-12 | `Order Tracking Dashboard UI.png` | `/orders/[orderId]` | |
 | VF-13 | `JobWork Invoice Management Dashboard.png` | `/invoices` | |
@@ -180,3 +180,15 @@ Corrections (identity shield, `F-07.6`): the reference's offer cards are three n
 |---|---|---|
 | `apps/portal-web/app/quotations/page.tsx` | edit | "Quotes Received"; offers grouped by enquiry; summary card with count; offer cards with metrics and the two actions |
 | `packages/ui/src/base.css` | edit | `.jw-offer-groups`, `.jw-offer-summary*`, `.jw-count-badge`, `.jw-offer*`, `.jw-offer-metrics`, `.jw-cta-sm` |
+
+## VF-10 Quote details
+
+Deltas found: a white "Quotation from JobWork" card and one long description list (reference: tinted counterpart card with call/chat buttons; tinted Quote Summary with the amount, lead time, quantity, Download Quote and Accept Quote; bordered panels of split rows; a notes row with a glyph).
+Corrections: the counterpart card is **JobWork**, "Accountable counterpart" where the reference says "Verified Vendor", with the quote reference, option and version where it had city and rating; the call and chat buttons go to Help (phone/email) and Support (a case thread with JobWork) — never to a supplier (IN-10). The reference's "Enquiry Details" panel becomes **Price Breakdown** (part, quantity, unit price, subtotal, GST, total) because the quote, not the enquiry, is what is being decided; the enquiry is one tap away. Attachments are not drawn: a quotation carries no files. Accept Quote is shown only while open, disabled with its reason when the viewer cannot approve.
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/portal-web/app/quotations/[quotationId]/page.tsx` | edit | Counterpart card, summary card with the two actions, Other Options, Price Breakdown, Terms and Notes panels; revision/reject flow unchanged |
+| `packages/ui/src/primitives/Icon.tsx` | edit | `download`, `message`, `checkCircle` |
+| `packages/ui/src/base.css` | edit | `.jw-tinted-card`, `.jw-counterpart*`, `.jw-icon-actions`, `.jw-summary-*`, `.jw-section-heading`, `.jw-panel`, `.jw-note-row`, `.jw-cta-icon` |
+| `e2e/walk/04-quote-to-payment.spec.ts`, `e2e/demo/customer.spec.ts` | edit | "Download Quote", "Accept Quote" |
