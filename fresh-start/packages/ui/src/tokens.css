@@ -117,6 +117,8 @@
   /* The one light-on-brand surface in the system: the hero. Tested as a pair. */
   --brand-hero-bg: linear-gradient(135deg, var(--blue-800) 0%, var(--blue-600) 60%, var(--blue-500) 100%);
   --brand-hero-bg-solid: var(--blue-700);
+  --brand-splash-bg: radial-gradient(120% 70% at 50% 45%, #2a3ac4 0%, #1b2898 42%, #121b6c 78%, #0e1556 100%);
+  --brand-splash-bg-solid: var(--blue-900);
   --brand-hero-fg: #ffffff;
   --brand-hero-fg-muted: var(--blue-100);
   --surface-tint: var(--blue-50);
