@@ -42,7 +42,7 @@ export default function NewEnquiryPage(): React.JSX.Element {
   return (
     <Suspense
       fallback={
-        <Page title="New enquiry" width="narrow">
+        <Page title="New Enquiry" width="narrow">
           <LoadingState label="Opening your enquiry" />
         </Page>
       }
@@ -151,7 +151,7 @@ function NewEnquiryWizard(): React.JSX.Element {
 
   if (resuming) {
     return (
-      <Page title="New enquiry" back={{ href: '/enquiries', label: 'Back to enquiries' }}>
+      <Page title="New Enquiry" back={{ href: '/enquiries', label: 'Back to enquiries' }}>
         <Card>
           <LoadingState label="Opening the draft you were working on" />
         </Card>
@@ -163,11 +163,13 @@ function NewEnquiryWizard(): React.JSX.Element {
 
   return (
     <Page
-      title={last ? 'Review enquiry' : 'New enquiry'}
+      title={last ? 'Review Enquiry' : 'New Enquiry'}
       back={{ href: stage === 0 ? '/enquiries' : `?${enquiryId ? `draft=${enquiryId}&` : ''}step=${stage - 1}`, label: stage === 0 ? 'Back to enquiries' : 'Previous step' }}
       width="narrow"
     >
-      <Stack gap={4}>
+      {/* VF-05–07: the wizard is laid flat on white, as the reference screens are. */}
+      <div className="jw-flat">
+      <Stack gap={5}>
         <Stepper steps={steps} current={stage} onSelect={setStage} ariaLabel="Enquiry steps" />
 
         <Inline gap={3} justify="space-between">
@@ -248,6 +250,7 @@ function NewEnquiryWizard(): React.JSX.Element {
           {version !== null ? ` (version ${version})` : ''}.
         </p>
       </Stack>
+      </div>
     </Page>
   );
 }

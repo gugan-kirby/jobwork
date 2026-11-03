@@ -130,6 +130,8 @@
   --accent-orange: #e8580a;
   --accent-green: #15803d;
   --accent-sky: #1677c9;
+  /* The select chevron for the portal phone theme (neutral-700 stroke). */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5468' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   /* Illustration fills (the welcome workshop); decorative only, never carry meaning. */
   --illus-skin: #f1c6a3;
   --illus-hair: #1b2042;
@@ -152,6 +154,9 @@
   --button-danger-bg: var(--status-blocked-fg);
   --button-danger-fg: #ffffff;
   --button-radius: var(--radius-sm);
+  --button-border-width: 1px;
+  --button-secondary-border: var(--color-border);
+  --button-font: var(--text-body-strong);
   --field-border: var(--color-border);
   --field-border-invalid: var(--status-blocked-fg);
   --field-bg: var(--color-surface);

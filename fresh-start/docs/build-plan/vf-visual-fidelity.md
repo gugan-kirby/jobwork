@@ -31,7 +31,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-02 | `JobWork Industrial Welcome Screen.png` | `/start` | **done** 2026-11-03 |
 | VF-03 | `Mobile Register Screen UI.png` | `/register` | **done** 2026-11-03 |
 | VF-04 | `JobWork Precision Dashboard.png` | `/` | **done** 2026-11-03 |
-| VF-05 | `JobWork New Enquiry Form.png` | `/enquiries/new` stage 1 | |
+| VF-05 | `JobWork New Enquiry Form.png` | `/enquiries/new` stage 1 | **done** 2026-11-03 |
 | VF-06 | `New Enquiry Requirements Form.png` | `/enquiries/new` stage 2 | |
 | VF-07 | `Mobile Review Enquiry Form UI.png` | `/enquiries/new` stage 3 | |
 | VF-08 | `JobWork Enquiry Dashboard.png` | `/enquiries` | |
@@ -109,3 +109,24 @@ Corrections: "RFQ / Quotes" is **Quotations** — the customer receives JobWork'
 | `apps/portal-web/app/page.tsx` | edit | Banner, quick actions, process row (featured: milling, VMC, turning, welding), waiting list |
 | `e2e/walk/03-enquiry-to-award.spec.ts`, `e2e/demo/customer.spec.ts` | edit | Home entry link is "New Enquiry" |
 | `packages/ui/test/mobile.spec.tsx` | edit | Accent tile speaks its count without a disc; process art mapping |
+
+## VF-05 Enquiry wizard — Details, and the portal phone theme
+
+Deltas found: inner page headed by the app bar *and* a back row (reference: back chevron and centred title only); pill-tab stepper (reference: numbered discs on a rail, labels under); boxed cards (reference: fields straight on white); 40 px square-ish controls with native select arrows (reference: 52 px, 12 px radius, light border, chevron); old action blue; Back as a grey-bordered button (reference: 2 px blue outline).
+Kept: the job-type cards, material supply, assisted intake, grade, target price, quantity breaks, add-another-part, delivery card and application notes — product rules the reference predates (F-MX.1, FR-307). They now sit in the reference's visual language.
+
+Most of this is one **portal phone theme** rather than per-screen work, so VF-06–VF-16 inherit it: below `md`, inside `.jw-has-tabbar` (customer and supplier portal; operations has no tab bar and is untouched) the control height, field/button radius, border width, action colour, button font and secondary border tokens switch to the reference values, selects get the chevron, and a page with a back chevron hides the app bar (`:has(.jw-page-back)`).
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/data/Stepper.tsx` | edit | Disc-and-rail rendering via `.jw-stepper`/`.jw-step*`; accessible names and the current/state split unchanged |
+| `packages/ui/src/layout/Page.tsx` | edit | `Card` surface, head and body styles moved to `.jw-card`, `.jw-card-head`, `.jw-card-body` |
+| `packages/ui/src/primitives/Button.tsx` | edit | Border width, secondary border and font through `--button-border-width`, `--button-secondary-border`, `--button-font` |
+| `packages/ui/src/primitives/Field.tsx` | edit | `backgroundColor` (the shorthand hid the select chevron) |
+| `packages/ui/src/tokens.css` | edit | The three button tokens; `--select-chevron` |
+| `packages/ui/src/base.css` | edit | Stepper; card classes; `.jw-flat` region; portal phone theme |
+| `apps/portal-web/app/enquiries/new/page.tsx` | edit | "New Enquiry" / "Review Enquiry" titles; the wizard inside `.jw-flat` |
+| `apps/portal-web/app/enquiries/new/wizard/DetailsStage.tsx` | edit | "Part / Job Name", "Sub Category" |
+| `e2e/walk/03-enquiry-to-award.spec.ts`, `e2e/demo/customer.spec.ts` | edit | Review heading text |
+
+Tests: `@jobwork/ui` (193), `@jobwork/portal-web` (21), typecheck (ui, portal, operations), lint.

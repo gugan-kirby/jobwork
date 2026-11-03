@@ -185,7 +185,7 @@ export function DetailsStage({
 
       <Card title={multi ? 'The job' : undefined}>
         <TextInput
-          label="Part / job name"
+          label="Part / Job Name"
           placeholder="e.g. Bracket support"
           required
           value={draft.title}
@@ -262,7 +262,7 @@ export function DetailsStage({
               }}
             />
             <Select
-              label="Sub category"
+              label="Sub Category"
               placeholder={familyId ? 'Select sub category' : 'Choose a category first'}
               value={item.processCapabilityId ?? ''}
               error={familyId ? issueFor(`${at}.processCapabilityId`) : undefined}

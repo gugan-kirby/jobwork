@@ -106,7 +106,7 @@ test('scene · 2 · Ask for a part', async ({ page, director }) => {
   await pause(page, 800);
   await tap(page, button(page, 'Next'), 'Step 3 of 3 — check everything before sending');
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Review enquiry');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Review Enquiry');
   await read(page);
   director.say('Submit — JobWork receives the enquiry');
   await run(page, button(page, 'Submit enquiry'), 'The enquiry has a reference number and shows its progress');

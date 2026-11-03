@@ -44,7 +44,7 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
   await axe(page, 'wizard step 2');
   await button(page, 'Next').click();
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Review enquiry');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Review Enquiry');
   await axe(page, 'wizard review');
   await command(page, 'Submit enquiry');
   await expect(page).toHaveURL(/\/enquiries\/[0-9a-f-]{36}$/);
