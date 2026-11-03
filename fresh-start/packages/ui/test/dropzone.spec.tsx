@@ -14,3 +14,23 @@ describe('FileUpload drop zone', () => {
     expect(screen.getByText(/\(Max /).textContent).toMatch(/PDF/);
   });
 });
+
+import { DescriptionList } from '../src/data/DescriptionList';
+
+/** VF-07: the split list is still a description list, one term per value. */
+describe('DescriptionList split layout', () => {
+  it('keeps dt/dd pairs and marks numeric values', () => {
+    const { container } = render(
+      <DescriptionList
+        layout="split"
+        items={[
+          { label: 'Part Name', value: 'Bracket Support' },
+          { label: 'Quantity', value: '100 Nos', numeric: true },
+        ]}
+      />,
+    );
+    expect(container.querySelector('dl.jw-dl-split')).toBeTruthy();
+    expect([...container.querySelectorAll('dt')].map((dt) => dt.textContent)).toEqual(['Part Name', 'Quantity']);
+    expect(container.querySelectorAll('dd')[1]?.className).toBe('numeric');
+  });
+});

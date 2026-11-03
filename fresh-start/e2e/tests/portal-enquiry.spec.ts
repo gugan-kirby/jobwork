@@ -35,8 +35,8 @@ test('raises an enquiry through the wizard, every stage accessible', async ({ pa
   await page.getByRole('button', { name: 'Next' }).click();
 
   // Review and submit
-  await expect(page.getByRole('button', { name: 'Submit enquiry' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit Enquiry' })).toBeVisible();
   await expectAccessible(page, 'enquiry wizard: review');
-  await page.getByRole('button', { name: 'Submit enquiry' }).click();
+  await page.getByRole('button', { name: 'Submit Enquiry' }).click();
   await expect(page.getByText(/ENQ-\d{4}-\d{4}/).first()).toBeVisible();
 });

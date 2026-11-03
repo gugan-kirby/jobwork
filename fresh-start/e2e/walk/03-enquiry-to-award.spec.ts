@@ -46,7 +46,7 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
 
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Review Enquiry');
   await axe(page, 'wizard review');
-  await command(page, 'Submit enquiry');
+  await command(page, 'Submit Enquiry');
   await expect(page).toHaveURL(/\/enquiries\/[0-9a-f-]{36}$/);
   const reference = (await page.getByText(/ENQ-\d{4}-\d{4}/).first().innerText()).match(/ENQ-\d{4}-\d{4}/)![0];
   remember('enquiryId', page.url().split('/').pop());

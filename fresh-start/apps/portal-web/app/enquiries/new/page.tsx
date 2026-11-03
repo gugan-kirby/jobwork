@@ -219,16 +219,11 @@ function NewEnquiryWizard(): React.JSX.Element {
             documents={documents}
             submit={submit}
             canSubmit={saveState !== 'saving'}
+            onBack={() => setStage((s) => Math.max(0, s - 1))}
           />
         ) : null}
 
-        {last ? (
-          <div>
-            <Button variant="secondary" fullWidth onClick={() => setStage((s) => Math.max(0, s - 1))}>
-              Back
-            </Button>
-          </div>
-        ) : (
+        {last ? null : (
           <div style={{ display: 'grid', gridTemplateColumns: stage === 0 ? '1fr' : '1fr 1fr', gap: 'var(--space-3)' }}>
             {stage > 0 ? (
               <Button variant="secondary" onClick={() => setStage((s) => Math.max(0, s - 1))}>
