@@ -2645,3 +2645,32 @@ code,
 .jw-cta-icon {
   gap: var(--space-2);
 }
+
+/* VF-11 progress bar inside a rich record card. */
+.jw-record-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+.jw-progress {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--neutral-200);
+  overflow: hidden;
+}
+
+.jw-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--brand-strong);
+}
+
+.jw-record-progress-value {
+  font: 500 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}

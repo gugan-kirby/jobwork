@@ -32,6 +32,8 @@ export interface RecordCardProps {
    */
   icon?: { name: IconName; tint: RecordTint } | undefined;
   date?: ReactNode | undefined;
+  /** VF-11: 0–100, drawn as a bar under the date with its percentage (rich layout only). */
+  progress?: number | undefined;
 }
 
 export type RecordTint = 'blue' | 'violet' | 'orange' | 'sky' | 'green' | 'neutral';
@@ -46,6 +48,7 @@ export function RecordCard({
   meta,
   icon,
   date,
+  progress,
 }: RecordCardProps): React.JSX.Element {
   if (icon) {
     return (
@@ -74,6 +77,23 @@ export function RecordCard({
                 <span />
               )}
               {figure ? <span className="jw-record-figure numeric">{figure}</span> : null}
+            </span>
+          ) : null}
+          {typeof progress === 'number' ? (
+            <span className="jw-record-progress">
+              <span
+                className="jw-progress"
+                role="progressbar"
+                aria-label="Progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progress)}
+              >
+                <span style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+              </span>
+              <span className="jw-record-progress-value" aria-hidden="true">
+                {Math.round(progress)}%
+              </span>
             </span>
           ) : null}
           {meta ? <span className="jw-record-meta">{meta}</span> : null}

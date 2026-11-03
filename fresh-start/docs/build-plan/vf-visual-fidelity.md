@@ -37,7 +37,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-08 | `JobWork Enquiry Dashboard.png` | `/enquiries` | **done** 2026-11-03 |
 | VF-09 | `JobWork Quotes Received Screen.png` | `/quotations` | **done** 2026-11-03 |
 | VF-10 | `Precision Metals Quote Details.png` | `/quotations/[quotationId]` | **done** 2026-11-03 |
-| VF-11 | `JobWork My Orders Dashboard.png` | `/orders` | |
+| VF-11 | `JobWork My Orders Dashboard.png` | `/orders` | **done** 2026-11-03 |
 | VF-12 | `Order Tracking Dashboard UI.png` | `/orders/[orderId]` | |
 | VF-13 | `JobWork Invoice Management Dashboard.png` | `/invoices` | |
 | VF-14 | `JobWork Payments Dashboard.png` | `/payments` | |
@@ -192,3 +192,15 @@ Corrections: the counterpart card is **JobWork**, "Accountable counterpart" wher
 | `packages/ui/src/primitives/Icon.tsx` | edit | `download`, `message`, `checkCircle` |
 | `packages/ui/src/base.css` | edit | `.jw-tinted-card`, `.jw-counterpart*`, `.jw-icon-actions`, `.jw-summary-*`, `.jw-section-heading`, `.jw-panel`, `.jw-note-row`, `.jw-cta-icon` |
 | `e2e/walk/04-quote-to-payment.spec.ts`, `e2e/demo/customer.spec.ts` | edit | "Download Quote", "Accept Quote" |
+
+## VF-11 My orders
+
+Deltas found: back-chevron "Orders" (reference: tab root "My Orders" with subtitle); no search; compact cards (reference: tile, title + status, "Order #…", calendar date, progress bar with percentage).
+Corrections: no vendor line (`F-09.5`); filters are All · Needs you · In Progress · Completed · Cancelled — "Needs you" kept because an order waiting on a payment or a delivery confirmation is the customer's next action. Progress is the order's position on the customer timeline (payment 10 %, technical confirmation 20 %, manufacturing 45 %, quality review 65 %, final checks 80 %, on the way 90 %, delivery confirmation 95 %), shown only on open orders — never a production estimate.
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/data/RecordCard.tsx` | edit | `progress` → named `progressbar` with percentage |
+| `packages/ui/src/base.css` | edit | `.jw-record-progress`, `.jw-progress` |
+| `apps/portal-web/app/orders/page.tsx` | edit | Title, search and sort, five filters, rich cards with progress |
+| `packages/ui/test/dropzone.spec.tsx` | edit | Progress bar role and value |
