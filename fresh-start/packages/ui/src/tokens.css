@@ -119,6 +119,16 @@
   --brand-hero-bg-solid: var(--blue-700);
   --brand-splash-bg: radial-gradient(120% 70% at 50% 45%, #2a3ac4 0%, #1b2898 42%, #121b6c 78%, #0e1556 100%);
   --brand-splash-bg-solid: var(--blue-900);
+  /* VF reference palette (image/*.png, sampled 2026-11-03): the saturated call-to-action
+     blue and the near-black navy ink the high-fidelity screens use for headlines. */
+  --brand-strong: #0b22d4;
+  --brand-strong-hover: #081ab0;
+  --color-ink: #0a0d3c;
+  --color-ink-muted: #3e425b;
+  /* Illustration fills (the welcome workshop); decorative only, never carry meaning. */
+  --illus-skin: #f1c6a3;
+  --illus-hair: #1b2042;
+  --illus-accent: #f5b301;
   --brand-hero-fg: #ffffff;
   --brand-hero-fg-muted: var(--blue-100);
   --surface-tint: var(--blue-50);

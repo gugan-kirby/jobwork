@@ -28,7 +28,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | ID | Reference | Route | Status |
 |---|---|---|---|
 | VF-01 | `JobWork_Screen_01_Splash.png` | `/welcome` | **done** 2026-11-03 |
-| VF-02 | `JobWork Industrial Welcome Screen.png` | `/start` | |
+| VF-02 | `JobWork Industrial Welcome Screen.png` | `/start` | **done** 2026-11-03 |
 | VF-03 | `Mobile Register Screen UI.png` | `/register` | |
 | VF-04 | `JobWork Precision Dashboard.png` | `/` | |
 | VF-05 | `JobWork New Enquiry Form.png` | `/enquiries/new` stage 1 | |
@@ -59,3 +59,20 @@ Deltas found: navy radial field (was the bright diagonal gradient); a gear-and-w
 | `packages/ui/test/mobile.spec.tsx` | edit | Splash actions outside the centred block; `BrandGlyph` decorative with unique mask ids |
 
 Tests: `@jobwork/ui` (181), `@jobwork/portal-web` (21), typecheck, lint. The walk's public chapter (`e2e/walk/01-public.spec.ts`) finds "Get started" by role, case-insensitively, and runs axe on the page; it runs with the batch walk at the end of VF.
+
+## VF-02 Welcome fork
+
+Deltas found: white field without the brand bar; 30 px "Welcome to" in navy ink over a 58 px "JobWork" in the reference's saturated blue; a workshop illustration (was three small icons); 54 px filled Login and 2 px outlined Register; un-underlined "Continue as Guest"; shield-glyph trio with single labels; the guest note under the link removed (the explore page says what a guest can do).
+Corrections: the trio stays "Secure · Reviewed · Managed", not "Secure · Reliable · Fast" (`D-10`); each label's meaning is read out to assistive technology.
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/primitives/WorkshopIllustration.tsx` | new | Original flat SVG (milling centre, operator, fitter at bench, column machine), token fills only |
+| `packages/ui/src/primitives/Icon.tsx` | edit | `shieldLock`, `shieldCheck`, `shieldBolt` |
+| `packages/ui/src/tokens.css` | edit | `--brand-strong(-hover)`, `--color-ink(-muted)` sampled from the references; `--illus-*` fills |
+| `packages/ui/src/base.css` | edit | `.jw-entry*`, `.jw-cta`, `.jw-cta-outline`, `.jw-text-cta`, `.jw-assurance` — reused by later VF screens |
+| `packages/ui/src/index.ts` | edit | `WorkshopIllustration` export |
+| `apps/portal-web/app/start/page.tsx` | rewrite | The fork on the above; links unchanged (`/login`, `/register`, `/explore`) |
+| `packages/ui/test/mobile.spec.tsx` | edit | Illustration decorative, every fill a token |
+
+Tests: `@jobwork/ui` (185), `@jobwork/portal-web` (21), typecheck, lint.
