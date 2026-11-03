@@ -180,7 +180,7 @@ test('supplier · an active supplier sees its bids and orders counted on home', 
   await signInAs(page, 'supplierA');
   await open(page, `${PORTAL}/supplier`);
   for (const tile of ['Bids sent', 'Purchase orders']) {
-    await expect(page.getByRole('link', { name: new RegExp(tile) }).first()).toContainText(/^[1-9]\d*/);
+    await expect(page.getByRole('link', { name: new RegExp(tile, 'i') }).first()).toContainText(/^[1-9]\d*/);
   }
   await axe(page, 'supplier home with work');
 });

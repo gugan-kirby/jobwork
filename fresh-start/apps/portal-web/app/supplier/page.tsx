@@ -8,11 +8,13 @@ import {
   Callout,
   Card,
   CommandButton,
+  Donut,
   ErrorState,
   Icon,
   Inline,
   LoadingState,
   Page,
+  ProcessArt,
   QueueCard,
   Stack,
   StatusChip,
@@ -29,6 +31,14 @@ import { api, ApiError } from '../../lib/api';
  * never told it is ready for a decision JobWork cannot make — and every row links to the
  * page that fixes it, because a list of problems without a way to act on them is a
  * complaint, not a workflow.
+ *
+ * VF-15 (reference screen 15, corrected): the reference's "Vendor Dashboard — Welcome,
+ * Precision Metals" with New Enquiries / Quotes Sent / Active Orders / Total Revenue,
+ * enquiry requests with Quote Now, an orders donut and a revenue chart. Here: the welcome
+ * banner says the work comes from JobWork, not buyers; the tiles are the supplier's own
+ * open RFQs, bids, purchase orders and settlements due; the requests are RFQs with
+ * "Bid Now"; the donut splits the supplier's own purchase orders by where they stand.
+ * There is no revenue figure or chart (F-MX.9) and nothing names a customer.
  */
 
 const STATUS_TONE: Record<string, Tone> = {
@@ -87,7 +97,7 @@ export default function SupplierHomePage(): React.JSX.Element {
   const [view, setView] = useState<SupplierSelfView | null>(null);
   const [summary, setSummary] = useState<SupplierSummary | null>(null);
   const [rfqs, setRfqs] = useState<SupplierRfqListItem[]>([]);
-  const [purchaseOrders, setPurchaseOrders] = useState(0);
+  const [purchaseOrders, setPurchaseOrders] = useState<SupplierPurchaseOrder[]>([]);
   const [settlementsDue, setSettlementsDue] = useState(0);
   const [error, setError] = useState<ApiError | null>(null);
   const [pauseNote, setPauseNote] = useState('');
@@ -111,7 +121,7 @@ export default function SupplierHomePage(): React.JSX.Element {
       setView(self);
       setSummary(work);
       setRfqs(invited);
-      setPurchaseOrders(orders.filter((po) => po.status !== 'cancelled').length);
+      setPurchaseOrders(orders.filter((po) => po.status !== 'cancelled'));
       setSettlementsDue(bills.filter((b) => b.settlement !== null && b.settlement.status !== 'paid').length);
       setPauseNote(self.profile.acceptingWorkNote);
       setPauseUntil(self.profile.acceptingWorkUntil ?? '');
@@ -152,57 +162,96 @@ export default function SupplierHomePage(): React.JSX.Element {
   return (
     <Page title="Supplier home" titleHidden>
       <Stack gap={4}>
-        <Card>
-          <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 'var(--space-9)',
-                height: 'var(--space-9)',
-                borderRadius: '50%',
-                background: 'var(--status-progress-bg)',
-                color: 'var(--color-action)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icon name="factory" size={2} />
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ font: 'var(--text-heading-2)' }}>{view.profile.displayName || 'Your supplier account'}</p>
-              <p style={{ color: 'var(--color-text-muted)', font: 'var(--text-caption)' }}>
-                {view.profile.tradeName ? `${view.profile.tradeName} · ` : ''}
-                {view.profile.regionClass.replace(/_/g, ' ')}
-              </p>
-              <div style={{ marginTop: 'var(--space-2)' }}>
-                <StatusChip tone={STATUS_TONE[status] ?? 'neutral'}>{STATUS_LABEL[status] ?? status}</StatusChip>
-              </div>
+        <section className="jw-welcome" aria-label="Welcome">
+          <div>
+            <p className="jw-welcome-eyebrow">Supplier home</p>
+            <p className="jw-welcome-title">Welcome, {view.profile.displayName || 'supplier'}</p>
+            <p className="jw-welcome-sub">Manage RFQs, bids and purchase orders from JobWork</p>
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <StatusChip tone={STATUS_TONE[status] ?? 'neutral'}>{STATUS_LABEL[status] ?? status}</StatusChip>
             </div>
           </div>
-        </Card>
+          <ProcessArt name="vmc" size={92} />
+        </section>
 
         <section aria-labelledby="supplier-overview">
-          <h2 id="supplier-overview" className="jw-section-title">
+          <h2 id="supplier-overview" className="jw-visually-hidden">
             Overview
           </h2>
-          <div className="jw-stat-grid">
-            <Link href="/rfqs" className="jw-stat">
-              <span className="jw-stat-value">{openRfqs}</span>
-              <span className="jw-stat-label">Open RFQs</span>
+          <div className="jw-tiles">
+            {[
+              { href: '/rfqs', tint: 'blue', icon: 'mail' as const, value: openRfqs, label: 'Open RFQs' },
+              { href: '/rfqs', tint: 'violet', icon: 'document' as const, value: bidsSent, label: 'Bids Sent' },
+              { href: '/supplier/orders', tint: 'green', icon: 'orders' as const, value: purchaseOrders.length, label: 'Purchase Orders' },
+              { href: '/supplier/bills', tint: 'orange', icon: 'payment' as const, value: settlementsDue, label: 'Settlements Due' },
+            ].map((tile) => (
+              <Link key={tile.label} href={tile.href} className={`jw-tile jw-tile-${tile.tint}`}>
+                <span className="jw-tile-glyph" aria-hidden="true">
+                  <Icon name={tile.icon} size={1.4} />
+                </span>
+                <span className="jw-tile-value numeric">{tile.value}</span>
+                <span className="jw-tile-label">{tile.label}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="jw-panel" aria-labelledby="supplier-rfqs">
+          <div className="jw-panel-head">
+            <h2 id="supplier-rfqs" className="jw-panel-title">
+              <Icon name="mail" size={1.3} />
+              RFQ Requests
+            </h2>
+            <Link href="/rfqs" className="jw-panel-link">
+              View All <Icon name="chevron" size={1} />
             </Link>
-            <Link href="/rfqs" className="jw-stat">
-              <span className="jw-stat-value">{bidsSent}</span>
-              <span className="jw-stat-label">Bids sent</span>
+          </div>
+          {rfqs.filter((r) => r.status === 'open').length === 0 ? (
+            <p className="jw-panel-body jw-record-caption">No open requests from JobWork right now.</p>
+          ) : (
+            rfqs
+              .filter((r) => r.status === 'open')
+              .slice(0, 3)
+              .map((r, index) => (
+                <div key={r.rfqId} className="jw-panel-row">
+                  <span className={`jw-record-tile ${['jw-record-tile-blue', 'jw-record-tile-violet', 'jw-record-tile-orange'][index % 3]}`} aria-hidden="true">
+                    <Icon name={(['factory', 'layers', 'hexagon'] as const)[index % 3] ?? 'factory'} size={1.6} />
+                  </span>
+                  <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+                    <span className="jw-offer-title mono">{r.reference ?? 'RFQ'}</span>
+                    <span className="jw-record-caption">
+                      {r.itemCount} {r.itemCount === 1 ? 'part' : 'parts'}
+                      {r.deadlineAt ? ` • due ${new Date(r.deadlineAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' })}` : ''}
+                    </span>
+                  </span>
+                  <Link href={`/rfqs/${r.rfqId}`} className={index === 0 ? 'jw-cta jw-cta-xs' : 'jw-cta-outline jw-cta-xs'}>
+                    {r.bidVersionCount > 0 ? 'Revise' : 'Bid Now'}
+                    <span className="jw-visually-hidden">, {r.reference ?? 'RFQ'}</span>
+                  </Link>
+                </div>
+              ))
+          )}
+        </section>
+
+        <section className="jw-panel" aria-labelledby="supplier-orders">
+          <div className="jw-panel-head">
+            <h2 id="supplier-orders" className="jw-panel-title">
+              <Icon name="orders" size={1.3} />
+              Orders Overview
+            </h2>
+            <Link href="/supplier/orders" className="jw-panel-link">
+              View All <Icon name="chevron" size={1} />
             </Link>
-            <Link href="/supplier/orders" className="jw-stat">
-              <span className="jw-stat-value">{purchaseOrders}</span>
-              <span className="jw-stat-label">Purchase orders</span>
-            </Link>
-            <Link href="/supplier/bills" className="jw-stat">
-              <span className="jw-stat-value">{settlementsDue}</span>
-              <span className="jw-stat-label">Settlements due</span>
-            </Link>
+          </div>
+          <div className="jw-panel-body">
+            <Donut
+              totalLabel="Orders"
+              slices={[
+                { label: 'To acknowledge', value: purchaseOrders.filter((po) => po.status === 'issued').length },
+                { label: 'Awaiting baseline', value: purchaseOrders.filter((po) => po.status === 'acknowledged' && po.baselineStatus === 'pending_baseline').length },
+                { label: 'In production', value: purchaseOrders.filter((po) => po.status === 'acknowledged' && po.baselineStatus === 'baseline_released').length },
+              ]}
+            />
           </div>
         </section>
 
