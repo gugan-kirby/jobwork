@@ -7,6 +7,8 @@ import { Page } from '../src/layout/Page';
 import { Hero } from '../src/layout/Hero';
 import { BrandGlyph } from '../src/primitives/BrandGlyph';
 import { WorkshopIllustration } from '../src/primitives/WorkshopIllustration';
+import { IconTextInput } from '../src/forms/IconTextInput';
+import { TopBar } from '../src/layout/TopBar';
 import { activeHref, isActivePath } from '../src/layout/paths';
 import { QuickAction, QuickActionGrid } from '../src/status/QuickAction';
 import { FilterChips } from '../src/data/FilterChips';
@@ -257,6 +259,25 @@ describe('WorkshopIllustration', () => {
       .filter((style) => /fill|stroke/.test(style));
     expect(paints.length).toBeGreaterThan(20);
     expect(paints.filter((style) => /#[0-9a-f]{3,8}|rgb\(/i.test(style))).toEqual([]);
+  });
+});
+
+describe('IconTextInput', () => {
+  it('keeps a real label behind the placeholder and chains the error (VF-03)', () => {
+    render(<IconTextInput icon="mail" label="Email Address" required error="Enter your email address" />);
+    const input = screen.getByLabelText(/Email Address/);
+    expect(input.getAttribute('placeholder')).toBe('Email Address');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    const describedBy = input.getAttribute('aria-describedby') ?? '';
+    expect(document.getElementById(describedBy)?.textContent).toBe('Enter your email address');
+  });
+});
+
+describe('TopBar', () => {
+  it('makes the title the h1 and names the icon-only back link (VF-03)', () => {
+    render(<TopBar title="Register" back="/start" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Register' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/start');
   });
 });
 

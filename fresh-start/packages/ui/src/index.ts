@@ -43,6 +43,8 @@ export { AppShell, type AppShellProps, type NavEntry, type NavGroup, type NavIte
 export { Card, Page, type CardProps, type PageProps } from './layout/Page';
 export { TabBar, type TabBarProps, type TabItem, type TabPrimaryAction } from './layout/TabBar';
 export { Hero, type HeroProps } from './layout/Hero';
+export { TopBar } from './layout/TopBar';
+export { IconTextInput, type IconTextInputProps } from './forms/IconTextInput';
 export { activeHref, isActivePath } from './layout/paths';
 export { Inline, SplitPane, Stack, type InlineProps, type StackProps } from './layout/Stack';
 
