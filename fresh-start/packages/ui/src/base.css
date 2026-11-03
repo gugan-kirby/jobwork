@@ -2477,6 +2477,11 @@ code,
 .jw-cta-sm {
   min-height: 46px;
   font-size: 17px;
+  padding: 0 var(--space-2);
+}
+
+.jw-action-pair .jw-cta-sm {
+  font-size: 16px;
 }
 
 .jw-offer .jw-record-tile svg {
@@ -2529,6 +2534,7 @@ code,
 
 .jw-counterpart-name {
   font: 700 20px/26px var(--font-sans);
+  overflow-wrap: anywhere;
   color: var(--color-ink);
 }
 
@@ -2673,4 +2679,173 @@ code,
 .jw-record-progress-value {
   font: 500 15px/20px var(--font-sans);
   color: var(--color-ink-muted);
+}
+
+/* VF-12 four-milestone progress: discs on a rail, label and date under each. */
+.jw-milestones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.jw-milestone {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.jw-milestone:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 21px;
+  left: calc(50% + 22px);
+  right: calc(-50% + 22px);
+  height: 2px;
+  background: var(--neutral-300);
+}
+
+.jw-milestone-done:not(:last-child)::after {
+  background: var(--brand-strong);
+}
+
+.jw-milestone-disc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--neutral-300);
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+  margin-bottom: var(--space-1);
+}
+
+.jw-milestone-done .jw-milestone-disc {
+  border-color: var(--brand-strong);
+  color: var(--brand-strong);
+}
+
+.jw-milestone-current .jw-milestone-disc {
+  border-color: var(--brand-strong);
+  background: var(--brand-strong);
+  color: var(--brand-hero-fg);
+}
+
+.jw-milestone-label {
+  font: 600 14px/18px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-milestone-current .jw-milestone-label {
+  color: var(--brand-strong);
+}
+
+.jw-milestone-date {
+  font: 400 13px/18px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+/* VF-12 current-status panel. */
+.jw-status-panel {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.jw-status-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.jw-progress-lg {
+  height: 12px;
+  border-radius: 6px;
+}
+
+/* VF-12 vertical production timeline. */
+.jw-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.jw-timeline-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-3);
+  border-radius: 12px;
+}
+
+.jw-timeline-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-3) + 21px);
+  top: calc(var(--space-3) + 44px);
+  bottom: calc(var(--space-3) * -1);
+  width: 2px;
+  background: var(--neutral-200);
+}
+
+.jw-timeline-current {
+  background: var(--blue-50);
+}
+
+.jw-timeline-disc {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--neutral-100);
+  color: var(--color-ink-muted);
+}
+
+.jw-timeline-done .jw-timeline-disc {
+  background: var(--status-positive-bg);
+  color: var(--status-positive-fg);
+}
+
+.jw-timeline-current .jw-timeline-disc {
+  background: var(--blue-100);
+  color: var(--brand-strong);
+}
+
+.jw-timeline-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.jw-timeline-title {
+  font: 700 16px/22px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-timeline-pending .jw-timeline-title {
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.jw-timeline-detail,
+.jw-timeline-at {
+  font: 400 14px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-timeline-at {
+  white-space: nowrap;
 }
