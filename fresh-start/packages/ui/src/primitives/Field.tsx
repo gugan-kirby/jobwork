@@ -71,7 +71,7 @@ const controlStyle = (invalid: boolean): React.CSSProperties => ({
   width: '100%',
   minHeight: 'var(--control-height)',
   padding: '0 var(--space-3)',
-  background: 'var(--field-bg)',
+  backgroundColor: 'var(--field-bg)',
   color: 'var(--color-text)',
   border: `1px solid ${invalid ? 'var(--field-border-invalid)' : 'var(--field-border)'}`,
   borderRadius: 'var(--field-radius)',

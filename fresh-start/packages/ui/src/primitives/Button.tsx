@@ -29,22 +29,22 @@ const VARIANT_STYLE: Record<ButtonVariant, CSSProperties> = {
   primary: {
     background: 'var(--button-primary-bg)',
     color: 'var(--button-primary-fg)',
-    border: '1px solid transparent',
+    border: 'var(--button-border-width) solid transparent',
   },
   secondary: {
     background: 'var(--button-secondary-bg)',
     color: 'var(--button-secondary-fg)',
-    border: '1px solid var(--color-border)',
+    border: 'var(--button-border-width) solid var(--button-secondary-border)',
   },
   ghost: {
     background: 'transparent',
     color: 'var(--color-action)',
-    border: '1px solid transparent',
+    border: 'var(--button-border-width) solid transparent',
   },
   danger: {
     background: 'var(--button-danger-bg)',
     color: 'var(--button-danger-fg)',
-    border: '1px solid transparent',
+    border: 'var(--button-border-width) solid transparent',
   },
 };
 
@@ -72,7 +72,7 @@ export function buttonStyle({
     minWidth: 24,
     padding: size === 'sm' ? '0 var(--space-3)' : '0 var(--space-4)',
     borderRadius: 'var(--button-radius)',
-    font: 'var(--text-body-strong)',
+    font: size === 'sm' ? 'var(--text-body-strong)' : 'var(--button-font)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.55 : 1,
     transition: 'background var(--motion-fast) var(--motion-ease)',
