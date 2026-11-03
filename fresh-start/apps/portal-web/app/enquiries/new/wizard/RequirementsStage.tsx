@@ -21,6 +21,7 @@ import {
   TextInput,
   type VersionState,
 } from '@jobwork/ui';
+import { UPLOAD_POLICY } from '@jobwork/contracts/constants';
 import { createUploadApi } from '../../../../lib/upload-api';
 import type { DraftApi } from './useDraft';
 import { attachability } from './types';
@@ -81,13 +82,13 @@ export function RequirementsStage({
   return (
     <Stack gap={4}>
       <Card
-        title="Upload drawing"
+        title="Upload Drawing"
         description="PDF, DWG, STEP or an image. Every file is scanned before it can be shared, and it attaches itself to this enquiry as soon as the scan clears."
       >
         <Select
           label="What are you uploading?"
           value={uploadPurpose}
-          options={UPLOAD_PURPOSES.map((purpose) => ({ value: purpose, label: purpose.replace(/_/g, ' ') }))}
+          options={UPLOAD_PURPOSES.map((purpose) => ({ value: purpose, label: UPLOAD_POLICY[purpose].label }))}
           onChange={(event) => setUploadPurpose(event.target.value as DocumentPurpose)}
         />
         <FileUpload
@@ -166,19 +167,19 @@ export function RequirementsStage({
         return (
           <Card key={item.lineNo} title={multi ? `Part ${item.lineNo} — ${item.partName || 'unnamed'}` : 'Specifications'}>
             <TextArea
-              label="Specifications / comments"
+              label="Specifications / Comments"
               placeholder="Enter specifications or any special requirements…"
               value={item.description}
               onChange={(event) => editItem(item.lineNo, { description: event.target.value })}
             />
             <TextInput
-              label="Surface finish"
+              label="Surface Finish"
               placeholder="e.g. Anodised, Ra 1.6"
               value={item.surfaceFinish ?? ''}
               onChange={(event) => editItem(item.lineNo, { surfaceFinish: event.target.value })}
             />
             <TextInput
-              label="Tolerance class"
+              label="Tolerance Class"
               placeholder="e.g. IT8, ISO 2768-m"
               value={item.toleranceClass ?? ''}
               onChange={(event) => editItem(item.lineNo, { toleranceClass: event.target.value })}

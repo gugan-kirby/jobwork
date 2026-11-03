@@ -32,7 +32,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 | VF-03 | `Mobile Register Screen UI.png` | `/register` | **done** 2026-11-03 |
 | VF-04 | `JobWork Precision Dashboard.png` | `/` | **done** 2026-11-03 |
 | VF-05 | `JobWork New Enquiry Form.png` | `/enquiries/new` stage 1 | **done** 2026-11-03 |
-| VF-06 | `New Enquiry Requirements Form.png` | `/enquiries/new` stage 2 | |
+| VF-06 | `New Enquiry Requirements Form.png` | `/enquiries/new` stage 2 | **done** 2026-11-03 |
 | VF-07 | `Mobile Review Enquiry Form UI.png` | `/enquiries/new` stage 3 | |
 | VF-08 | `JobWork Enquiry Dashboard.png` | `/enquiries` | |
 | VF-09 | `JobWork Quotes Received Screen.png` | `/quotations` | |
@@ -130,3 +130,15 @@ Most of this is one **portal phone theme** rather than per-screen work, so VF-06
 | `e2e/walk/03-enquiry-to-award.spec.ts`, `e2e/demo/customer.spec.ts` | edit | Review heading text |
 
 Tests: `@jobwork/ui` (193), `@jobwork/portal-web` (21), typecheck (ui, portal, operations), lint.
+
+## VF-06 Enquiry wizard — Requirements
+
+Deltas found: the native file control in a bordered box (reference: dashed drop zone, cloud glyph, "Upload File", "PDF, DWG, STEP, JPG (Max …)"); a passed step drawn as a filled green tick (reference: outlined disc, blue rail); raw purpose codes in the upload select ("drawing 2d").
+Added: drag-and-drop onto the zone runs the same upload as the picker. Kept: tolerance class, tightest tolerance, inspection level, heat treatment, required-by and confidentiality — they are free text or richer than the reference's two dropdowns because the reviewer needs the stated value (doc 09).
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/upload/FileUpload.tsx` | edit | Drop zone: the zone is the `<label>` of a visually hidden native input named "Upload File — {purpose}"; drag-over state; drop → upload |
+| `packages/ui/src/base.css` | edit | `.jw-dropzone*`; passed-step disc and rail |
+| `apps/portal-web/app/enquiries/new/wizard/RequirementsStage.tsx` | edit | Purpose options from `UPLOAD_POLICY` labels; title-case headings |
+| `packages/ui/test/dropzone.spec.tsx` | new | Hidden input carries the action and purpose; caption lists the types |

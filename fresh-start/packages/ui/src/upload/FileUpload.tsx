@@ -8,6 +8,7 @@ import type {
 } from '@jobwork/contracts';
 // Values come from the zod-free entry so the upload widget does not ship every schema (F-FE.3).
 import { acceptAttribute, UPLOAD_POLICY } from '@jobwork/contracts/constants';
+import { Icon } from '../primitives/Icon';
 
 /**
  * The doc 21 §6 file-upload contract: a purpose-scoped accept list, one visible state
@@ -160,6 +161,7 @@ export function FileUpload({
 }: FileUploadProps): React.JSX.Element {
   const [phase, setPhase] = useState<UploadPhase>('idle');
   const [progress, setProgress] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [problem, setProblem] = useState<UploadProblem | null>(null);
   const [filename, setFilename] = useState<string | null>(null);
   const [version, setVersion] = useState<VersionState | null>(null);
@@ -330,35 +332,44 @@ export function FileUpload({
 
   return (
     <section
-      style={{
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-md)',
-        padding: 'var(--space-4)',
-        background: 'var(--color-surface)',
-        minWidth: 0,
+      className={dragging ? 'jw-dropzone jw-dropzone-over' : 'jw-dropzone'}
+      onDragOver={(e) => {
+        if (busy) return;
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file && !busy) void upload(file);
       }}
     >
-      {/* Wraps and shrinks at phone width: the native file control is otherwise wider than a 390 px card. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-1) var(--space-3)' }}>
-        <label style={{ font: 'var(--text-body-strong)' }} htmlFor={inputId}>
-          {policy.label}
-        </label>
-        <span style={{ font: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-          {policy.extensions.join(', ')} · up to {formatBytes(policy.maxBytes)}
+      {/* VF-06 (reference screen 06): the whole zone is the label of a visually hidden
+          native input, so a tap, the keyboard and a drop all land on the same upload.
+          The name keeps the purpose ("Upload file — 2D drawing"). */}
+      <label htmlFor={inputId} className="jw-dropzone-target">
+        <Icon name="upload" size={2.6} />
+        <span className="jw-dropzone-title">
+          Upload File<span className="jw-visually-hidden"> — {policy.label}</span>
         </span>
-      </div>
+        <span className="jw-dropzone-caption">
+          {policy.extensions.map((ext) => ext.toUpperCase()).join(', ')} (Max {formatBytes(policy.maxBytes)})
+        </span>
+      </label>
 
       <input
         id={inputId}
         ref={inputRef}
         type="file"
+        className="jw-visually-hidden"
         accept={acceptAttribute(purpose)}
         disabled={busy}
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) void upload(file);
         }}
-        style={{ display: 'block', maxWidth: '100%', marginTop: 'var(--space-3)', font: 'var(--text-body)' }}
       />
 
       <p
