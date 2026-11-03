@@ -29,7 +29,7 @@ Prior art: F-MX built every one of these screens on 2026-10-01 from the low-fide
 |---|---|---|---|
 | VF-01 | `JobWork_Screen_01_Splash.png` | `/welcome` | **done** 2026-11-03 |
 | VF-02 | `JobWork Industrial Welcome Screen.png` | `/start` | **done** 2026-11-03 |
-| VF-03 | `Mobile Register Screen UI.png` | `/register` | |
+| VF-03 | `Mobile Register Screen UI.png` | `/register` | **done** 2026-11-03 |
 | VF-04 | `JobWork Precision Dashboard.png` | `/` | |
 | VF-05 | `JobWork New Enquiry Form.png` | `/enquiries/new` stage 1 | |
 | VF-06 | `New Enquiry Requirements Form.png` | `/enquiries/new` stage 2 | |
@@ -76,3 +76,19 @@ Corrections: the trio stays "Secure · Reviewed · Managed", not "Secure · Reli
 | `packages/ui/test/mobile.spec.tsx` | edit | Illustration decorative, every fill a token |
 
 Tests: `@jobwork/ui` (185), `@jobwork/portal-web` (21), typecheck, lint.
+
+## VF-03 Registration
+
+Deltas found: back-chevron header instead of the brand bar and lede; a bordered two-way switch with a tinted, underlined selection (was filled pill buttons); glyph fields with the label as placeholder (were labelled boxes in a card); inline "Terms & Conditions" link in the agreement line; 54 px action; centred "Already have an account? Login".
+Corrections: the second tab is **Supplier** and sends an application, not an account (F-SO); the optional company field stays (an enquiry belongs to an organization).
+Validation added in the browser (the API still decides): full name ≥ 2, Indian 10-digit mobile when given, email format, password ≥ 12, confirmation match; messages show once a field is left or the form is tried, and the first submit attempt flags every field.
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/ui/src/forms/IconTextInput.tsx` | new | Glyph field; visually hidden `<label>`, placeholder = label, hint/error on `aria-describedby`, error as `role="alert"` |
+| `packages/ui/src/layout/TopBar.tsx` | new | Back chevron (named link), h1 title, trailing slot — the inner header for every later VF screen |
+| `packages/ui/src/primitives/Icon.tsx` | edit | `phone`, `mail`, `lock`, `eye` |
+| `packages/ui/src/base.css` | edit | `.jw-topbar*`, `.jw-icon-field*`, `.jw-segment`, `.jw-form-page`, `.jw-form-stack`, `.jw-agree`, `.jw-inline-link`, `.jw-form-foot` |
+| `apps/portal-web/app/register/page.tsx` | rewrite | Both forms on the above, client validation, shared terms line and submit |
+| `e2e/walk/01-public.spec.ts` | edit | Agreement label is "I agree to Terms & Conditions" |
+| `packages/ui/test/mobile.spec.tsx` | edit | `IconTextInput` label/error chain; `TopBar` h1 and named back link |

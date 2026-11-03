@@ -1500,3 +1500,187 @@ code,
 .jw-assurance svg {
   color: var(--brand-strong);
 }
+
+/* VF-03 inner header: back chevron, h1 title, optional trailing control. */
+.jw-topbar {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  color: var(--color-ink);
+}
+
+.jw-topbar-back,
+.jw-topbar-trailing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--color-ink);
+  border-radius: var(--radius-md);
+}
+
+.jw-topbar-back:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+}
+
+.jw-topbar-title {
+  font: 700 24px/30px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-topbar-centred .jw-topbar-title {
+  text-align: center;
+}
+
+/* VF-03 fields: glyph + placeholder label in a 52 px rounded box. */
+.jw-icon-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.jw-icon-field-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+}
+
+.jw-icon-field-box:focus-within {
+  border-color: var(--brand-strong);
+  box-shadow: 0 0 0 3px var(--blue-100);
+}
+
+.jw-icon-field-invalid {
+  border-color: var(--status-blocked-fg);
+}
+
+.jw-icon-field-box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink);
+  padding: var(--space-3) 0;
+}
+
+.jw-icon-field-box input::placeholder {
+  color: var(--neutral-600);
+}
+
+.jw-icon-field-hint,
+.jw-icon-field-error {
+  font: var(--text-caption);
+  padding-left: var(--space-1);
+}
+
+.jw-icon-field-hint {
+  color: var(--color-text-muted);
+}
+
+.jw-icon-field-error {
+  color: var(--status-blocked-fg);
+}
+
+/* VF-03 two-way switch: the chosen side tinted with a brand underline. */
+.jw-segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.jw-segment button {
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  font: 600 18px/24px var(--font-sans);
+  color: var(--color-ink);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+
+.jw-segment button[aria-pressed='true'] {
+  background: var(--blue-50);
+  color: var(--brand-strong);
+  border-bottom-color: var(--brand-strong);
+  border-radius: 12px 0 0 0;
+}
+
+.jw-segment button:last-child[aria-pressed='true'] {
+  border-radius: 0 12px 0 0;
+}
+
+.jw-segment button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: -3px;
+}
+
+/* VF-03 form page column. */
+.jw-form-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-surface);
+  max-width: 520px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) calc(var(--space-6) + var(--safe-bottom));
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+}
+
+.jw-form-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.jw-agree {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  font: 400 18px/24px var(--font-sans);
+  color: var(--color-ink);
+  padding: var(--space-3) var(--space-1);
+}
+
+.jw-agree input {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  accent-color: var(--brand-strong);
+}
+
+.jw-agree a,
+.jw-inline-link {
+  color: var(--brand-strong);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.jw-agree a:hover,
+.jw-inline-link:hover {
+  text-decoration: underline;
+}
+
+.jw-form-foot {
+  text-align: center;
+  font: 400 18px/24px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

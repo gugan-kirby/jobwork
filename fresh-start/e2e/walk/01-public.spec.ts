@@ -47,7 +47,7 @@ test('public · a customer registers, confirms the email and signs in', async ({
   await expect(visible(page, 'The two passwords do not match')).toBeVisible();
   await field(page, 'Confirm password').fill('walk-owner-password-1');
   await expect(button(page, 'Register')).toBeDisabled();
-  await page.getByLabel('I agree to the Terms & Conditions').check();
+  await page.getByLabel('I agree to Terms & Conditions').check();
   await axe(page, 'register');
   const registered = page.waitForResponse((r) => r.url().endsWith('/auth/register') && r.request().method() === 'POST');
   await button(page, 'Register').click();
@@ -85,7 +85,7 @@ test('public · a workshop applies to join as a supplier', async ({ page }) => {
     await expect(processes.first()).toBeVisible();
     await processes.first().check();
     await field(page, 'Anything else').fill('Three VMCs and a CMM.');
-    await page.getByLabel('I agree to the Terms & Conditions').check();
+    await page.getByLabel('I agree to Terms & Conditions').check();
     await axe(page, 'supplier application');
     await button(page, 'Send application').click();
     await expect(visible(page, 'Application received')).toBeVisible();
