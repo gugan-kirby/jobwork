@@ -5,6 +5,7 @@ import { TabBar } from '../src/layout/TabBar';
 import { AppShell } from '../src/layout/AppShell';
 import { Page } from '../src/layout/Page';
 import { Hero } from '../src/layout/Hero';
+import { BrandGlyph } from '../src/primitives/BrandGlyph';
 import { activeHref, isActivePath } from '../src/layout/paths';
 import { QuickAction, QuickActionGrid } from '../src/status/QuickAction';
 import { FilterChips } from '../src/data/FilterChips';
@@ -214,6 +215,32 @@ describe('Page back header', () => {
     unmount();
     render(<Hero headline="Precision work." />);
     expect(screen.queryByRole('heading')).toBeNull();
+  });
+
+  it('pins the splash actions outside the centred block (VF-01)', () => {
+    const { container } = render(
+      <Hero variant="splash" headline="JobWork" actions={<a href="/start">Get Started</a>} />,
+    );
+    const centre = container.querySelector('.jw-hero-splash-centre');
+    const actions = container.querySelector('.jw-hero-actions');
+    expect(centre?.contains(screen.getByRole('heading', { level: 1 }))).toBe(true);
+    expect(actions && centre?.contains(actions)).toBe(false);
+  });
+});
+
+describe('BrandGlyph', () => {
+  it('is decorative and gives every instance its own mask ids (VF-01)', () => {
+    const { container } = render(
+      <>
+        <BrandGlyph />
+        <BrandGlyph />
+      </>,
+    );
+    const svgs = container.querySelectorAll('svg');
+    expect([...svgs].every((svg) => svg.getAttribute('aria-hidden') === 'true')).toBe(true);
+    const ids = [...container.querySelectorAll('mask')].map((mask) => mask.id);
+    expect(ids).toHaveLength(4);
+    expect(new Set(ids).size).toBe(4);
   });
 });
 

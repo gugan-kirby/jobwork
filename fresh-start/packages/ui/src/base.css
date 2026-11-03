@@ -609,13 +609,33 @@ code,
   gap: var(--space-4);
 }
 
+/* VF-01 splash: deep navy with a lit centre behind the mark, actions on the bottom edge. */
 .jw-hero-splash {
   border-radius: 0;
   min-height: 100vh;
-  padding: var(--space-8) var(--space-5) calc(var(--space-8) + var(--safe-bottom));
-  align-content: center;
+  min-height: 100dvh;
+  padding: var(--space-8) var(--space-4) calc(var(--space-7) + var(--safe-bottom));
+  background: var(--brand-splash-bg-solid);
+  background-image: var(--brand-splash-bg);
+  grid-template-rows: 1fr auto;
+  gap: var(--space-6);
   justify-items: center;
   text-align: center;
+}
+
+.jw-hero-splash-centre {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  /* The block sits a little below the geometric middle, as in the reference. */
+  padding-top: 18vh;
+  max-width: 560px;
+}
+
+.jw-hero-splash .jw-hero-art {
+  margin-bottom: var(--space-2);
+  filter: drop-shadow(0 6px 18px rgb(5 10 60 / 0.35));
 }
 
 .jw-hero-body {
@@ -629,7 +649,14 @@ code,
 }
 
 .jw-hero-splash .jw-hero-headline {
-  font: 700 40px/44px var(--font-sans);
+  font: 700 48px/56px var(--font-sans);
+  letter-spacing: -0.5px;
+}
+
+.jw-hero-splash .jw-hero-subline {
+  color: var(--brand-hero-fg);
+  opacity: 0.92;
+  font: 500 18px/27px var(--font-sans);
 }
 
 .jw-hero-subline {
@@ -646,6 +673,56 @@ code,
 
 .jw-hero-splash .jw-hero-actions {
   justify-content: center;
+  width: 100%;
+  margin-top: 0;
+  padding: 0 var(--space-4);
+}
+
+.jw-splash-actions {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: center;
+  width: 100%;
+  max-width: 420px;
+}
+
+.jw-splash-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60px;
+  border-radius: 14px;
+  background: var(--brand-hero-fg);
+  color: var(--blue-900);
+  font: 600 18px/24px var(--font-sans);
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgb(5 10 60 / 0.28);
+}
+
+.jw-splash-cta:hover {
+  background: var(--blue-50);
+}
+
+.jw-splash-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  color: var(--brand-hero-fg);
+  font: 600 17px/24px var(--font-sans);
+  text-decoration: none;
+}
+
+.jw-splash-link:hover {
+  text-decoration: underline;
+}
+
+.jw-splash-cta:focus-visible,
+.jw-splash-link:focus-visible {
+  outline: 3px solid var(--brand-hero-fg);
+  outline-offset: 3px;
 }
 
 .jw-hero-art {

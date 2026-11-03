@@ -32,15 +32,34 @@ export function Hero({
   illustration,
   variant = 'banner',
 }: HeroProps): React.JSX.Element {
+  if (variant === 'splash') {
+    // VF-01: the mark, name and line sit in the optical centre; the actions are pinned
+    // to the bottom of the screen where a thumb reaches them.
+    return (
+      <section className="jw-hero jw-hero-splash">
+        <div className="jw-hero-splash-centre">
+          {illustration ? (
+            <div className="jw-hero-art" aria-hidden="true">
+              {illustration}
+            </div>
+          ) : null}
+          <h1 className="jw-hero-headline">{headline}</h1>
+          {subline ? <p className="jw-hero-subline">{subline}</p> : null}
+        </div>
+        {actions ? <div className="jw-hero-actions">{actions}</div> : null}
+      </section>
+    );
+  }
+
   return (
-    <section className={variant === 'splash' ? 'jw-hero jw-hero-splash' : 'jw-hero'}>
+    <section className="jw-hero">
       {illustration ? (
         <div className="jw-hero-art" aria-hidden="true">
           {illustration}
         </div>
       ) : null}
       <div className="jw-hero-body">
-        {variant === 'splash' ? <h1 className="jw-hero-headline">{headline}</h1> : <p className="jw-hero-headline">{headline}</p>}
+        <p className="jw-hero-headline">{headline}</p>
         {subline ? <p className="jw-hero-subline">{subline}</p> : null}
         {actions ? <div className="jw-hero-actions">{actions}</div> : null}
       </div>
