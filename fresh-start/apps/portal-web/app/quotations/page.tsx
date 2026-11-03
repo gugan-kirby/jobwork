@@ -2,16 +2,17 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { CustomerQuoteListItem } from '@jobwork/contracts';
+import Link from 'next/link';
 import {
+  BrandGlyph,
   ButtonLink,
   Card,
   EmptyState,
   ErrorState,
   FilterChips,
+  Icon,
   LoadingState,
   Page,
-  RecordCard,
-  RecordList,
   Stack,
   StatusChip,
   formatMoney,
@@ -23,6 +24,13 @@ import { api, ApiError } from '../../lib/api';
  * Quotations (prototype tile 9, corrected per doc 14 §4): every offer is from JobWork.
  * There is no supplier on this page because there is no supplier in the payload — the
  * customer projection has no field for one.
+ *
+ * VF-09 (reference screen 09, corrected): the reference groups "quotes received" under
+ * one enquiry and gives each a supplier card with city and rating. Here each enquiry is
+ * a summary card with its count, and each offer card is a JobWork option — Standard,
+ * Fast, Premium — with amount, validity and version where the reference had amount,
+ * lead time and minimum quantity. Accept goes to the acceptance page, which carries the
+ * approval and terms checks; only an offer still open for decision shows it.
  */
 
 const TONE: Record<CustomerQuoteListItem['status'], Tone> = {
@@ -43,6 +51,31 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
   { value: 'accepted', label: 'Accepted' },
   { value: 'closed', label: 'Closed' },
 ];
+
+const OPTION_TINT: Record<CustomerQuoteListItem['optionLabel'], string> = {
+  standard: 'jw-record-tile-green',
+  fast: 'jw-record-tile-violet',
+  premium: 'jw-record-tile-orange',
+};
+
+const dayMonth = (iso: string): string =>
+  new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' });
+
+const shortDate = (iso: string): string =>
+  new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+
+/** Offers grouped by the enquiry they answer, newest group first. */
+function byEnquiry(list: CustomerQuoteListItem[]): Array<{ key: string; title: string; reference: string | null; sentAt: string | null; offers: CustomerQuoteListItem[] }> {
+  const groups = new Map<string, { key: string; title: string; reference: string | null; sentAt: string | null; offers: CustomerQuoteListItem[] }>();
+  for (const q of list) {
+    const key = q.enquiryReference ?? q.enquiryTitle;
+    const group = groups.get(key) ?? { key, title: q.enquiryTitle, reference: q.enquiryReference, sentAt: null, offers: [] };
+    group.offers.push(q);
+    if (q.sentAt && (!group.sentAt || q.sentAt > group.sentAt)) group.sentAt = q.sentAt;
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
+}
 
 const OPTION_LABEL: Record<CustomerQuoteListItem['optionLabel'], string> = {
   standard: 'Standard',
@@ -77,7 +110,7 @@ export default function QuotationsPage() {
 
   return (
     <Page
-      title="Quotations"
+      title="Quotes Received"
       back={{ href: '/', label: 'Back to home' }}
       description="Offers from JobWork. Each one is valid until its stated date; the decision is yours."
     >
@@ -122,25 +155,85 @@ export default function QuotationsPage() {
             />
           </Card>
         ) : (
-          <RecordList>
-            {visible.map((q) => (
-              <RecordCard
-                key={q.quotationId}
-                href={`/quotations/${q.quotationId}`}
-                reference={q.reference}
-                title={q.enquiryTitle}
-                caption={`${OPTION_LABEL[q.optionLabel]} option · v${q.versionNo}${
-                  q.status === 'quotation_ready'
-                    ? q.daysToExpiry >= 0
-                      ? ` · valid ${q.daysToExpiry} more day${q.daysToExpiry === 1 ? '' : 's'}`
-                      : ' · validity passed'
-                    : ''
-                }`}
-                figure={formatMoney({ amountMinor: q.totalMinor, currency: q.currency })}
-                status={<StatusChip tone={TONE[q.status]}>{q.statusLabel}</StatusChip>}
-              />
+          <div className="jw-offer-groups">
+            {byEnquiry(visible).map((group) => (
+              <section key={group.key} className="jw-offer-group" aria-label={`Quotes for ${group.title}`}>
+                <div className="jw-offer-summary">
+                  <span className="jw-record-tile jw-record-tile-blue" aria-hidden="true">
+                    <Icon name="settings" size={1.9} />
+                  </span>
+                  <span className="jw-offer-summary-main">
+                    <span className="jw-offer-summary-title">{group.title}</span>
+                    <span className="jw-record-caption">
+                      {group.reference ? <span className="mono">{group.reference}</span> : 'Enquiry'} • from JobWork
+                    </span>
+                    {group.sentAt ? (
+                      <span className="jw-record-date">
+                        <Icon name="calendar" size={1.15} />
+                        {shortDate(group.sentAt)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="jw-count-badge">
+                    {group.offers.length} {group.offers.length === 1 ? 'Quote' : 'Quotes'}
+                  </span>
+                </div>
+
+                {group.offers.map((q) => (
+                  <article key={q.quotationId} className="jw-offer" aria-labelledby={`offer-${q.quotationId}`}>
+                    <div className="jw-offer-head">
+                      <span className={`jw-record-tile ${OPTION_TINT[q.optionLabel]}`} aria-hidden="true">
+                        <BrandGlyph size={30} />
+                      </span>
+                      <span className="jw-offer-name">
+                        <span id={`offer-${q.quotationId}`} className="jw-offer-title">
+                          JobWork · {OPTION_LABEL[q.optionLabel]}
+                        </span>
+                        <span className="jw-record-caption">
+                          <span className="mono">{q.reference}</span> • v{q.versionNo}
+                        </span>
+                      </span>
+                      <StatusChip tone={TONE[q.status]}>{q.statusLabel}</StatusChip>
+                    </div>
+
+                    <dl className="jw-offer-metrics">
+                      <div>
+                        <dt>Quote Amount</dt>
+                        <dd className="jw-offer-amount numeric">{formatMoney({ amountMinor: q.totalMinor, currency: q.currency })}</dd>
+                      </div>
+                      <div>
+                        <dt>Valid Until</dt>
+                        <dd>
+                          <Icon name="calendar" size={1.15} />
+                          {q.status === 'quotation_ready' && q.daysToExpiry >= 0
+                            ? `${q.daysToExpiry} day${q.daysToExpiry === 1 ? '' : 's'}`
+                            : dayMonth(q.validityUntil)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Option</dt>
+                        <dd>
+                          <Icon name="layers" size={1.15} />
+                          {OPTION_LABEL[q.optionLabel]}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className={q.status === 'quotation_ready' ? 'jw-action-pair' : undefined}>
+                      <Link href={`/quotations/${q.quotationId}`} className="jw-cta-outline jw-cta-sm">
+                        View Details<span className="jw-visually-hidden">, {q.reference}</span>
+                      </Link>
+                      {q.status === 'quotation_ready' ? (
+                        <Link href={`/quotations/${q.quotationId}/accept`} className="jw-cta jw-cta-sm">
+                          Accept Quote<span className="jw-visually-hidden">, {q.reference}</span>
+                        </Link>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </section>
             ))}
-          </RecordList>
+          </div>
         )}
       </Stack>
     </Page>

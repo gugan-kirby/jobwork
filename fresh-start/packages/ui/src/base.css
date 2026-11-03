@@ -2364,3 +2364,131 @@ code,
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
+
+/* VF-09 quotation groups: enquiry summary card, then one card per JobWork option. */
+.jw-offer-groups,
+.jw-offer-group {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.jw-offer-groups {
+  gap: var(--space-6);
+}
+
+.jw-offer-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--blue-50);
+}
+
+.jw-offer-summary-main {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.jw-offer-summary-title {
+  font: 700 20px/26px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-count-badge {
+  align-self: start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--blue-100);
+  color: var(--brand-strong);
+  font: 600 15px/20px var(--font-sans);
+  white-space: nowrap;
+}
+
+.jw-offer {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1.5px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 2px 10px rgb(16 28 102 / 0.04);
+}
+
+.jw-offer-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.jw-offer-name {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.jw-offer-title {
+  font: 700 18px/24px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-offer-metrics {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  margin: 0;
+}
+
+.jw-offer-metrics > div {
+  display: grid;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--neutral-200);
+  min-width: 0;
+}
+
+.jw-offer-metrics > div:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.jw-offer-metrics dt {
+  font: 400 14px/18px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-offer-metrics dd {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 500 16px/22px var(--font-sans);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.jw-offer-metrics .jw-offer-amount {
+  font: 700 21px/26px var(--font-sans);
+  color: var(--brand-strong);
+}
+
+.jw-cta-sm {
+  min-height: 46px;
+  font-size: 17px;
+}
+
+.jw-offer .jw-record-tile svg {
+  color: currentColor;
+}
+
+.jw-offer-summary .jw-record-tile {
+  background: var(--blue-100);
+}
+
+@media (max-width: 380px) {
+  .jw-offer-metrics dd svg {
+    display: none;
+  }
+}
