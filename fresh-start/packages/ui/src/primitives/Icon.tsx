@@ -55,6 +55,10 @@ const PATHS = {
   mail: 'M3.5 6h17v12h-17z M3.5 7l8.5 6.5L20.5 7',
   lock: 'M6 11h12v9.5H6z M8.5 11V8a3.5 3.5 0 0 1 7 0v3 M12 15v2',
   eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  calendar: 'M4 6h16v14H4z M4 10h16 M8 3v5 M16 3v5',
+  sliders: 'M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z M9 14.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
+  layers: 'M12 3l9 5-9 5-9-5z M3 12.5l9 5 9-5 M3 16.5l9 5 9-5',
+  hexagon: 'M7.5 4h9l4.5 8-4.5 8h-9L3 12z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

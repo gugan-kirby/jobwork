@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Icon } from '../primitives/Icon';
+import { Icon, type IconName } from '../primitives/Icon';
 import { UiLink } from '../primitives/Link';
 
 /**
@@ -25,7 +25,16 @@ export interface RecordCardProps {
   status?: ReactNode | undefined;
   /** Small trailing text under the status, e.g. a date. */
   meta?: ReactNode | undefined;
+  /**
+   * VF-08 (reference screens 08/11/13): a tinted glyph tile on the left turns on the
+   * rich layout — title and status on one row, the reference and caption under it, and
+   * `date` with a calendar glyph. Without it the card keeps the compact layout.
+   */
+  icon?: { name: IconName; tint: RecordTint } | undefined;
+  date?: ReactNode | undefined;
 }
+
+export type RecordTint = 'blue' | 'violet' | 'orange' | 'sky' | 'green' | 'neutral';
 
 export function RecordCard({
   href,
@@ -35,7 +44,46 @@ export function RecordCard({
   figure,
   status,
   meta,
+  icon,
+  date,
 }: RecordCardProps): React.JSX.Element {
+  if (icon) {
+    return (
+      <UiLink href={href} className="jw-record jw-record-rich">
+        <span className={`jw-record-tile jw-record-tile-${icon.tint}`} aria-hidden="true">
+          <Icon name={icon.name} size={1.9} />
+        </span>
+        <span className="jw-record-main">
+          <span className="jw-record-top">
+            <span className="jw-record-title">{title}</span>
+            {status ? <span className="jw-record-status">{status}</span> : null}
+          </span>
+          <span className="jw-record-caption">
+            {reference ? <span className="mono">{reference}</span> : null}
+            {reference && caption ? ' • ' : null}
+            {caption}
+          </span>
+          {date || figure ? (
+            <span className="jw-record-foot">
+              {date ? (
+                <span className="jw-record-date">
+                  <Icon name="calendar" size={1.15} />
+                  {date}
+                </span>
+              ) : (
+                <span />
+              )}
+              {figure ? <span className="jw-record-figure numeric">{figure}</span> : null}
+            </span>
+          ) : null}
+          {meta ? <span className="jw-record-meta">{meta}</span> : null}
+        </span>
+        <span className="jw-record-chevron">
+          <Icon name="chevron" size={1.4} />
+        </span>
+      </UiLink>
+    );
+  }
   return (
     <UiLink href={href} className="jw-record">
       <span className="jw-record-main">

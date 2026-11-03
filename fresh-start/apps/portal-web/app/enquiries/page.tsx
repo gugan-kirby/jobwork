@@ -11,13 +11,17 @@ import {
   EmptyState,
   ErrorState,
   FilterChips,
+  Icon,
+  IconTextInput,
   LoadingState,
   Page,
   RecordCard,
   RecordList,
   Stack,
+  Select,
   StatusChip,
-  TextInput,
+  type IconName,
+  type RecordTint,
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../lib/api';
@@ -49,6 +53,23 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
   { value: 'closed', label: 'Closed' },
 ];
 
+/** VF-08: each job type gets the reference's tinted tile. */
+const JOB_TILE: Record<CustomerEnquiry['jobType'], { name: IconName; tint: RecordTint }> = {
+  job_work: { name: 'settings', tint: 'blue' },
+  new_model: { name: 'layers', tint: 'violet' },
+  correction_ecn: { name: 'hexagon', tint: 'orange' },
+};
+
+type Sort = 'newest' | 'oldest' | 'name';
+
+const SORTS: Array<{ value: Sort; label: string }> = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'name', label: 'Part name, A to Z' },
+];
+
+const stamp = (e: CustomerEnquiry): number => Date.parse(e.submittedAt ?? e.updatedAt);
+
 /** A draft is unfinished work: it opens where the work happens. */
 function enquiryHref(enquiry: CustomerEnquiry): string {
   return enquiry.status === 'draft' ? `/enquiries/new?draft=${enquiry.enquiryId}` : `/enquiries/${enquiry.enquiryId}`;
@@ -65,6 +86,8 @@ export default function EnquiriesPage() {
   const [includeCancelled, setIncludeCancelled] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<Sort>('newest');
+  const [showOptions, setShowOptions] = useState(false);
 
   useEffect(() => {
     api<{ enquiries: CustomerEnquiry[] }>(`/enquiries${includeCancelled ? '?includeCancelled=true' : ''}`)
@@ -87,22 +110,62 @@ export default function EnquiriesPage() {
   const visible = all.filter((e) => {
     if (filter !== 'all' && e.status !== filter && !(filter === 'closed' && e.status === 'cancelled')) return false;
     if (!needle) return true;
-    return `${e.reference ?? ''} ${e.title}`.toLowerCase().includes(needle);
+    return `${e.reference ?? ''} ${e.title} ${e.jobTypeLabel}`.toLowerCase().includes(needle);
   });
+  visible.sort((a, b) =>
+    sort === 'name'
+      ? (a.title || '').localeCompare(b.title || '')
+      : sort === 'oldest'
+        ? stamp(a) - stamp(b)
+        : stamp(b) - stamp(a),
+  );
   const needingAction = all.filter((e) => e.actionNeeded?.kind === 'answer_questions');
   const drafts = all.filter((e) => e.status === 'draft');
 
   return (
     <Page
-      title="Enquiries"
-      back={{ href: '/', label: 'Back to home' }}
+      title="My Enquiries"
+      description="Track and manage all your enquiries"
       actions={
-        <ButtonLink href="/enquiries/new" size="sm">New enquiry</ButtonLink>
+        <span className="jw-desktop-only">
+          <ButtonLink href="/enquiries/new" size="sm">New enquiry</ButtonLink>
+        </span>
       }
     >
       <Stack gap={4}>
         {error ? (
           <ErrorState message={error.problem.detail ?? error.problem.title} code={error.problem.code} />
+        ) : null}
+
+        <div className="jw-search-row">
+          <IconTextInput
+            icon="search"
+            label="Search enquiries…"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <button
+            type="button"
+            className="jw-square-button"
+            aria-label="Sort enquiries"
+            aria-expanded={showOptions}
+            aria-controls="enquiry-sort"
+            onClick={() => setShowOptions((open) => !open)}
+          >
+            <Icon name="sliders" size={1.5} />
+          </button>
+        </div>
+
+        {showOptions ? (
+          <div id="enquiry-sort">
+            <Select
+              label="Sort by"
+              value={sort}
+              options={SORTS}
+              onChange={(event) => setSort(event.target.value as Sort)}
+            />
+          </div>
         ) : null}
 
         <FilterChips
@@ -113,14 +176,6 @@ export default function EnquiriesPage() {
             count: f.value === 'all' ? all.length : f.value === 'closed' ? (counts.get('closed') ?? 0) + (counts.get('cancelled') ?? 0) : counts.get(f.value) ?? 0,
           }))}
           onChange={setFilter}
-        />
-
-        <TextInput
-          label="Search"
-          placeholder="Reference or part name"
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
         />
 
         {filter === 'all' && drafts.length > 0 ? (
@@ -171,11 +226,12 @@ export default function EnquiriesPage() {
               <RecordCard
                 key={enquiry.enquiryId}
                 href={enquiryHref(enquiry)}
-                reference={enquiry.reference ?? 'Draft'}
+                reference={enquiry.reference ?? ''}
                 title={enquiry.title || 'Untitled enquiry'}
-                caption={`${enquiry.jobTypeLabel} · ${enquiry.itemCount} ${enquiry.itemCount === 1 ? 'part' : 'parts'}`}
+                caption={`${enquiry.jobTypeLabel} • ${enquiry.itemCount} ${enquiry.itemCount === 1 ? 'part' : 'parts'}`}
                 status={<StatusChip tone={TONE[enquiry.status]}>{enquiry.statusLabel}</StatusChip>}
-                meta={when(enquiry)}
+                icon={JOB_TILE[enquiry.jobType]}
+                date={when(enquiry)}
               />
             ))}
           </RecordList>

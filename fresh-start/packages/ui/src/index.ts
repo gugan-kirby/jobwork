@@ -66,7 +66,7 @@ export {
 export { CopyableId, type CopyableIdProps } from './data/CopyableId';
 export { FilterChips, type FilterChipOption, type FilterChipsProps } from './data/FilterChips';
 export { DueLabel, QueueTable, formatAge, formatDue, type QueueState, type QueueTableItem, type QueueTableProps } from './data/QueueTable';
-export { RecordCard, RecordList, type RecordCardProps } from './data/RecordCard';
+export { RecordCard, RecordList, type RecordTint, type RecordCardProps } from './data/RecordCard';
 export { LiveRegion, type LiveRegionProps } from './feedback/LiveRegion';
 
 // ---------------------------------------------------------------- domain

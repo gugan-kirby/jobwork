@@ -1994,6 +1994,9 @@ code,
     --button-border-width: 2px;
     --button-secondary-border: var(--brand-strong);
     --button-font: 600 18px/24px var(--font-sans);
+    --chip-pad: 4px 12px;
+    --chip-radius: 999px;
+    --chip-font: 600 14px/20px var(--font-sans);
   }
 
   .jw-has-tabbar input:not([type='checkbox']):not([type='radio']),
@@ -2199,4 +2202,165 @@ code,
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
+}
+
+/* VF-08 rich record card: tinted glyph tile, title + status row, reference · caption,
+   calendar date, chevron. */
+.jw-record-rich {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border-color: var(--neutral-200);
+  box-shadow: 0 2px 10px rgb(16 28 102 / 0.04);
+}
+
+.jw-record-rich .jw-record-main {
+  gap: var(--space-1);
+}
+
+.jw-record-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+}
+
+.jw-record-top .jw-record-title {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.jw-record-rich .jw-record-title {
+  font: 700 17px/22px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-record-rich .jw-record-caption {
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.jw-record-rich .jw-record-caption .mono {
+  font: 500 13px/20px var(--font-mono);
+}
+
+.jw-record-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.jw-record-date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-record-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+}
+
+.jw-record-tile-blue { background: var(--blue-50); color: var(--brand-strong); }
+.jw-record-tile-violet { background: var(--status-special-bg); color: var(--status-special-fg); }
+.jw-record-tile-orange { background: var(--status-attention-bg); color: var(--accent-orange); }
+.jw-record-tile-sky { background: var(--blue-50); color: var(--accent-sky); }
+.jw-record-tile-green { background: var(--status-positive-bg); color: var(--status-positive-fg); }
+.jw-record-tile-neutral { background: var(--neutral-100); color: var(--neutral-700); }
+
+.jw-record-rich .jw-record-chevron {
+  color: var(--neutral-600);
+}
+
+/* VF-08 phone theme: filter chips read as the reference's tab strip, counts in brackets;
+   tab-root pages get the large left-aligned title. */
+@media (max-width: 767px) {
+  .jw-has-tabbar .jw-chips {
+    gap: 0;
+    padding: 0;
+    border: 1.5px solid var(--neutral-200);
+    border-radius: 12px;
+    background: var(--color-surface);
+  }
+
+  .jw-has-tabbar .jw-chip {
+    min-height: 50px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-ink-muted);
+    font: 500 16px/20px var(--font-sans);
+    gap: var(--space-1);
+  }
+
+  .jw-has-tabbar .jw-chip-on {
+    background: var(--blue-50);
+    color: var(--brand-strong);
+    border-bottom-color: var(--brand-strong);
+    border-radius: 10px 10px 0 0;
+    font-weight: 600;
+  }
+
+  .jw-has-tabbar .jw-chip-count {
+    font: inherit;
+    opacity: 1;
+  }
+
+  .jw-has-tabbar .jw-chip-count::before { content: '('; }
+  .jw-has-tabbar .jw-chip-count::after { content: ')'; }
+
+  .jw-has-tabbar .jw-page-head:not(.jw-page-head-back) {
+    --text-display: 700 30px/36px var(--font-sans);
+  }
+
+  .jw-has-tabbar .jw-page-head:not(.jw-page-head-back) .jw-page-title {
+    color: var(--color-ink);
+  }
+
+  .jw-desktop-only {
+    display: none;
+  }
+}
+
+/* VF-08 search row: glyph field plus a square options button. */
+.jw-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.jw-square-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.jw-square-button[aria-expanded='true'] {
+  border-color: var(--brand-strong);
+  color: var(--brand-strong);
+}
+
+.jw-square-button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }

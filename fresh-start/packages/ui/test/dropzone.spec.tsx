@@ -34,3 +34,19 @@ describe('DescriptionList split layout', () => {
     expect(container.querySelectorAll('dd')[1]?.className).toBe('numeric');
   });
 });
+
+import { RecordCard } from '../src/data/RecordCard';
+
+/** VF-08: the rich record card is still one named link and drops an empty reference. */
+describe('RecordCard rich layout', () => {
+  it('shows the tile, date and caption, and no separator without a reference', () => {
+    const { container } = render(
+      <RecordCard href="/enquiries/1" reference="" title="Bracket Support" caption="Job work • 1 part" date="12 Mar 2026" icon={{ name: 'settings', tint: 'blue' }} />,
+    );
+    const link = screen.getByRole('link');
+    expect(link.textContent).toContain('Bracket Support');
+    expect(container.querySelector('.jw-record-tile-blue')?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('.jw-record-caption')?.textContent).toBe('Job work • 1 part');
+    expect(container.querySelector('.jw-record-date')?.textContent).toBe('12 Mar 2026');
+  });
+});
