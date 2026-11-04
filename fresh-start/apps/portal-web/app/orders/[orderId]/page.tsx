@@ -23,6 +23,7 @@ import {
 import { api, ApiError } from '../../../lib/api';
 import { loadEnquiryFacts, type EnquiryFacts } from '../../../lib/enquiry-facts';
 import { milestones, ORDER_PROGRESS } from '../../../lib/order-progress';
+import { RateSupplier } from './rate-supplier';
 import { ThreadPanel } from '../../thread-panel';
 import { ChangesPanel } from './changes-panel';
 import { DeliveriesPanel } from './deliveries-panel';
@@ -233,6 +234,8 @@ function OrderDetail() {
             ))}
           </ol>
         </section>
+
+        <RateSupplier order={order} onRated={load} />
 
         <div className="jw-action-pair">
           <button type="button" className="jw-cta-outline jw-cta-sm jw-cta-icon" onClick={() => { setDetails(true); requestAnimationFrame(() => document.getElementById('messages')?.scrollIntoView()); }}>

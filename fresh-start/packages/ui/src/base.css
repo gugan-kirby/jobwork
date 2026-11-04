@@ -3484,3 +3484,38 @@ html:has(.jw-flat) {
 .jw-tile-label {
   font: 400 13px/17px var(--font-sans);
 }
+
+/* ADR-0007 rating prompt. */
+.jw-rate {
+  padding: var(--space-4);
+}
+
+.jw-stars {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.jw-stars button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+
+.jw-stars .jw-star-on {
+  color: var(--illus-accent);
+}
+
+.jw-stars .jw-star-on svg {
+  fill: var(--illus-accent);
+}
+
+.jw-stars button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+}
