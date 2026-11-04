@@ -19,17 +19,16 @@ import { api, ApiError } from '../lib/api';
  * all, because a badge that is always present stops being read.
  *
  * Nineteen flat items wrapped onto two rows at desktop widths, so related screens sit in
- * groups (one row; a group's heading carries its items' badge total). The inboxes an
- * operator returns to all day stay top-level and come first, so on a phone no plain link
- * reads as part of the group above it; Account is the profile icon by the bell.
+ * groups (one row; a group's heading carries its items' badge total). VF-20: the header
+ * holds six entries. The two inboxes every operator returns to all day stay top-level and
+ * come first, so on a phone no plain link reads as part of the group above it; Account is
+ * the profile icon by the bell.
  */
 
 const BASE_NAVIGATION: NavEntry[] = [
   { href: '/', label: 'Home' },
   { href: '/queues', label: 'Queues' },
   { href: '/approvals', label: 'Approvals' },
-  { href: '/finance', label: 'Finance' },
-  { href: '/support', label: 'Support' },
   {
     label: 'Sales',
     items: [
@@ -49,15 +48,12 @@ const BASE_NAVIGATION: NavEntry[] = [
     ],
   },
   {
-    label: 'Network',
+    label: 'More',
     items: [
+      { href: '/finance', label: 'Finance' },
+      { href: '/support', label: 'Support' },
       { href: '/suppliers', label: 'Suppliers' },
       { href: '/organizations', label: 'Organizations' },
-    ],
-  },
-  {
-    label: 'Control',
-    items: [
       { href: '/leakage-reviews', label: 'Held messages' },
       { href: '/ops-health', label: 'Health' },
       { href: '/audit', label: 'Audit' },
