@@ -354,6 +354,7 @@ export class OrdersView {
     }
     return {
       purchaseOrderId: row.id,
+      salesOrderId: row.salesOrderId,
       number: row.number,
       status: row.status,
       baselineStatus: row.baselineStatus,

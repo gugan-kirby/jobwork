@@ -24,7 +24,7 @@ export class LeakageGate {
     },
     client?: Pool | PoolClient,
   ): Promise<{ action: LeakageAction; findings: LeakageFinding[] }> {
-    const registry = await this.contexts.registryFor(input.context, input.audience, input.counterpartOrganizationId, client);
+    const registry = await this.contexts.registryFor(input.context, input.audience, input.counterpartOrganizationId, client, input.authorParty);
     const findings = scanText(input.body, registry);
     return { action: decideAction({ audience: input.audience, authorParty: input.authorParty, findings }), findings };
   }

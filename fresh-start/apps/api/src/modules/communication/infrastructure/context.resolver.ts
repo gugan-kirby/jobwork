@@ -22,6 +22,8 @@ export interface ResolvedContext {
   customerOrganizationId: string;
   customerName: string;
   suppliers: ContextSupplier[];
+  /** The supplier a customer's order names (ADR-0007): the one party it shares a thread with. */
+  namedSupplierOrganizationId?: string | null;
   /** Where each audience opens this record. */
   links: { external: string; internal: string };
   /** Whether external parties may still write (a cancelled enquiry or closed RFQ is read-only). */
@@ -109,9 +111,16 @@ export class ContextResolver {
             WHERE po.sales_order_id = $1`,
           [id],
         );
+        const named = await client.query<{ id: string | null }>(
+          `SELECT q.supplier_organization_id AS id
+             FROM orders.sales_order so JOIN commercial.customer_quote q ON q.id = so.customer_quote_id
+            WHERE so.id = $1`,
+          [id],
+        );
         return {
           type, id, label: row.number,
           customerOrganizationId: row.customer_organization_id, customerName: row.customer_name,
+          namedSupplierOrganizationId: named.rows[0]?.id ?? null,
           suppliers: suppliers.rows.map((s) => ({ organizationId: s.organization_id, name: s.name, active: false })),
           links: { external: `/orders/${id}`, internal: `/sales-orders/${id}` },
           open: row.status !== 'cancelled',
@@ -156,7 +165,13 @@ export class ContextResolver {
     audience: ExternalAudience,
     counterpartOrganizationId: string | null,
     client: Db = this.db.pool,
+    authorParty?: 'internal' | 'customer' | 'supplier',
   ): Promise<Registry> {
+    // A shared thread: the supplier is public to the customer, the customer stays hidden from it.
+    if (audience === 'customer_supplier') {
+      const named = context.namedSupplierOrganizationId ? [context.namedSupplierOrganizationId] : [];
+      return this.registryExcluding(authorParty === 'customer' ? named : [...named, context.customerOrganizationId], client);
+    }
     const reader =
       audience === 'customer' ? [context.customerOrganizationId] : audience === 'supplier' && counterpartOrganizationId ? [counterpartOrganizationId] : [];
     return this.registryExcluding(reader, client);

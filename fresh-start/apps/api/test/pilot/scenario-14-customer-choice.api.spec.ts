@@ -84,6 +84,31 @@ describe('Pilot 14: two named suppliers, the customer chooses', () => {
     expect(orders).toHaveLength(1);
   });
 
+  it('lets the customer and the named supplier write to each other, keeping the customer masked', async () => {
+    const options = ok(await p.as.approver.get(`/api/v1/conversations/sales_order/${orderId}`), 200, 'customer view');
+    const vendor = (options['canPost'] as Body[]).find((o) => o['audience'] === 'customer_supplier');
+    expect(vendor?.['label']).toBeTruthy();
+
+    ok(await p.as.approver.post(`/api/v1/conversations/sales_order/${orderId}/messages`, { audience: 'customer_supplier', body: 'Please confirm the bore finish.' }), 201, 'customer writes');
+    ok(await p.as.approver.post(`/api/v1/conversations/sales_order/${orderId}/messages`, { audience: 'customer', body: 'A note for JobWork only.' }), 201, 'to JobWork');
+
+    const seen = ok(await p.as.supplierA.get(`/api/v1/conversations/sales_order/${orderId}`), 200, 'supplier view');
+    const messages = seen['messages'] as Body[];
+    expect(messages.map((m) => m['authorLabel'])).toEqual(['Customer']);
+    expect(JSON.stringify(seen)).not.toContain('A note for JobWork only');
+
+    ok(await p.as.supplierA.post(`/api/v1/conversations/sales_order/${orderId}/messages`, { audience: 'customer_supplier', body: 'Confirmed, Ra 1.6.' }), 201, 'supplier writes');
+    const back = ok(await p.as.approver.get(`/api/v1/conversations/sales_order/${orderId}`), 200, 'customer reads');
+    expect((back['messages'] as Body[]).at(-1)?.['authorLabel']).toBe(vendor?.['label']);
+
+    // Contact details wait for a person, and the other supplier sees nothing.
+    const held = await p.as.supplierA.post(`/api/v1/conversations/sales_order/${orderId}/messages`, { audience: 'customer_supplier', body: 'Mail me at owner@workshop.example' });
+    expect(held.status).toBe(201);
+    const after = ok(await p.as.approver.get(`/api/v1/conversations/sales_order/${orderId}`), 200, 'customer reads again');
+    expect(JSON.stringify(after)).not.toContain('owner@workshop.example');
+    expect((await p.as.supplierB.get(`/api/v1/conversations/sales_order/${orderId}`)).status).toBe(404);
+  });
+
   it('takes one rating, after completion, and shows the earned average on the supplier card', async () => {
     const early = await p.as.approver.post(`/api/v1/orders/${orderId}/rating`, { score: 5 });
     expect(early.status).toBe(409);

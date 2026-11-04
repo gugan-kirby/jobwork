@@ -304,4 +304,13 @@ This supersedes the corrections and "Kept" notes in VF-01–VF-16 wherever they 
 | 12 | Summary card, four milestones, Current Status, a four-stage timeline, Contact Vendor, Order Details. Order Details opens deliveries, payments, changes, documents and messages in place |
 | 15 | Vendor Dashboard wording, New Enquiries, Quotes Sent, Active Orders, Total Revenue (taxable value of its own paid bills), Enquiry Requests with Quote Now, Orders Overview, Revenue with a six-month line. An active vendor's account sections sit behind one closed row; a joining vendor sees them in full. `/rfqs/quotes` is the Quotes tab |
 
-Not yet built, ADR-0007: several suppliers quoted on one enquiry (P2), giving a rating (P4), shared threads (P5). Until P2 a quote shows one supplier. Browser tests are updated but not yet run on this work.
+
+## ADR-0007 P2, P4, P5
+
+| Phase | Built |
+|---|---|
+| P2 | Operations can tick "Offer this supplier to the customer" on an award; each such award is one supplier, approved, costed and quoted as usual, and bids stay live. Accepting a quote settles the round. Pilot scenario 14 |
+| P4 | `POST /orders/:id/rating`: one rating per completed order, audited, feeding the supplier card. The star prompt sits on Order Tracking |
+| P5 | Audience `customer_supplier` on the sales-order thread, read by the customer and the named supplier once its purchase order exists. The supplier sees "Customer"; the customer sees the supplier's name. The gate holds contact details and identity for review; the other parties see nothing |
+
+Before an order exists there is no thread, so Chat on Quote Details still opens Support. Browser tests are updated but not yet run on this work.
