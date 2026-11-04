@@ -14,6 +14,7 @@ describe('Pilot 14: two named suppliers, the customer chooses', () => {
   let awardB: string;
   let bidAId: string;
   let bidBId: string;
+  let orderId: string;
 
   async function choiceQuote(itemId: string, evaluationId: string, bidVersionId: string): Promise<{ quoteId: string; awardId: string }> {
     const award = ok(
@@ -78,7 +79,31 @@ describe('Pilot 14: two named suppliers, the customer chooses', () => {
     expect((await p.one<{ status: string }>(`SELECT status FROM commercial.award WHERE id = $1`, [awardB])).status).toBe('rejected');
     expect((await p.one<{ status: string }>(`SELECT status FROM commercial.customer_quote WHERE id = $1`, [quoteB])).status).toBe('withdrawn');
 
-    const orders = await p.issuePurchaseOrders(accepted['orderId'] as string);
+    orderId = accepted['orderId'] as string;
+    const orders = await p.issuePurchaseOrders(orderId);
     expect(orders).toHaveLength(1);
+  });
+
+  it('takes one rating, after completion, and shows the earned average on the supplier card', async () => {
+    const early = await p.as.approver.post(`/api/v1/orders/${orderId}/rating`, { score: 5 });
+    expect(early.status).toBe(409);
+    expect(early.body['code']).toBe('ORDER_NOT_COMPLETE');
+
+    await p.pg.query(`ALTER TABLE orders.sales_order DISABLE TRIGGER USER`);
+    await p.pg.query(`UPDATE orders.sales_order SET status = 'closed' WHERE id = $1`, [orderId]);
+    await p.pg.query(`ALTER TABLE orders.sales_order ENABLE TRIGGER USER`);
+
+    expect((await p.as.approver.post(`/api/v1/orders/${orderId}/rating`, { score: 9 })).status).toBe(400);
+    const stranger = await p.as.supplierA.post(`/api/v1/orders/${orderId}/rating`, { score: 1 });
+    expect(stranger.status).toBe(403);
+
+    const rated = ok(await p.as.approver.post(`/api/v1/orders/${orderId}/rating`, { score: 4, note: 'Good finish' }), 201, 'rate');
+    expect(rated['rating']).toEqual({ score: 4, note: 'Good finish' });
+    expect(rated['supplier']).toMatchObject({ ratingAverage: 4, ratingCount: 1 });
+
+    const again = await p.as.approver.post(`/api/v1/orders/${orderId}/rating`, { score: 1 });
+    expect(again.status).toBe(409);
+    expect(again.body['code']).toBe('ORDER_ALREADY_RATED');
+    expect(await p.auditActions(orderId)).toContain('orders.supplier_rated');
   });
 });

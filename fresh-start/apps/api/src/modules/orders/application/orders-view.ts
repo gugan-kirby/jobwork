@@ -291,6 +291,7 @@ export class OrdersView {
       number: row.number,
       title: row.title,
       supplier: await this.orders.supplierOf(row.customerQuoteId),
+      rating: await this.orders.findRating(row.id),
       status,
       statusLabel: CUSTOMER_STATUS_LABEL[status],
       quotation: { quotationId: row.customerQuoteId, reference: row.quoteReference ?? '', versionNo: row.acceptedQuoteVersionNo },
