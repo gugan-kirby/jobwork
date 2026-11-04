@@ -318,3 +318,10 @@ Before an order exists there is no thread, so Chat on Quote Details still opens 
 ## VF-19 Operations home
 
 No reference screen covers the operations console, so the owner's "make like the given image" takes the vendor dashboard (`Modern JobWork Vendor Dashboard.png`) as its pattern: welcome banner, four tiles, a list with one action per row, an overview ring, and the customer home's quick actions. The first version, a dark control room with a line of stages, was rejected by the owner and removed. The revenue card has no equivalent: the operations summary carries no money, and no figure is invented. Long status chips now wrap, which stopped the supplier-copy upload overflowing its card.
+
+## VF-20 Portal header and mixed sessions
+
+The portal header listed 13 flat links because each increment added its own screen at the top level. It now holds six entries for each audience, using the operations console's nav groups: customer Home, Enquiries, Quotations, Orders, Billing, More; supplier Home, RFQs, Orders, Bills, Delivery, Company. Account stays beside them. Phones keep every destination in the open menu, and the tab bars are unchanged.
+
+Browser cookies are scoped by host, not port, so `localhost:3000` and `localhost:3001` share `jw_session` and signing in on one replaces the other. Production hosts differ, so this only bites locally: staff open `http://127.0.0.1:3001` in development, and the API's default origins allow it. The portal had no case for an internal session and fell through to the customer navigation, where every page refused it; it now says who is signed in and offers Sign out.
+
