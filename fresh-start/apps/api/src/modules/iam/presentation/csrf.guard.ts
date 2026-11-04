@@ -23,6 +23,8 @@ export class CsrfGuard implements CanActivate {
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:3002',
+      // Cookies ignore ports: staff use this host locally so a portal session survives.
+      'http://127.0.0.1:3001',
       `http://localhost:${config.env.API_PORT}`,
     ];
     this.allowedOrigins = new Set(
