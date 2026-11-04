@@ -3520,387 +3520,65 @@ html:has(.jw-flat) {
   outline: 3px solid var(--color-focus-ring);
 }
 
-/* VF-19 operations control room: instrument band, the line of stages, an aged worklist. */
-.ops-room {
-  display: grid;
-  gap: var(--space-5);
+/* VF-19 operations home: the vendor dashboard's parts at desktop size, despite compact density. */
+.jw-ops-home .jw-welcome {
+  padding: var(--space-5) var(--space-6);
+  background: linear-gradient(100deg, var(--blue-50) 0%, var(--blue-100) 100%);
 }
 
-.ops-deck {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-5);
-  padding: var(--space-6);
-  border-radius: var(--radius-lg);
-  color: var(--brand-hero-fg);
-  background-image:
-    linear-gradient(var(--ops-deck-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--ops-deck-line) 1px, transparent 1px),
-    var(--ops-deck-bg);
-  background-size: 28px 28px, 28px 28px, auto;
+.jw-ops-home .jw-welcome-title {
+  margin: var(--space-1) 0;
+  font: 700 30px/38px var(--font-sans);
 }
 
-.ops-deck-eyebrow {
-  font: 500 12px/18px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ops-deck-muted);
-}
-
-.ops-deck-title {
-  margin-top: var(--space-2);
-  font: 700 32px/38px var(--font-sans);
-  letter-spacing: -0.4px;
-}
-
-.ops-deck-sub {
-  margin-top: var(--space-1);
-  font: 400 16px/24px var(--font-sans);
-  color: var(--ops-deck-muted);
-}
-
-.ops-readouts {
-  display: flex;
-  margin: 0;
-}
-
-.ops-readouts > div {
-  min-width: 112px;
-  padding: 0 var(--space-5);
-  border-left: 1px solid rgb(255 255 255 / 0.16);
-}
-
-.ops-readouts > div:first-child {
-  border-left: 0;
-}
-
-.ops-readouts dt {
-  font: 500 11px/16px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ops-deck-muted);
-}
-
-.ops-readouts dd {
-  margin: var(--space-1) 0 0;
-  font: 600 38px/44px var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.ops-readouts dd span {
-  font-size: 18px;
-  color: var(--ops-deck-muted);
-}
-
-.ops-readouts .ops-readout-late {
-  color: #ffb4a8;
-}
-
-.ops-lock {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--status-attention-border);
-  background: var(--status-attention-bg);
-  color: var(--status-attention-fg);
-}
-
-.ops-lock p {
-  color: var(--color-text);
-}
-
-/* The line: stages joined by a rail, in the order work moves. */
-.ops-line ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-}
-
-.ops-line li {
-  position: relative;
-}
-
-.ops-line li:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: 31px;
-  left: calc(50% + 22px);
-  right: calc(-50% + 22px);
-  height: 2px;
-  background: var(--neutral-300);
-}
-
-.ops-line button {
-  width: 100%;
-  display: grid;
-  justify-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-1);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.ops-line button:hover {
-  background: var(--neutral-100);
-}
-
-.ops-line button[aria-pressed='true'] {
-  background: var(--blue-50);
-  box-shadow: inset 0 0 0 1.5px var(--blue-300);
-}
-
-.ops-line button:focus-visible,
-.ops-link-button:focus-visible {
-  outline: 3px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}
-
-.ops-node {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid var(--neutral-300);
-  background: var(--color-surface);
-  color: var(--neutral-500);
-}
-
-.ops-stage-count {
-  font: 600 20px/26px var(--font-mono);
-  color: var(--color-text);
-}
-
-.ops-stage-label {
-  font: 500 13px/18px var(--font-sans);
-  text-align: center;
-}
-
-.ops-line .ops-age-late .ops-node { border-color: var(--ops-late); color: var(--ops-late); }
-.ops-line .ops-age-due .ops-node { border-color: var(--ops-due); color: var(--ops-due); }
-.ops-line .ops-age-fresh .ops-node { border-color: var(--ops-fresh); color: var(--ops-fresh); }
-.ops-line .ops-stage-clear .ops-node { color: var(--status-positive-fg); border-color: var(--status-positive-border); }
-.ops-line .ops-stage-clear .ops-stage-count { color: var(--color-text-muted); }
-
-.ops-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: var(--space-6);
-  align-items: start;
-}
-
-.ops-heading {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.ops-heading h2 {
-  font: 700 17px/24px var(--font-sans);
-  color: var(--color-text);
-}
-
-.ops-heading p {
-  font: 400 13px/18px var(--font-mono);
-  color: var(--color-text-muted);
-}
-
-.ops-link-button {
-  margin-left: auto;
-  border: 0;
-  background: transparent;
-  color: var(--color-action);
-  font: 600 13px/18px var(--font-sans);
-  cursor: pointer;
-}
-
-.ops-rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-
-.ops-rows li {
-  animation: ops-rise 240ms var(--motion-ease, ease-out) both;
-}
-
-@keyframes ops-rise {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ops-rows li { animation: none; }
-}
-
-.ops-row {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto 64px auto;
-  gap: var(--space-4);
-  align-items: center;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  border-left-width: 4px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  text-decoration: none;
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.ops-row:hover {
-  color: var(--color-text);
-  transform: translateX(2px);
-  box-shadow: var(--shadow-overlay);
-}
-
-.ops-row:focus-visible {
-  outline: 3px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}
-
-.ops-row.ops-age-late { border-left-color: var(--ops-late); }
-.ops-row.ops-age-due { border-left-color: var(--ops-due); }
-.ops-row.ops-age-fresh { border-left-color: var(--ops-fresh); }
-
-.ops-row-count {
-  font: 600 28px/32px var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
-.ops-row-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.ops-row-title {
-  font: 600 15px/22px var(--font-sans);
-}
-
-.ops-row-detail {
-  font: 400 13px/18px var(--font-sans);
-  color: var(--color-text-muted);
-}
-
-.ops-row-stage {
-  font: 500 11px/16px var(--font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.ops-row-age {
-  font: 600 15px/20px var(--font-mono);
-  text-align: right;
-  white-space: nowrap;
-}
-
-.ops-row.ops-age-late .ops-row-age { color: var(--ops-late); }
-.ops-row.ops-age-due .ops-row-age { color: var(--ops-due); }
-
-.ops-empty {
-  display: grid;
-  justify-items: center;
-  gap: var(--space-2);
-  padding: var(--space-7) var(--space-5);
-  border: 1.5px dashed var(--neutral-300);
-  border-radius: var(--radius-lg);
-  text-align: center;
-  color: var(--color-text-muted);
-}
-
-.ops-empty svg { color: var(--status-positive-fg); }
-.ops-empty-title { font: 700 17px/24px var(--font-sans); color: var(--color-text); }
-
-.ops-side {
-  display: grid;
-  gap: var(--space-5);
-}
-
-.ops-clear-list,
-.ops-jump {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-1);
-  font: 400 13px/20px var(--font-sans);
-}
-
-.ops-clear-list {
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.ops-clear-list a,
-.ops-jump a {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.ops-clear-list a:hover,
-.ops-jump a:hover {
-  background: var(--neutral-100);
-  color: var(--color-action);
-}
-
-.ops-clear-list a::before {
-  content: '';
-  width: 6px;
-  height: 6px;
+.jw-ops-art {
   flex: none;
-  border-radius: 50%;
-  background: var(--status-positive-fg);
+  width: clamp(112px, 26vw, 320px);
 }
 
-.ops-session p {
-  font: 400 13px/20px var(--font-sans);
-  color: var(--color-text-muted);
-  overflow-wrap: anywhere;
+.jw-ops-home .jw-tile {
+  gap: var(--space-2);
+  padding: var(--space-4);
 }
 
-.ops-session .ops-session-name { font: 600 15px/22px var(--font-sans); color: var(--color-text); }
-.ops-session .ops-session-good { color: var(--status-positive-fg); font-weight: 600; }
-.ops-session .ops-session-warn { color: var(--status-attention-fg); font-weight: 600; }
+.jw-ops-home .jw-tile-value {
+  font: 700 30px/36px var(--font-sans);
+}
+
+.jw-ops-home .jw-tile-label {
+  font: 500 14px/20px var(--font-sans);
+}
+
+.jw-ops-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+}
 
 @media (max-width: 1023px) {
-  .ops-columns { grid-template-columns: minmax(0, 1fr); }
-  .ops-line ol { grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
-  .ops-line li::after { display: none; }
-  .ops-row { grid-template-columns: 44px minmax(0, 1fr) 52px; }
-  .ops-row-stage, .ops-row > svg { display: none; }
+  .jw-ops-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 639px) {
-  .ops-deck { padding: var(--space-5); }
-  .ops-readouts { width: 100%; }
-  .ops-readouts > div { min-width: 0; flex: 1; padding: 0 var(--space-3); }
-  .ops-readouts dd { font-size: 28px; line-height: 34px; }
+  .jw-ops-home .jw-welcome {
+    padding: var(--space-4);
+  }
+
+  .jw-ops-home .jw-welcome-title {
+    font: 700 22px/28px var(--font-sans);
+  }
+
+  .jw-ops-home .jw-tile {
+    padding: var(--space-2);
+  }
+
+  .jw-ops-home .jw-tile-value {
+    font: 700 22px/28px var(--font-sans);
+  }
+
+  .jw-ops-home .jw-tile-label {
+    font: 500 12px/16px var(--font-sans);
+  }
 }
