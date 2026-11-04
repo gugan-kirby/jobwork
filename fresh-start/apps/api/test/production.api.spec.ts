@@ -9,6 +9,7 @@ import { baselineHash } from '../src/modules/orders/domain/production';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
 import { stageJobWorkFile, stageSupplierCopy } from './helpers/supplier-copy';
+import { withoutSupplierCard } from './disclosed-supplier';
 
 const PASSWORD = 'production-password-1';
 const WEBHOOK_SECRET = 'test-payment-webhook-secret';
@@ -427,7 +428,7 @@ describe('Baseline, production release, milestones (IN-09)', () => {
     // The customer sees the curated checkpoint — and nothing about who made it or how.
     const order = await customer.get(`/api/v1/orders/${orderId}`);
     expect(order.body['progress']).toEqual([expect.objectContaining({ label: 'Material received' })]);
-    const text = JSON.stringify(order.body);
+    const text = JSON.stringify(withoutSupplierCard(order.body));
     expect(text).not.toMatch(/Anand|Balaji|WP-2026|PO-2026|TR-2026|evidence_submitted|in_production|supplier/i);
   });
 

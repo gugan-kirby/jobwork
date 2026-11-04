@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { disclosedSupplierSchema } from './customer-quote';
 
 /**
  * Orders and the payment boundary (IN-08, `FR-407`, `FR-501`–`FR-502`, `FR-80x`).
@@ -356,6 +357,7 @@ export const customerOrderListItemSchema = z.object({
   orderId: z.uuid(),
   number: z.string(),
   title: z.string(),
+  supplier: disclosedSupplierSchema.nullable(),
   status: customerOrderStatusSchema,
   statusLabel: z.string(),
   currency: z.string(),
@@ -396,6 +398,7 @@ export const customerOrderSchema = z.object({
   orderId: z.uuid(),
   number: z.string(),
   title: z.string(),
+  supplier: disclosedSupplierSchema.nullable(),
   status: customerOrderStatusSchema,
   statusLabel: z.string(),
   quotation: z.object({ quotationId: z.uuid(), reference: z.string(), versionNo: z.number().int().positive() }),

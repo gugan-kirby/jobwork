@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type Body, ok, Pilot, type SourcedDeal } from './driver';
+import { withoutSupplierCard } from '../disclosed-supplier';
 
 /**
  * Pilot scenario 5 (doc 19 §10; F-12.5): engineering tightens the tolerance after a
@@ -92,10 +93,10 @@ describe('Pilot 5: engineering revision after a supplier bid', () => {
     expect(await p.events(enquiryId)).toContain('sourcing.requirement_revised.v1');
   });
 
-  it('shows the customer none of it: no rounds, no suppliers, no superseded bids', async () => {
+  it('shows the customer none of it: no rounds, no superseded bids, only the public supplier card', async () => {
     const view = await p.as.buyer.get(`/api/v1/enquiries/${enquiryId}`);
     p.expectNothingOf(view.body, ['superseded', 'Anand', 'Balaji', 'RFQ-', staleBid.bidVersionId], 'customer enquiry');
     const quotation = await p.as.approver.get(`/api/v1/quotations/${deal.quoteId}`);
-    p.expectNothingOf(quotation.body, ['Anand', 'Balaji', 'superseded'], 'customer quotation');
+    p.expectNothingOf(withoutSupplierCard(quotation.body), ['Anand', 'Balaji', 'superseded'], 'customer quotation');
   });
 });

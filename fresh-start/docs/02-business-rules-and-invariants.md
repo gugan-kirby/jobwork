@@ -10,7 +10,7 @@ These rules are system contracts. Enforcement may live in domain code, authoriza
 | `BR-COM-02` | Supplier bid, internal cost sheet, and customer quote are separate versioned aggregates. |
 | `BR-COM-03` | A submitted bid version is immutable. A change creates a later version with reason and field diff. |
 | `BR-COM-04` | A sent customer-quote version is immutable. Reissue/revision supersedes; it does not edit. |
-| `BR-COM-05` | Supplier cost, identity, and settlement are never included in customer projections or exports by default. |
+| `BR-COM-05` | Supplier cost, bids, margin, and settlement are never included in customer projections or exports. Supplier identity reaches a customer only as the public card of ADR-0007: name, city, verified state, rating (owner decision 2026-11-03). |
 | `BR-COM-06` | Customer sell price, customer identity, and customer payment are never included in supplier projections by default. |
 | `BR-COM-07` | An award references exact bid versions. A PO cannot reference “current bid.” |
 | `BR-COM-08` | A sales order references the exact accepted customer-quote version and terms snapshot. |
