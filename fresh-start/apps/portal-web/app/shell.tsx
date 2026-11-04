@@ -5,7 +5,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { PortalSummary } from '@jobwork/contracts';
-import { AppShell, LinkProvider, type NavItem, type TabItem, type TabPrimaryAction, useCommandTick } from '@jobwork/ui';
+import {
+  AppShell,
+  Button,
+  Card,
+  isNavGroup,
+  LinkProvider,
+  Page,
+  type NavEntry,
+  type NavItem,
+  type TabItem,
+  type TabPrimaryAction,
+  useCommandTick,
+} from '@jobwork/ui';
 import { api, ApiError } from '../lib/api';
 import { purgeOfflineCaches, registerServiceWorker, UNAUTHENTICATED_EVENT } from '@jobwork/web-kit';
 
@@ -26,21 +38,34 @@ import { purgeOfflineCaches, registerServiceWorker, UNAUTHENTICATED_EVENT } from
  *
  * F-MX.2: below `md` the same destinations sit in a bottom tab bar (prototype tiles
  * 4/8/11/13–16) with the audience's primary action raised in the middle.
+ *
+ * VF-20: the daily screens stay top-level and everything else sits in a group, so the
+ * header holds six entries. Phones still list every destination when the menu is open.
  */
 
-const CUSTOMER_NAVIGATION: NavItem[] = [
+const CUSTOMER_NAVIGATION: NavEntry[] = [
   { href: '/', label: 'Home' },
   { href: '/enquiries', label: 'Enquiries' },
   { href: '/quotations', label: 'Quotations' },
   { href: '/orders', label: 'Orders' },
-  { href: '/invoices', label: 'Invoices' },
-  { href: '/payments', label: 'Payments' },
-  { href: '/support', label: 'Support' },
-  { href: '/documents', label: 'Documents' },
-  { href: '/account/addresses', label: 'Addresses' },
-  { href: '/team', label: 'Team' },
-  { href: '/about', label: 'About' },
-  { href: '/terms', label: 'Terms' },
+  {
+    label: 'Billing',
+    items: [
+      { href: '/invoices', label: 'Invoices' },
+      { href: '/payments', label: 'Payments' },
+    ],
+  },
+  {
+    label: 'More',
+    items: [
+      { href: '/support', label: 'Support' },
+      { href: '/documents', label: 'Documents' },
+      { href: '/account/addresses', label: 'Addresses' },
+      { href: '/team', label: 'Team' },
+      { href: '/about', label: 'About' },
+      { href: '/terms', label: 'Terms' },
+    ],
+  },
 ];
 
 const CUSTOMER_TABS: TabItem[] = [
@@ -62,18 +87,28 @@ function customerTabs(pathname: string | null): TabItem[] {
 
 const CUSTOMER_PRIMARY: TabPrimaryAction = { href: '/enquiries/new', label: 'Create enquiry' };
 
-const SUPPLIER_NAVIGATION: NavItem[] = [
+const SUPPLIER_NAVIGATION: NavEntry[] = [
   { href: '/supplier', label: 'Home' },
   { href: '/rfqs', label: 'RFQs' },
   { href: '/supplier/orders', label: 'Orders' },
-  { href: '/supplier/quality', label: 'Quality' },
-  { href: '/supplier/shipments', label: 'Shipments' },
   { href: '/supplier/bills', label: 'Bills' },
-  { href: '/supplier/company', label: 'Company' },
-  { href: '/supplier/compliance', label: 'Compliance' },
-  { href: '/capabilities', label: 'Capabilities' },
-  { href: '/documents', label: 'Documents' },
-  { href: '/supplier/team', label: 'Team' },
+  {
+    label: 'Delivery',
+    items: [
+      { href: '/supplier/quality', label: 'Quality' },
+      { href: '/supplier/shipments', label: 'Shipments' },
+    ],
+  },
+  {
+    label: 'Company',
+    items: [
+      { href: '/supplier/company', label: 'Company profile' },
+      { href: '/supplier/compliance', label: 'Compliance' },
+      { href: '/capabilities', label: 'Capabilities' },
+      { href: '/documents', label: 'Documents' },
+      { href: '/supplier/team', label: 'Team' },
+    ],
+  },
 ];
 
 const SUPPLIER_TABS: TabItem[] = [
@@ -195,8 +230,8 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
     };
   }, [audience, pathname, commandTick]);
 
-  // F-10.3: the bell counts unread notifications, for every signed-in audience.
-  const signedIn = audience === 'customer' || audience === 'supplier' || audience === 'internal';
+  // F-10.3: the bell counts unread notifications, for every audience this portal serves.
+  const signedIn = audience === 'customer' || audience === 'supplier';
   useEffect(() => {
     if (!signedIn) return;
     let cancelled = false;
@@ -245,6 +280,21 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
     );
   }
 
+  // Staff work in the operations console. Falling through to the customer's navigation
+  // would offer pages that all refuse this session.
+  if (audience === 'internal') {
+    return (
+      <AppShell
+        productName="JobWork"
+        navigation={[]}
+        currentPath={pathname ?? undefined}
+        environmentLabel={environmentLabel}
+      >
+        <StaffSession />
+      </AppShell>
+    );
+  }
+
   const counts = new Map(summary?.queues.map((queue) => [queue.key as string, queue.count]) ?? []);
 
   if (audience === 'supplier') {
@@ -262,13 +312,16 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
     );
   }
 
-  const navigation: NavItem[] = CUSTOMER_NAVIGATION.map((item) => {
+  const withBadge = (item: NavItem): NavItem => {
     const badge = (CUSTOMER_BADGES[item.href] ?? []).reduce(
       (total, key) => total + (counts.get(key) ?? 0),
       0,
     );
     return badge > 0 ? { ...item, badge } : item;
-  });
+  };
+  const navigation: NavEntry[] = CUSTOMER_NAVIGATION.map((entry) =>
+    isNavGroup(entry) ? { ...entry, items: entry.items.map(withBadge) } : withBadge(entry),
+  );
   return (
     <AppShell
       productName="JobWork"
@@ -281,5 +334,32 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
     >
       {children}
     </AppShell>
+  );
+}
+
+function StaffSession(): React.JSX.Element {
+  const [leaving, setLeaving] = useState(false);
+  return (
+    <Page title="You are signed in as JobWork staff" width="narrow">
+      <Card>
+        <p style={{ marginBottom: 'var(--space-3)' }}>
+          This portal is for customers and suppliers. Sign out, then sign in with a customer or supplier
+          account.
+        </p>
+        <Button
+          disabled={leaving}
+          onClick={() => {
+            setLeaving(true);
+            void api('/auth/logout', { method: 'POST', body: {} })
+              .catch(() => undefined)
+              // BR-AUTH-05: nothing of this session stays on a shared machine.
+              .then(() => purgeOfflineCaches().catch(() => undefined))
+              .finally(() => window.location.assign('/login'));
+          }}
+        >
+          Sign out
+        </Button>
+      </Card>
+    </Page>
   );
 }
