@@ -4,15 +4,13 @@ import Link from 'next/link';
 import { Icon, WorkshopIllustration } from '@jobwork/ui';
 
 /**
- * The welcome fork (VF-02, reference screen 02): sign in, register, or look around as a
- * guest. Guest browsing is category education only (`D-17`). The reference's
- * "Reliable · Fast" are promises JobWork cannot yet stand behind (`D-10`); the trio says
- * what the platform does instead, with the longer meaning spoken to assistive technology.
+ * The welcome fork (VF-02, VF-18, reference screen 02), word for word. Guest browsing is
+ * category education only (`D-17`).
  */
 const ASSURANCES = [
-  { icon: 'shieldLock' as const, label: 'Secure', detail: 'your drawings stay yours' },
-  { icon: 'shieldCheck' as const, label: 'Reviewed', detail: 'every requirement checked' },
-  { icon: 'shieldBolt' as const, label: 'Managed', detail: 'one accountable counterpart' },
+  { icon: 'shieldLock' as const, label: 'Secure' },
+  { icon: 'shieldCheck' as const, label: 'Reliable' },
+  { icon: 'shieldBolt' as const, label: 'Fast' },
 ];
 
 export default function StartPage() {
@@ -22,9 +20,9 @@ export default function StartPage() {
         <p className="jw-entry-eyebrow">Welcome to</p>
         <h1 className="jw-entry-title">JobWork</h1>
         <p className="jw-entry-lede">
-          One platform for all your
+          One Platform for All Your
           <br />
-          job work needs
+          Job Work Needs
         </p>
       </header>
 
@@ -48,10 +46,7 @@ export default function StartPage() {
         {ASSURANCES.map((item) => (
           <li key={item.label}>
             <Icon name={item.icon} size={1.7} />
-            <span>
-              {item.label}
-              <span className="jw-visually-hidden">: {item.detail}</span>
-            </span>
+            <span>{item.label}</span>
           </li>
         ))}
       </ul>

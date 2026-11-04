@@ -41,8 +41,7 @@ export function InvoiceCard({
                         <StatusChip tone={TONE[i.status]}>{i.statusLabel}</StatusChip>
                       </span>
                       <span className="jw-record-caption">
-                        Order #<span className="mono">{i.orderNumber}</span> •{' '}
-                        {i.kind === 'advance' ? 'Advance' : i.kind === 'balance' ? 'Balance' : i.kind === 'change' ? 'Change' : 'Final'}
+                        Order #<span className="mono">{i.orderNumber}</span>
                       </span>
                       <span className="jw-record-foot">
                         <span className="jw-record-date">

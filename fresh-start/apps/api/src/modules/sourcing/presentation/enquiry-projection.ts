@@ -83,6 +83,8 @@ export function projectForCustomer(enquiry: Enquiry): CustomerEnquiry {
     statusLabel: STATUS_LABELS[status],
     actionNeeded,
     itemCount: enquiry.items.length,
+    processCapabilityId: enquiry.items[0]?.processCapabilityId ?? null,
+    materialCapabilityId: enquiry.items[0]?.materialCapabilityId ?? null,
     aggregateVersion: enquiry.aggregateVersion,
     requiredByDate: enquiry.requiredByDate,
     submittedAt: enquiry.submittedAt,

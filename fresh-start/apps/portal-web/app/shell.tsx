@@ -34,9 +34,13 @@ const CUSTOMER_NAVIGATION: NavItem[] = [
   { href: '/quotations', label: 'Quotations' },
   { href: '/orders', label: 'Orders' },
   { href: '/invoices', label: 'Invoices' },
+  { href: '/payments', label: 'Payments' },
   { href: '/support', label: 'Support' },
   { href: '/documents', label: 'Documents' },
+  { href: '/account/addresses', label: 'Addresses' },
   { href: '/team', label: 'Team' },
+  { href: '/about', label: 'About' },
+  { href: '/terms', label: 'Terms' },
 ];
 
 const CUSTOMER_TABS: TabItem[] = [
@@ -45,6 +49,16 @@ const CUSTOMER_TABS: TabItem[] = [
   { href: '/orders', label: 'Orders', icon: 'orders' },
   { href: '/profile', label: 'Profile', icon: 'profile' },
 ];
+
+/** VF-18: the references put Invoices or Payments in the last slot while the customer is there. */
+function customerTabs(pathname: string | null): TabItem[] {
+  const last: TabItem | null = pathname?.startsWith('/invoices')
+    ? { href: '/invoices', label: 'Invoices', icon: 'invoice' }
+    : pathname?.startsWith('/payments')
+      ? { href: '/payments', label: 'Payments', icon: 'payment' }
+      : null;
+  return last ? [...CUSTOMER_TABS.slice(0, -1), last] : CUSTOMER_TABS;
+}
 
 const CUSTOMER_PRIMARY: TabPrimaryAction = { href: '/enquiries/new', label: 'Create enquiry' };
 
@@ -63,17 +77,12 @@ const SUPPLIER_NAVIGATION: NavItem[] = [
 ];
 
 const SUPPLIER_TABS: TabItem[] = [
-  { href: '/supplier', label: 'Home', icon: 'home' },
-  { href: '/rfqs', label: 'RFQs', icon: 'enquiries' },
+  { href: '/supplier', label: 'Dashboard', icon: 'home' },
+  { href: '/rfqs', label: 'Enquiries', icon: 'mail' },
+  { href: '/rfqs/quotes', label: 'Quotes', icon: 'document' },
   { href: '/supplier/orders', label: 'Orders', icon: 'orders' },
   { href: '/profile', label: 'Profile', icon: 'profile' },
 ];
-
-const SUPPLIER_PRIMARY: TabPrimaryAction = {
-  href: '/capabilities',
-  label: 'Declare a capability',
-  icon: 'capabilities',
-};
 
 const PUBLIC_NAVIGATION: NavItem[] = [
   { href: '/explore', label: 'Explore' },
@@ -246,7 +255,6 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
         currentPath={pathname ?? undefined}
         environmentLabel={environmentLabel}
         tabs={SUPPLIER_TABS}
-        primaryAction={SUPPLIER_PRIMARY}
         notifications={{ href: '/notifications', count: unread }}
       >
         {children}
@@ -261,21 +269,13 @@ function PortalFrame({ environmentLabel, children }: ShellProps): React.JSX.Elem
     );
     return badge > 0 ? { ...item, badge } : item;
   });
-  const tabs: TabItem[] = CUSTOMER_TABS.map((tab) => {
-    const badge = (CUSTOMER_BADGES[tab.href] ?? []).reduce(
-      (total, key) => total + (counts.get(key) ?? 0),
-      0,
-    );
-    return badge > 0 ? { ...tab, badge } : tab;
-  });
-
   return (
     <AppShell
       productName="JobWork"
       navigation={[...navigation, ACCOUNT]}
       currentPath={pathname ?? undefined}
       environmentLabel={environmentLabel}
-      tabs={tabs}
+      tabs={customerTabs(pathname)}
       primaryAction={CUSTOMER_PRIMARY}
       notifications={{ href: '/notifications', count: unread }}
     >

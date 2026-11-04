@@ -17,19 +17,13 @@ import { purgeOfflineCaches } from '@jobwork/web-kit';
 import { api, ApiError } from '../../lib/api';
 
 /**
- * Profile (prototype tile 16, doc 14 §15 "expand to organization, security, verification,
- * sessions"). The header answers who you are and for whom; the list is every account
- * surface in one place; logout is the one destructive row and sits apart.
+ * Profile (VF-16, VF-18, reference screen 16): the reference's rows, word for word. Payment
+ * Methods opens the payments page: JobWork stores no cards or mandates (`F-08.4`), each
+ * invoice is paid through the gateway. Initials stand in for the photo, since no image is
+ * stored. Addresses, documents, team, about and terms are in the header menu.
  */
 
-const ROLE_LABELS: Record<string, string> = {
-  org_admin: 'Organization administrator',
-  customer_requester: 'Requester',
-  customer_approver: 'Approver',
-  supplier_estimator: 'Estimator',
-  supplier_production: 'Production',
-  supplier_quality: 'Quality',
-};
+const APP_VERSION = '1.0.0';
 
 function initials(name: string): string {
   return name
@@ -88,32 +82,26 @@ export default function ProfilePage() {
   }
 
   const supplier = me.organizationType === 'supplier';
-  const organization = me.memberships.find((m) => m.organizationId === me.organizationId);
-  const roleLine = me.roles.map((r) => ROLE_LABELS[r] ?? r.replace(/_/g, ' ')).join(' · ');
 
-  const rows: MenuRow[] = supplier
-    ? [
-        { href: '/supplier/company', icon: 'factory', label: 'Company Profile', detail: 'Your company, sites and contacts', tint: 'blue' },
-        { href: '/supplier/compliance', icon: 'shield', label: 'Compliance & Evidence', detail: 'Registrations and certificates', tint: 'violet' },
-        { href: '/capabilities', icon: 'capabilities', label: 'Capabilities & Machines', detail: 'What you make and with what', tint: 'green' },
-        { href: '/documents', icon: 'document', label: 'My Documents', detail: 'Files you have shared', tint: 'sky' },
-        { href: '/supplier/team', icon: 'team', label: 'Team', detail: 'People in your company', tint: 'neutral' },
-        { href: '/notifications', icon: 'bell', label: 'Notifications', detail: 'Your alerts and updates', tint: 'orange' },
-        { href: '/account/security', icon: 'shieldCheck', label: 'Privacy & Security', detail: 'Password, two-factor, sessions', tint: 'violet' },
-        { href: '/help', icon: 'help', label: 'Help & Support', detail: 'Get help or raise a request', tint: 'blue' },
-      ]
-    : [
-        { href: '/account/addresses', icon: 'location', label: 'My Addresses', detail: 'Where your parts are delivered', tint: 'blue' },
-        { href: '/documents', icon: 'document', label: 'My Documents', detail: 'Drawings and files you have shared', tint: 'sky' },
-        { href: '/team', icon: 'team', label: 'Team', detail: 'People in your organization', tint: 'green' },
-        { href: '/notifications', icon: 'bell', label: 'Notifications', detail: 'Your alerts and updates', tint: 'orange' },
-        { href: '/account/security', icon: 'shieldCheck', label: 'Privacy & Security', detail: 'Password, two-factor, sessions', tint: 'violet' },
-        { href: '/help', icon: 'help', label: 'Help & Support', detail: 'Get help or raise a request', tint: 'blue' },
-      ];
-
-  const about: Array<{ href: string; icon: IconName; label: string }> = [
-    { href: '/about', icon: 'info', label: 'About JobWork' },
-    { href: '/terms', icon: 'document', label: 'Terms & Conditions' },
+  const rows: MenuRow[] = [
+    {
+      href: supplier ? '/supplier/company' : '/team',
+      icon: 'capabilities',
+      label: 'Company Details',
+      detail: 'Update your company information',
+      tint: 'blue',
+    },
+    { href: '/profile/edit', icon: 'profile', label: 'Account Settings', detail: 'Manage your login, email and security', tint: 'violet' },
+    {
+      href: supplier ? '/supplier/bills' : '/payments',
+      icon: 'payment',
+      label: 'Payment Methods',
+      detail: 'Add or manage payment options',
+      tint: 'green',
+    },
+    { href: '/notifications', icon: 'bell', label: 'Notifications', detail: 'Control your alerts and updates', tint: 'orange' },
+    { href: '/account/security', icon: 'shieldCheck', label: 'Privacy & Security', detail: 'Manage data, password and access', tint: 'violet' },
+    { href: '/help', icon: 'help', label: 'Help & Support', detail: 'Get help or raise a request', tint: 'sky' },
   ];
 
   return (
@@ -129,11 +117,7 @@ export default function ProfilePage() {
           <span className="jw-identity-main">
             <span className="jw-identity-top">
               <span className="jw-counterpart-name">{me.displayName || me.email}</span>
-              <span className="jw-count-badge">{supplier ? 'Supplier' : 'Customer'}</span>
-            </span>
-            <span className="jw-counterpart-line">
-              {organization?.organizationName ?? 'No organization selected'}
-              {roleLine ? ` · ${roleLine}` : ''}
+              <span className="jw-count-badge">{supplier ? 'Vendor' : 'Buyer'}</span>
             </span>
             <span className="jw-summary-fact">
               <Icon name="mail" size={1.15} />
@@ -169,24 +153,12 @@ export default function ProfilePage() {
           ))}
         </nav>
 
-        <nav aria-label="About" className="jw-menu">
-          {about.map((row) => (
-            <Link key={row.href} href={row.href} className="jw-menu-row">
-              <span className="jw-menu-icon">
-                <Icon name={row.icon} size={1.3} />
-              </span>
-              <span className="jw-menu-label">{row.label}</span>
-              <span className="jw-menu-chevron">
-                <Icon name="chevron" />
-              </span>
-            </Link>
-          ))}
-        </nav>
-
         <button type="button" className="jw-logout" onClick={() => void logout()} disabled={busy}>
           <Icon name="logout" size={1.3} />
           Log Out
         </button>
+
+        <p className="jw-app-version">App Version {APP_VERSION}</p>
       </Stack>
     </Page>
   );
