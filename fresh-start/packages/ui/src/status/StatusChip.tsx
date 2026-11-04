@@ -53,7 +53,9 @@ export function StatusChip({ tone, children, silent }: StatusChipProps): React.J
         border: `1px solid var(--status-${tone}-border)`,
         color: `var(--status-${tone}-fg)`,
         font: 'var(--chip-font)',
-        whiteSpace: 'nowrap',
+        // A long status wraps inside its parent; on one line it widens the whole card.
+        maxWidth: '100%',
+        whiteSpace: 'normal',
       }}
     >
       <span aria-hidden style={{ fontWeight: 700 }}>
