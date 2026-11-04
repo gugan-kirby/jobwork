@@ -3357,3 +3357,9 @@ html:has(.jw-flat) {
 .jw-attached button:focus-visible {
   outline: 3px solid var(--color-focus-ring);
 }
+
+/* Muted text on a tinted fill stays above 4.5:1 (the walk's axe scan). */
+.jw-offer-summary .jw-record-caption,
+.jw-tinted-card .jw-record-caption {
+  color: var(--color-ink-muted);
+}

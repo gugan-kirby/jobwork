@@ -201,7 +201,7 @@ export async function command(page: Page, name: string | RegExp, scope: Page | L
 
 /** A card or section found by its heading text. */
 export const section = (page: Page, heading: string | RegExp): Locator =>
-  page.locator('section, article, [class*="card"], fieldset, details').filter({ has: page.getByRole('heading', { name: heading }) }).last();
+  page.locator('section, article, [class*="card"]:not(.jw-card-head):not(.jw-card-body), fieldset, details').filter({ has: page.getByRole('heading', { name: heading }) }).last();
 
 export const FIXTURES = join(__dirname, '..', 'fixtures');
 export const daysFromNow = (days: number): string => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
