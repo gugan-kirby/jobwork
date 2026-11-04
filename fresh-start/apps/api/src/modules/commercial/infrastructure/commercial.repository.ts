@@ -113,6 +113,7 @@ export interface AwardRecord {
   enquiryId: string;
   evaluationId: string | null;
   status: AwardStatus;
+  customerChoice: boolean;
   singleSource: boolean;
   rationale: string;
   fallbackNote: string;
@@ -463,6 +464,7 @@ export class CommercialRepository {
     input: {
       rfqId: string;
       evaluationId: string | null;
+      customerChoice: boolean;
       singleSource: boolean;
       rationale: string;
       fallbackNote: string;
@@ -475,9 +477,9 @@ export class CommercialRepository {
   ): Promise<string> {
     const res = await tx.query<{ id: string }>(
       `INSERT INTO commercial.award
-         (rfq_id, evaluation_id, single_source, rationale, fallback_note, proposed_by, currency, buy_total_minor)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-      [input.rfqId, input.evaluationId, input.singleSource, input.rationale, input.fallbackNote, input.proposedBy, input.currency, input.buyTotalMinor],
+         (rfq_id, evaluation_id, single_source, rationale, fallback_note, proposed_by, currency, buy_total_minor, customer_choice)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [input.rfqId, input.evaluationId, input.singleSource, input.rationale, input.fallbackNote, input.proposedBy, input.currency, input.buyTotalMinor, input.customerChoice],
     );
     const id = res.rows[0]!.id;
     for (const line of input.lines) {
@@ -509,7 +511,7 @@ export class CommercialRepository {
   async findAward(id: string, tx?: Queryable, forUpdate = false): Promise<AwardRecord | null> {
     const res = await this.q(tx).query(
       `SELECT a.id, a.rfq_id AS "rfqId", r.reference AS "rfqReference", r.enquiry_id AS "enquiryId",
-              a.evaluation_id AS "evaluationId", a.status, a.single_source AS "singleSource",
+              a.evaluation_id AS "evaluationId", a.status, a.single_source AS "singleSource", a.customer_choice AS "customerChoice",
               a.rationale, a.fallback_note AS "fallbackNote", a.proposed_by AS "proposedBy",
               a.proposed_at AS "proposedAt", a.approval_request_id AS "approvalRequestId",
               a.decided_at AS "decidedAt", a.currency, a.buy_total_minor AS "buyTotalMinor",
@@ -548,6 +550,15 @@ export class CommercialRepository {
         lineTotalMinor: num(row['lineTotalMinor']),
       })),
     };
+  }
+
+  /** The other offers still standing on a round the customer has just decided (ADR-0007). */
+  async listApprovedChoiceAwards(rfqId: string, tx: Queryable): Promise<string[]> {
+    const res = await tx.query<{ id: string }>(
+      `SELECT id FROM commercial.award WHERE rfq_id = $1 AND status = 'approved' AND customer_choice`,
+      [rfqId],
+    );
+    return res.rows.map((row) => row.id);
   }
 
   async listAwardsForRfq(rfqId: string): Promise<AwardRecord[]> {

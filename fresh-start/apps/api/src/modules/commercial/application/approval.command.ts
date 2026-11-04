@@ -140,6 +140,8 @@ export class DecideApprovalCommand {
         if (!award) throw new ApprovalNotFound();
         if (decision === 'approved') {
           await this.repo.setAwardStatus(award.id, 'approved', tx);
+          // ADR-0007: an offer to the customer decides nothing yet; acceptance settles the round.
+          if (award.customerChoice) return { awardId: award.id, selectedBidVersionIds: [], rejectedBidVersionIds: [] };
           const selected = new Set(award.lines.map((l) => l.bidVersionId));
           for (const versionId of selected) {
             await this.rfqs.setVersionStatus({ versionId, status: 'selected', reason: 'awarded', decidedBy }, tx);

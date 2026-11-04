@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PoolClient } from 'pg';
 import type { AcceptQuoteRequest } from '@jobwork/contracts';
 import { CommercialRepository, QuoteNotActionable, QuoteNotFound, assertQuoteVersion, isExpired } from '../../commercial';
 import { type Actor, IamRepository, requireOrganization, requireRole } from '../../iam';
@@ -7,6 +8,7 @@ import { ApprovalLimitExceeded, QuoteContentMismatch } from '../domain/errors';
 import { splitSchedule } from '../domain/schedule';
 import { FinanceRepository } from '../infrastructure/finance.repository';
 import { OrdersRepository } from '../infrastructure/orders.repository';
+import { RfqRepository } from '../../sourcing';
 import { MoneyFlow, sha256 } from './money-flow';
 import { contextFromActor } from '../../../platform/commands/command';
 import { CommandExecutor } from '../../../platform/commands/execute';
@@ -32,6 +34,7 @@ const OPEN_VERSION = new Set(['draft', 'internal_approval', 'approved', 'sent'])
 export class AcceptQuoteCommand {
   constructor(
     private readonly commercial: CommercialRepository,
+    private readonly rfqs: RfqRepository,
     private readonly orders: OrdersRepository,
     private readonly finance: FinanceRepository,
     private readonly iam: IamRepository,
@@ -110,6 +113,8 @@ export class AcceptQuoteCommand {
               await this.commercial.setQuoteStatus({ quoteId: sibling.id, status: 'withdrawn', decisionReason: `Another option (${quote.optionLabel}) was accepted.` }, tx);
               withdrawn.push(sibling.id);
             }
+
+            await this.settleCustomerChoice(quote.id, actor.userId, tx);
 
             // The sell-side contract: what was agreed, with whom, under which terms — nothing of the buy side.
             const snapshot = {
@@ -218,6 +223,37 @@ export class AcceptQuoteCommand {
       // The partial unique index is the backstop behind the offer-set lock.
       if ((err as { code?: string; constraint?: string }).constraint === 'uq_offer_set_single_acceptance') throw new QuoteNotActionable('accepted');
       throw err;
+    }
+  }
+
+  /**
+   * ADR-0007: when the accepted quote was one of several offers, acceptance does what an
+   * award approval otherwise does: the chosen bids are selected, the other offers and every
+   * other live bid close, and the round is awarded.
+   */
+  private async settleCustomerChoice(quoteId: string, decidedBy: string, tx: PoolClient): Promise<void> {
+    const award = await this.orders.awardForQuote(quoteId, tx);
+    if (!award?.customerChoice) return;
+    const chosen = await this.commercial.findAward(award.awardId, tx);
+    if (!chosen) return;
+    const selected = new Set(chosen.lines.map((line) => line.bidVersionId));
+    for (const versionId of selected) {
+      await this.rfqs.setVersionStatus({ versionId, status: 'selected', reason: 'chosen by the customer', decidedBy }, tx);
+    }
+    for (const row of await this.rfqs.listLiveBidsForRfq(award.rfqId)) {
+      if (row.version && !selected.has(row.version.id)) {
+        await this.rfqs.setVersionStatus({ versionId: row.version.id, status: 'rejected', reason: 'not chosen by the customer', decidedBy }, tx);
+      }
+    }
+    for (const other of await this.commercial.listApprovedChoiceAwards(award.rfqId, tx)) {
+      if (other !== award.awardId) await this.commercial.setAwardStatus(other, 'rejected', tx);
+    }
+    const rfq = await this.rfqs.findRfq(award.rfqId, tx);
+    if (rfq) {
+      await this.rfqs.setRfqStatus(
+        { rfqId: award.rfqId, expectedVersion: rfq.aggregateVersion, status: 'awarded', closed: { by: decidedBy, reason: `awarded:${award.awardId}` } },
+        tx,
+      );
     }
   }
 }
