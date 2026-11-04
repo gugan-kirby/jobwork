@@ -2199,6 +2199,16 @@ html:has(.jw-flat) {
   gap: var(--space-3);
 }
 
+.jw-action-pair-wide {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.18fr);
+}
+
+.jw-action-pair-wide button {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+  white-space: nowrap;
+}
+
 /* VF-08 rich record card: tinted glyph tile, title + status row, reference · caption,
    calendar date, chevron. */
 .jw-record-rich {
@@ -3305,4 +3315,45 @@ html:has(.jw-flat) {
   font: 400 17px/24px var(--font-sans);
   color: var(--color-ink);
   overflow-wrap: anywhere;
+}
+
+/* VF-17 requirements: the plain bold heading over the drop zone, attached-file rows. */
+.jw-field-heading {
+  font: var(--text-body-strong);
+  color: var(--color-ink);
+  margin-bottom: var(--space-1);
+}
+
+.jw-attached {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.jw-attached li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  color: var(--color-ink);
+  font: 400 16px/22px var(--font-sans);
+  overflow-wrap: anywhere;
+}
+
+.jw-attached button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+
+.jw-attached button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
 }

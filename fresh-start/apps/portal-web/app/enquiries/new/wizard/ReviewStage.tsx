@@ -3,7 +3,7 @@
 import type { DocumentSummary, OrganizationSite } from '@jobwork/contracts';
 import { Button, Card, CommandButton, DescriptionList, Icon, Stack } from '@jobwork/ui';
 import type { DraftApi } from './useDraft';
-import { extensionOf, type Taxonomy } from './types';
+import { extensionOf, fileName, type Taxonomy } from './types';
 
 /**
  * Stage 3 — Review (VF-17, reference screen 07): what will be frozen, read back. Part,
@@ -71,9 +71,9 @@ export function ReviewStage({ api: draftApi, taxonomy, sites, documents, submit,
                 <Icon name="document" size={1.3} />
                 <span className="jw-file-row">
                   <span className="jw-file-badge" aria-hidden="true">
-                    <span>{extensionOf(entry.doc?.title)}</span>
+                    <span>{extensionOf(fileName(entry.doc))}</span>
                   </span>
-                  {entry.doc?.title ?? 'Attached file'}
+                  {fileName(entry.doc)}
                 </span>
               </p>
             ))
@@ -85,7 +85,7 @@ export function ReviewStage({ api: draftApi, taxonomy, sites, documents, submit,
         {specifications.length === 0 ? <p>None added</p> : specifications.map((line) => <p key={line}>{line}</p>)}
       </Card>
 
-      <div className="jw-action-pair">
+      <div className="jw-action-pair jw-action-pair-wide">
         <Button variant="secondary" onClick={onBack}>
           Back
         </Button>
