@@ -38,6 +38,7 @@ test.describe('customer journeys', () => {
     const { orderId } = world();
     await signIn(page, PORTAL, 'approver@kovai.test');
     await page.goto(`${PORTAL}/orders/${orderId}`);
+    await page.getByRole('button', { name: 'Order Details', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectAccessible(page, 'order tracking');
     await expect(page.locator('body')).not.toContainText(/Anand|Balaji|PO-/);

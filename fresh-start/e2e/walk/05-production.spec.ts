@@ -92,7 +92,7 @@ test('supplier · A starts a checkpoint, sends evidence and reports a delay', as
   await signInAs(page, 'supplierA');
   await open(page, `${PORTAL}/supplier/orders/${recall('purchaseOrderId')}`);
   await command(page, 'Start');
-  const upload = page.getByLabel(/^(Photo|Certificate)/).first();
+  const upload = page.getByLabel(/^Upload File — (Photo|Certificate)/).first();
   await upload.setInputFiles(join(FIXTURES, (await upload.getAttribute('accept'))?.includes('pdf') ? 'drawing.pdf' : 'photo.png'));
   await expect(button(page, 'Submit for verification')).toBeEnabled({ timeout: 60_000 });
   await command(page, 'Submit for verification');

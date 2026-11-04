@@ -21,6 +21,7 @@ import {
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
+import { loadEnquiryFacts, type EnquiryFacts } from '../../../lib/enquiry-facts';
 import { milestones, ORDER_PROGRESS } from '../../../lib/order-progress';
 import { ThreadPanel } from '../../thread-panel';
 import { ChangesPanel } from './changes-panel';
@@ -33,10 +34,11 @@ import { DeviationsPanel } from './deviations-panel';
  * and the payment schedule with its invoices. No supplier, no workshop location, no
  * promised date before the order is released.
  *
- * VF-12 (reference screen 12, corrected): summary card, four-milestone progress, current
- * status with its share of the way, and the production timeline as a vertical rail, then
- * the existing panels. "Contact Vendor" is Contact JobWork; "Order Details" jumps to what
- * was ordered. Milestones group the seven curated lanes; nothing names a workshop.
+ * VF-12, VF-18 (reference screen 12, ADR-0007): the summary card names the supplier, then
+ * four milestones, current status, the timeline, Contact Vendor and Order Details. Order
+ * Details opens everything else in place: deliveries, payments, changes, documents and
+ * messages. Contact Vendor reaches the order's thread with JobWork until shared threads
+ * land (ADR-0007 P5). The next-step card shows only when the step is the customer's.
  */
 
 const TONE: Record<CustomerOrder['status'], Tone> = {
@@ -51,15 +53,15 @@ const TONE: Record<CustomerOrder['status'], Tone> = {
   cancelled: 'neutral',
 };
 
-const LANE_ICON: Record<string, 'check' | 'payment' | 'settings' | 'shield' | 'truck' | 'orders'> = {
-  accepted: 'check',
-  advance: 'payment',
-  technical: 'settings',
-  production: 'settings',
-  final_checks: 'shield',
-  shipping: 'truck',
-  delivered: 'orders',
-};
+const MILESTONE_DETAIL = {
+  confirmed: 'Your order has been received.',
+  production: 'Manufacturing is in progress.',
+  delivery: 'Your order will be dispatched soon.',
+  delivered: 'Order will be delivered to your location.',
+} as const;
+
+const SHORT_STATUS = (status: CustomerOrder['status']): string =>
+  status === 'completed' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : 'In Progress';
 
 const dayMonth = (iso: string): string =>
   new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' });
@@ -72,11 +74,15 @@ function OrderDetail() {
   const router = useRouter();
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  const [facts, setFacts] = useState<EnquiryFacts | null>(null);
+  const [details, setDetails] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setOrder(await api<CustomerOrder>(`/orders/${orderId}`));
+      const loaded = await api<CustomerOrder>(`/orders/${orderId}`);
+      setOrder(loaded);
       setError(null);
+      setFacts(await loadEnquiryFacts(loaded.enquiry.enquiryId).catch(() => null));
     } catch (err) {
       if (err instanceof ApiError) setError(err);
     }
@@ -111,27 +117,33 @@ function OrderDetail() {
               <Icon name="factory" size={2} />
             </span>
             <div style={{ display: 'grid', gap: 'var(--space-1)', minWidth: 0 }}>
-              <p className="jw-counterpart-name">{order.title || order.number}</p>
-              <span>
-                <StatusChip tone={TONE[order.status]}>{order.statusLabel}</StatusChip>
-              </span>
+              <div className="jw-counterpart-top">
+                <p className="jw-counterpart-name">{order.title || order.number}</p>
+                <StatusChip tone={TONE[order.status]}>{SHORT_STATUS(order.status)}</StatusChip>
+              </div>
               <p className="jw-counterpart-line">
                 Order #<span className="mono">{order.number}</span>
               </p>
+              {order.supplier ? <p className="jw-counterpart-line">{order.supplier.name}</p> : null}
+              {facts && (facts.category !== '—' || facts.material !== '—') ? (
+                <p className="jw-counterpart-line">
+                  <Icon name="location" size={1.1} /> {facts.category} | {facts.material}
+                </p>
+              ) : null}
               <p className="jw-summary-fact">
                 <Icon name="calendar" size={1.15} />
                 {longDate(order.acceptedAt)}
-                <span aria-hidden="true"> · </span>
-                <Icon name="layers" size={1.15} />
-                {order.lines.reduce((sum, line) => sum + line.quantity, 0)} {order.lines[0]?.unit === 'piece' || !order.lines[0] ? 'Nos' : order.lines[0].unit}
-              </p>
-              <p className="jw-counterpart-line">
-                {order.expectedDeliveryAt ? `Expected by ${order.expectedDeliveryAt}` : `${order.deliveryLeadDays} days from release`}
+                {facts && facts.quantity !== '—' ? (
+                  <>
+                    <span aria-hidden="true"> | </span>
+                    <Icon name="layers" size={1.15} />
+                    {facts.quantity}
+                  </>
+                ) : null}
               </p>
             </div>
           </div>
         </section>
-
         {justAccepted ? (
           <Callout tone="positive" title="Order placed">
             You accepted {order.quotation.reference} revision {order.quotation.versionNo}. This order is bound to exactly that revision and its terms.
@@ -204,24 +216,37 @@ function OrderDetail() {
             Production Timeline
           </h2>
           <ol className="jw-timeline" aria-label="Order timeline">
-            {order.timeline.map((step) => (
-              <li key={step.key} className={`jw-timeline-step jw-timeline-${step.state}`} aria-current={step.state === 'current' ? 'step' : undefined}>
+            {milestones(order.timeline).map((m) => (
+              <li key={m.key} className={`jw-timeline-step jw-timeline-${m.state}`} aria-current={m.state === 'current' ? 'step' : undefined}>
                 <span className="jw-timeline-disc" aria-hidden="true">
-                  <Icon name={step.state === 'done' ? 'check' : (LANE_ICON[step.key] ?? 'info')} size={1.2} />
+                  <Icon name={m.icon} size={1.2} />
                 </span>
                 <span className="jw-timeline-body">
                   <span className="jw-timeline-title">
-                    {step.label}
-                    <span className="jw-visually-hidden"> — {step.state === 'done' ? 'done' : step.state === 'current' ? 'in progress' : 'not started'}</span>
+                    {m.label}
+                    <span className="jw-visually-hidden"> — {m.state === 'done' ? 'done' : m.state === 'current' ? 'in progress' : 'not started'}</span>
                   </span>
-                  {step.detail ? <span className="jw-timeline-detail">{step.detail}</span> : null}
+                  <span className="jw-timeline-detail">{MILESTONE_DETAIL[m.key]}</span>
                 </span>
-                <span className="jw-timeline-at">{step.at ? dayMonth(step.at) : ''}</span>
+                <span className="jw-timeline-at">{m.at ? dayMonth(m.at) : ''}</span>
               </li>
             ))}
           </ol>
         </section>
 
+        <div className="jw-action-pair">
+          <button type="button" className="jw-cta-outline jw-cta-sm jw-cta-icon" onClick={() => { setDetails(true); requestAnimationFrame(() => document.getElementById('messages')?.scrollIntoView()); }}>
+            <Icon name="message" size={1.2} />
+            Contact Vendor
+          </button>
+          <button type="button" className="jw-cta jw-cta-sm jw-cta-icon" aria-expanded={details} onClick={() => setDetails((v) => !v)}>
+            <Icon name="document" size={1.2} />
+            Order Details
+          </button>
+        </div>
+
+        {details ? (
+          <Stack gap={5}>
         <DeliveriesPanel orderId={order.orderId} />
 
         {order.scheduleUnderReview ? (
@@ -248,7 +273,6 @@ function OrderDetail() {
           </Card>
         ) : null}
 
-        <div id="order-details" />
         <Card title="What you ordered">
           <Stack gap={2}>
             {order.lines.map((line) => (
@@ -326,16 +350,8 @@ function OrderDetail() {
 
         <div id="messages" />
         <ThreadPanel contextType="sales_order" contextId={orderId} description="Anything about this order, between you and JobWork." />
-        <div className="jw-action-pair">
-          <Link href="#messages" className="jw-cta-outline jw-cta-sm jw-cta-icon">
-            <Icon name="message" size={1.2} />
-            Contact JobWork
-          </Link>
-          <Link href="#order-details" className="jw-cta jw-cta-sm jw-cta-icon">
-            <Icon name="document" size={1.2} />
-            Order Details
-          </Link>
-        </div>
+          </Stack>
+        ) : null}
       </Stack>
     </Page>
   );

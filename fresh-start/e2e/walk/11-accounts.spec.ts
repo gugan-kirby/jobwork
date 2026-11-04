@@ -79,7 +79,7 @@ test('supplier · invites a teammate, reads notifications and its documents', as
   await axe(page, 'supplier documents');
   await notificationsOn(page, PORTAL);
   await open(page, `${PORTAL}/profile`);
-  await expect(page.getByRole('link', { name: 'Compliance & evidence' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Company Details' })).toBeVisible();
 });
 
 test('ops · staff read their notifications and their sessions', async ({ page }) => {

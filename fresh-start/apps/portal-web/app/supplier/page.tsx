@@ -9,6 +9,7 @@ import {
   Card,
   CommandButton,
   Donut,
+  Sparkline,
   ErrorState,
   Icon,
   Inline,
@@ -22,6 +23,7 @@ import {
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../lib/api';
+import { displayMoney } from '../../lib/enquiry-facts';
 
 /**
  * The supplier's home (F-SO.7): where the file stands, what is still owed, and the one
@@ -32,13 +34,10 @@ import { api, ApiError } from '../../lib/api';
  * page that fixes it, because a list of problems without a way to act on them is a
  * complaint, not a workflow.
  *
- * VF-15 (reference screen 15, corrected): the reference's "Vendor Dashboard — Welcome,
- * Precision Metals" with New Enquiries / Quotes Sent / Active Orders / Total Revenue,
- * enquiry requests with Quote Now, an orders donut and a revenue chart. Here: the welcome
- * banner says the work comes from JobWork, not buyers; the tiles are the supplier's own
- * open RFQs, bids, purchase orders and settlements due; the requests are RFQs with
- * "Bid Now"; the donut splits the supplier's own purchase orders by where they stand.
- * There is no revenue figure or chart (F-MX.9) and nothing names a customer.
+ * VF-15, VF-18 (reference screen 15): the vendor dashboard, in the image's words. Counts and
+ * revenue are the vendor's own: Total Revenue is the taxable value of its paid bills.
+ * Requests name no customer (`BR-COM-06`). Until a vendor is active the checklist and its
+ * file steps follow the dashboard; availability lives on the Company page.
  */
 
 const STATUS_TONE: Record<string, Tone> = {
@@ -98,7 +97,7 @@ export default function SupplierHomePage(): React.JSX.Element {
   const [summary, setSummary] = useState<SupplierSummary | null>(null);
   const [rfqs, setRfqs] = useState<SupplierRfqListItem[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<SupplierPurchaseOrder[]>([]);
-  const [settlementsDue, setSettlementsDue] = useState(0);
+  const [bills, setBills] = useState<SupplierBill[]>([]);
   const [error, setError] = useState<ApiError | null>(null);
   const [pauseNote, setPauseNote] = useState('');
   const [pauseUntil, setPauseUntil] = useState('');
@@ -106,7 +105,7 @@ export default function SupplierHomePage(): React.JSX.Element {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [self, work, invited, orders, bills] = await Promise.all([
+      const [self, work, invited, orders, ownBills] = await Promise.all([
         api<SupplierSelfView>('/suppliers/me'),
         // Dates only matter once somebody is in the network; before that the checklist
         // is the whole story, so a refused summary is not an error worth showing.
@@ -122,7 +121,7 @@ export default function SupplierHomePage(): React.JSX.Element {
       setSummary(work);
       setRfqs(invited);
       setPurchaseOrders(orders.filter((po) => po.status !== 'cancelled'));
-      setSettlementsDue(bills.filter((b) => b.settlement !== null && b.settlement.status !== 'paid').length);
+      setBills(ownBills);
       setPauseNote(self.profile.acceptingWorkNote);
       setPauseUntil(self.profile.acceptingWorkUntil ?? '');
     } catch (err) {
@@ -158,103 +157,26 @@ export default function SupplierHomePage(): React.JSX.Element {
   const openRfqs = rfqs.filter((r) => r.status === 'open').length;
   const bidsSent = rfqs.filter((r) => r.bidVersionCount > 0).length;
   const waiting = summary ? summary.queues.filter((queue) => queue.count > 0) : [];
+  const paidBills = bills.filter((bill) => bill.settlement?.status === 'paid');
+  const monthOf = (iso: string): string => iso.slice(0, 7);
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() - (5 - index));
+    return date.toISOString().slice(0, 7);
+  });
+  const revenueIn = (month: string): number =>
+    paidBills.filter((bill) => monthOf(bill.settlement?.paidAt ?? bill.billDate) === month).reduce((sum, bill) => sum + bill.taxableMinor, 0);
+  const revenue = paidBills.reduce((sum, bill) => sum + bill.taxableMinor, 0);
+  const monthRevenue = revenueIn(thisMonth);
+  const lastMonthRevenue = revenueIn(months[4]!);
+  const change = lastMonthRevenue > 0 ? ((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : null;
 
-  return (
-    <Page title="Supplier home" titleHidden>
-      <Stack gap={4}>
-        <section className="jw-welcome" aria-label="Welcome">
-          <div>
-            <p className="jw-welcome-eyebrow">Supplier home</p>
-            <p className="jw-welcome-title">Welcome, {view.profile.displayName || 'supplier'}</p>
-            <p className="jw-welcome-sub">Manage RFQs, bids and purchase orders from JobWork</p>
-            <div style={{ marginTop: 'var(--space-3)' }}>
-              <StatusChip tone={STATUS_TONE[status] ?? 'neutral'}>{STATUS_LABEL[status] ?? status}</StatusChip>
-            </div>
-          </div>
-          <ProcessArt name="vmc" size={92} />
-        </section>
-
-        <section aria-labelledby="supplier-overview">
-          <h2 id="supplier-overview" className="jw-visually-hidden">
-            Overview
-          </h2>
-          <div className="jw-tiles">
-            {[
-              { href: '/rfqs', tint: 'blue', icon: 'mail' as const, value: openRfqs, label: 'Open RFQs' },
-              { href: '/rfqs', tint: 'violet', icon: 'document' as const, value: bidsSent, label: 'Bids Sent' },
-              { href: '/supplier/orders', tint: 'green', icon: 'orders' as const, value: purchaseOrders.length, label: 'Purchase Orders' },
-              { href: '/supplier/bills', tint: 'orange', icon: 'payment' as const, value: settlementsDue, label: 'Settlements Due' },
-            ].map((tile) => (
-              <Link key={tile.label} href={tile.href} className={`jw-tile jw-tile-${tile.tint}`}>
-                <span className="jw-tile-glyph" aria-hidden="true">
-                  <Icon name={tile.icon} size={1.4} />
-                </span>
-                <span className="jw-tile-value numeric">{tile.value}</span>
-                <span className="jw-tile-label">{tile.label}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="jw-panel" aria-labelledby="supplier-rfqs">
-          <div className="jw-panel-head">
-            <h2 id="supplier-rfqs" className="jw-panel-title">
-              <Icon name="mail" size={1.3} />
-              RFQ Requests
-            </h2>
-            <Link href="/rfqs" className="jw-panel-link">
-              View All <Icon name="chevron" size={1} />
-            </Link>
-          </div>
-          {rfqs.filter((r) => r.status === 'open').length === 0 ? (
-            <p className="jw-panel-body jw-record-caption">No open requests from JobWork right now.</p>
-          ) : (
-            rfqs
-              .filter((r) => r.status === 'open')
-              .slice(0, 3)
-              .map((r, index) => (
-                <div key={r.rfqId} className="jw-panel-row">
-                  <span className={`jw-record-tile ${['jw-record-tile-blue', 'jw-record-tile-violet', 'jw-record-tile-orange'][index % 3]}`} aria-hidden="true">
-                    <Icon name={(['factory', 'layers', 'hexagon'] as const)[index % 3] ?? 'factory'} size={1.6} />
-                  </span>
-                  <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
-                    <span className="jw-offer-title mono">{r.reference ?? 'RFQ'}</span>
-                    <span className="jw-record-caption">
-                      {r.itemCount} {r.itemCount === 1 ? 'part' : 'parts'}
-                      {r.deadlineAt ? ` • due ${new Date(r.deadlineAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' })}` : ''}
-                    </span>
-                  </span>
-                  <Link href={`/rfqs/${r.rfqId}`} className={index === 0 ? 'jw-cta jw-cta-xs' : 'jw-cta-outline jw-cta-xs'}>
-                    {r.bidVersionCount > 0 ? 'Revise' : 'Bid Now'}
-                    <span className="jw-visually-hidden">, {r.reference ?? 'RFQ'}</span>
-                  </Link>
-                </div>
-              ))
-          )}
-        </section>
-
-        <section className="jw-panel" aria-labelledby="supplier-orders">
-          <div className="jw-panel-head">
-            <h2 id="supplier-orders" className="jw-panel-title">
-              <Icon name="orders" size={1.3} />
-              Orders Overview
-            </h2>
-            <Link href="/supplier/orders" className="jw-panel-link">
-              View All <Icon name="chevron" size={1} />
-            </Link>
-          </div>
-          <div className="jw-panel-body">
-            <Donut
-              totalLabel="Orders"
-              slices={[
-                { label: 'To acknowledge', value: purchaseOrders.filter((po) => po.status === 'issued').length },
-                { label: 'Awaiting baseline', value: purchaseOrders.filter((po) => po.status === 'acknowledged' && po.baselineStatus === 'pending_baseline').length },
-                { label: 'In production', value: purchaseOrders.filter((po) => po.status === 'acknowledged' && po.baselineStatus === 'baseline_released').length },
-              ]}
-            />
-          </div>
-        </section>
-
+  // Everything past the dashboard: a vendor still joining needs it in view, an active one
+  // keeps it one tap away (reference screen 15 shows only the dashboard).
+  const account = (
+    <>
         {waiting.length > 0 ? (
           <div
             style={{
@@ -456,6 +378,139 @@ export default function SupplierHomePage(): React.JSX.Element {
           </Card>
         ) : null}
         {status !== 'exited' ? <LeaveTheNetwork name={view.profile.displayName} /> : null}
+    </>
+  );
+
+  return (
+    <Page title="Supplier home" titleHidden>
+      <Stack gap={4}>
+        <section className="jw-welcome" aria-label="Welcome">
+          <div>
+            <p className="jw-welcome-eyebrow">Vendor Dashboard</p>
+            <p className="jw-welcome-title">Welcome, {view.profile.displayName || 'vendor'} 👋</p>
+            <p className="jw-welcome-sub">Manage enquiries, quotes and orders from buyers</p>
+            {status === 'active' ? null : (
+              <div style={{ marginTop: 'var(--space-3)' }}>
+                <StatusChip tone={STATUS_TONE[status] ?? 'neutral'}>{STATUS_LABEL[status] ?? status}</StatusChip>
+              </div>
+            )}
+          </div>
+          <ProcessArt name="vmc" size={92} />
+        </section>
+
+        <section aria-labelledby="supplier-overview">
+          <h2 id="supplier-overview" className="jw-visually-hidden">
+            Overview
+          </h2>
+          <div className="jw-tiles">
+            {[
+              { href: '/rfqs', tint: 'blue', icon: 'mail' as const, value: openRfqs, label: 'New Enquiries' },
+              { href: '/rfqs/quotes', tint: 'violet', icon: 'document' as const, value: bidsSent, label: 'Quotes Sent' },
+              { href: '/supplier/orders', tint: 'green', icon: 'orders' as const, value: purchaseOrders.length, label: 'Active Orders' },
+              { href: '/supplier/bills', tint: 'orange', icon: 'payment' as const, value: displayMoney(revenue, 'INR'), label: 'Total Revenue' },
+            ].map((tile) => (
+              <Link key={tile.label} href={tile.href} className={`jw-tile jw-tile-${tile.tint}`}>
+                <span className="jw-tile-glyph" aria-hidden="true">
+                  <Icon name={tile.icon} size={1.4} />
+                </span>
+                <span className="jw-tile-value numeric">{tile.value}</span>
+                <span className="jw-tile-label">{tile.label}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="jw-panel" aria-labelledby="supplier-rfqs">
+          <div className="jw-panel-head">
+            <h2 id="supplier-rfqs" className="jw-panel-title">
+              <Icon name="mail" size={1.3} />
+              Enquiry Requests
+            </h2>
+            <Link href="/rfqs" className="jw-panel-link">
+              View All <Icon name="chevron" size={1} />
+            </Link>
+          </div>
+          {rfqs.filter((r) => r.status === 'open').length === 0 ? (
+            <p className="jw-panel-body jw-record-caption">No open enquiries right now.</p>
+          ) : (
+            rfqs
+              .filter((r) => r.status === 'open')
+              .slice(0, 3)
+              .map((r, index) => (
+                <div key={r.rfqId} className="jw-panel-row">
+                  <span className={`jw-record-tile ${['jw-record-tile-blue', 'jw-record-tile-violet', 'jw-record-tile-orange'][index % 3]}`} aria-hidden="true">
+                    <Icon name={(['factory', 'layers', 'hexagon'] as const)[index % 3] ?? 'factory'} size={1.6} />
+                  </span>
+                  <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+                    <span className="jw-offer-title mono">{r.reference ?? 'RFQ'}</span>
+                    <span className="jw-record-caption">
+                      {r.itemCount} {r.itemCount === 1 ? 'part' : 'parts'}
+                      {r.deadlineAt ? ` • due ${new Date(r.deadlineAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' })}` : ''}
+                    </span>
+                  </span>
+                  <Link href={`/rfqs/${r.rfqId}`} className={index === 0 ? 'jw-cta jw-cta-xs' : 'jw-cta-outline jw-cta-xs'}>
+                    {r.bidVersionCount > 0 ? 'Revise' : 'Quote Now'}
+                    <span className="jw-visually-hidden">, {r.reference ?? 'RFQ'}</span>
+                  </Link>
+                </div>
+              ))
+          )}
+        </section>
+
+        <section className="jw-panel" aria-labelledby="supplier-orders">
+          <div className="jw-panel-head">
+            <h2 id="supplier-orders" className="jw-panel-title">
+              <Icon name="orders" size={1.3} />
+              Orders Overview
+            </h2>
+            <Link href="/supplier/orders" className="jw-panel-link">
+              View All <Icon name="chevron" size={1} />
+            </Link>
+          </div>
+          <div className="jw-panel-body">
+            <Donut
+              totalLabel="Orders"
+              slices={[
+                { label: 'In Production', value: purchaseOrders.filter((po) => po.status === 'acknowledged' && po.baselineStatus === 'baseline_released').length },
+                { label: 'Awaiting Start', value: purchaseOrders.filter((po) => po.status === 'acknowledged' && po.baselineStatus === 'pending_baseline').length },
+                { label: 'To Acknowledge', value: purchaseOrders.filter((po) => po.status === 'issued').length },
+              ]}
+            />
+          </div>
+        </section>
+
+        <section className="jw-panel" aria-labelledby="supplier-revenue">
+          <div className="jw-panel-head">
+            <h2 id="supplier-revenue" className="jw-panel-title">
+              <Icon name="payment" size={1.3} />
+              Revenue <span className="jw-record-caption">(This Month)</span>
+            </h2>
+          </div>
+          <div className="jw-revenue">
+            <div>
+              <p className="jw-revenue-amount numeric">{displayMoney(monthRevenue, 'INR')}</p>
+              {change !== null ? (
+                <StatusChip tone={change >= 0 ? 'positive' : 'attention'} silent>
+                  {change >= 0 ? '+' : ''}
+                  {change.toFixed(1)}%
+                </StatusChip>
+              ) : null}
+            </div>
+            <Sparkline
+              label={`Paid revenue over six months: ${months.map((month) => `${month} ${displayMoney(revenueIn(month), 'INR')}`).join(', ')}`}
+              points={months.map((month) => ({ label: `${month}: ${displayMoney(revenueIn(month), 'INR')}`, value: revenueIn(month) }))}
+            />
+          </div>
+        </section>
+
+        {status === 'active' ? (
+          <details className="jw-more">
+            <summary>Account &amp; Availability</summary>
+            <Stack gap={4}>{account}</Stack>
+          </details>
+        ) : (
+          account
+        )}
       </Stack>
     </Page>
   );

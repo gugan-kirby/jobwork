@@ -3395,3 +3395,92 @@ html:has(.jw-flat) {
   font: 400 15px/20px var(--font-sans);
   color: var(--color-ink-muted);
 }
+
+/* VF-18 supplier card details, underline tabs, closed row. */
+.jw-supplier-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-rating svg {
+  color: var(--illus-accent);
+  fill: var(--illus-accent);
+}
+
+.jw-underline-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1.5px solid var(--neutral-200);
+  text-align: center;
+  font: 600 17px/24px var(--font-sans);
+}
+
+.jw-underline-tabs span[aria-current] {
+  color: var(--brand-strong);
+  border-bottom: 3px solid var(--brand-strong);
+  margin-bottom: -1.5px;
+  padding-bottom: var(--space-2);
+}
+
+.jw-underline-tabs a {
+  color: var(--color-ink-muted);
+  text-decoration: none;
+}
+
+.jw-cta-off {
+  background: var(--neutral-100);
+  border-color: var(--neutral-100);
+  color: var(--color-ink-muted);
+}
+
+.jw-cta-off:hover {
+  background: var(--neutral-100);
+  border-color: var(--neutral-100);
+}
+
+.jw-more summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font: 600 16px/22px var(--font-sans);
+  color: var(--brand-strong);
+}
+
+.jw-spark-area { fill: var(--blue-100); opacity: 0.6; }
+.jw-spark-line { fill: none; stroke: var(--chart-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.jw-spark-dot { fill: var(--color-surface); stroke: var(--chart-1); stroke-width: 2; }
+
+.jw-revenue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0 var(--space-4);
+}
+
+.jw-revenue-amount {
+  font: 700 26px/32px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-tiles {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.jw-tile {
+  padding: var(--space-2);
+}
+
+.jw-tile-value {
+  font: 700 19px/24px var(--font-sans);
+  overflow-wrap: anywhere;
+}
+
+.jw-tile-label {
+  font: 400 13px/17px var(--font-sans);
+}

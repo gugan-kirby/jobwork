@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 import { ok, type Body } from '../support/api';
 import { as, inProduction, inspected, calibratedGauge, orderedDeal, released } from './support/flows';
-import { axe, expand, button, choose, command, daysFromNow, expect, field, FIXTURES, OPERATIONS, open, PORTAL, recall, remember, signInAs, test, visible } from './support/walk';
+import { axe, expand, button, choose, command, daysFromNow, expect, field, FIXTURES, OPERATIONS, open, PORTAL, recall, remember, signInAs, test, visible, showOrderDetails } from './support/walk';
 
 /** FW.6 Quality: instruments, plan an inspection, the supplier's results grid, review, NCR, rework, corrective action, deviation, release. */
 test.describe.configure({ mode: 'serial' });
@@ -225,6 +225,7 @@ test('ops · quality2 approves the deviation for the customer', async ({ page })
 test('customer · the approver accepts the parts as they are', async ({ page }) => {
   await signInAs(page, 'approver');
   await open(page, `${PORTAL}/orders/${recall('qaOrderId')}`);
+  await showOrderDetails(page);
   await page.getByRole('checkbox', { name: /I accept \d+ parts/ }).check();
   await command(page, 'Accept as is');
   await expect(page.locator('body')).not.toContainText(/Anand|LOT-D/);

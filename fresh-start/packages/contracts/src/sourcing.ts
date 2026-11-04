@@ -332,6 +332,12 @@ export const customerEnquirySchema = z.object({
   /** The first part's process and material, for the card's "category • material" line (VF-18). */
   processCapabilityId: z.uuid().nullable(),
   materialCapabilityId: z.uuid().nullable(),
+  /** The customer's own words back, for the quote and order screens (VF-18). */
+  quantity: z.number().nullable(),
+  unit: z.string().nullable(),
+  deliverySiteId: z.uuid().nullable(),
+  specifications: z.string(),
+  documentVersionIds: z.array(z.uuid()),
   /**
    * The concurrency token, not an internal fact: a customer command that changes this
    * enquiry — withdrawing it — has to say which version it was looking at. Without it the
