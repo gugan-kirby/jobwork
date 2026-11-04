@@ -82,6 +82,7 @@ export {
   formatBytes,
   type FileUploadApi,
   type FileUploadProps,
+  type UploadFormats,
   type UploadPhase,
   type UploadProblem,
   type VersionState,

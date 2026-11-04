@@ -107,6 +107,8 @@ export const documentSummarySchema = z.object({
   currentVersionId: z.uuid().nullable(),
   currentVersionStatus: documentVersionStatusSchema.nullable(),
   currentVersionScanState: scanStateSchema.nullable(),
+  /** The file name as the owner uploaded it, for the owner's own screens (VF-17). */
+  currentVersionFilename: z.string().nullable(),
   aggregateVersion: z.number().int().positive(),
   createdAt: z.string(),
 });

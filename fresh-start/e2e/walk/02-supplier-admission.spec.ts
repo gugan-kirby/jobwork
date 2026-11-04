@@ -97,7 +97,7 @@ test('supplier · sends its compliance evidence and a certification', async ({ p
   await certs.getByLabel('Certificate number', { exact: false }).fill('ISO-9001-WALK-1');
   await certs.getByLabel('Issued by', { exact: false }).fill('TUV India');
   await certs.getByLabel('Expires on', { exact: false }).fill(daysFromNow(400));
-  await certs.getByLabel('Certificate', { exact: true }).setInputFiles(join(FIXTURES, 'drawing.pdf'));
+  await certs.getByLabel(/^Upload File — Certificate/).setInputFiles(join(FIXTURES, 'drawing.pdf'));
   await expect(certs.getByText('Ready')).toBeVisible({ timeout: 60_000 });
   await command(page, 'Send certification', certs);
   await axe(page, 'supplier compliance');

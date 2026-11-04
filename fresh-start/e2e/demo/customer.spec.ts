@@ -89,16 +89,14 @@ test('scene · 2 · Ask for a part', async ({ page, director }) => {
   await pause(page, 1500);
   await tap(page, button(page, 'Next'), 'Step 2 of 3 — attach the drawing and the requirements');
 
-  await page.getByLabel('2D drawing', { exact: false }).setInputFiles(join(FIXTURES, 'drawing.pdf'));
+  await page.getByLabel('Upload File', { exact: false }).setInputFiles(join(FIXTURES, 'drawing.pdf'));
   director.say('The drawing is virus-scanned and attached');
   await expect(page.getByText('Scanned clean and attached to this enquiry.').first()).toBeVisible({ timeout: 60_000 });
   await pause(page, 1500);
-  director.say('Step 2 of 3 — finish, tolerance, inspection and the date needed');
+  director.say('Step 2 of 3 — specifications, surface finish and tolerance');
   await type(page, field(page, 'Specifications / comments'), 'Break all sharp edges. Bore concentric to 0.02.', 40);
-  await type(page, field(page, 'Surface finish'), 'Ra 1.6');
-  await type(page, field(page, 'Tolerance class'), 'IT8');
-  await pick(page, page.getByLabel('Inspection needed', { exact: false }), /Dimensional report/);
-  await field(page, 'Required by').fill(new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10));
+  await pick(page, page.getByLabel('Surface Finish', { exact: false }), /Anodized/);
+  await pick(page, page.getByLabel('Tolerance', { exact: false }), /0\.1 mm/);
   await pause(page, 800);
   await tap(page, button(page, 'Next'), 'Step 3 of 3 — check everything before sending');
 

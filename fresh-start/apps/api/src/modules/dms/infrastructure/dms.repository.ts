@@ -55,6 +55,7 @@ export interface DocumentListRow extends DocumentRow {
   currentVersionId: string | null;
   currentVersionStatus: DocumentVersionRow['status'] | null;
   currentVersionScanState: FileObjectRow['scanState'] | null;
+  currentVersionFilename: string | null;
 }
 
 export interface DocumentVersionRow {
@@ -637,10 +638,11 @@ export class DmsRepository {
   async listDocuments(organizationId: string, limit: number): Promise<DocumentListRow[]> {
     const res = await this.db.pool.query(
       `SELECT d.*, cv.id AS current_version_id, cv.status AS current_version_status,
-              cv.scan_state AS current_version_scan_state
+              cv.scan_state AS current_version_scan_state,
+              cv.original_filename AS current_version_filename
          FROM dms.document d
          LEFT JOIN LATERAL (
-           SELECT v.id, v.status, f.scan_state
+           SELECT v.id, v.status, v.original_filename, f.scan_state
              FROM dms.document_version v
              JOIN dms.file_object f ON f.id = v.file_object_id
             WHERE v.document_id = d.id
@@ -659,6 +661,7 @@ export class DmsRepository {
         (row['current_version_status'] as DocumentVersionRow['status'] | null) ?? null,
       currentVersionScanState:
         (row['current_version_scan_state'] as FileObjectRow['scanState'] | null) ?? null,
+      currentVersionFilename: (row['current_version_filename'] as string | null) ?? null,
     }));
   }
 

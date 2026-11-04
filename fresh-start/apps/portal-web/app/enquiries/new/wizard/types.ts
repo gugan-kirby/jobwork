@@ -151,9 +151,14 @@ export function attachability(doc: DocumentSummary): { versionId: string | null;
   }
 }
 
-/** The extension, upper-cased, from a document title ("Bracket Drawing.pdf" → "PDF"). */
-export function extensionOf(title: string | undefined): string {
-  const match = title?.match(/\.([a-z0-9]{2,5})$/i);
+/** A document's name as the customer knows it: the file they uploaded. */
+export function fileName(doc: DocumentSummary | undefined): string {
+  return doc?.currentVersionFilename ?? doc?.title ?? 'Attached file';
+}
+
+/** The extension, upper-cased, from a file name ("Bracket Drawing.pdf" → "PDF"). */
+export function extensionOf(name: string): string {
+  const match = name.match(/\.([a-z0-9]{2,5})$/i);
   return match ? match[1]!.toUpperCase() : 'FILE';
 }
 

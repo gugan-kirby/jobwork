@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { FileUpload, type FileUploadApi } from '../src/upload/FileUpload';
 
 /** VF-06: the reference drop zone keeps one real, named file input behind it. */
+describe('FileUpload formats (VF-17)', () => {
+  it('states the formats and limit, and refuses a file outside them before it moves', async () => {
+    const formats = { purposeByExtension: { pdf: 'drawing_2d', step: 'cad_3d' }, caption: 'PDF, STEP', maxBytes: 10 * 1024 * 1024 } as const;
+    render(<FileUpload purpose="drawing_2d" formats={formats} api={{} as FileUploadApi} resumeKey="test.formats" />);
+    expect(screen.getByText(/\(Max /).textContent).toBe('PDF, STEP (Max 10MB)');
+    const input = screen.getByLabelText(/Upload File/) as HTMLInputElement;
+    expect(input.accept).toBe('.pdf,.step');
+    fireEvent.change(input, { target: { files: [new File(['x'], 'notes.txt')] } });
+    expect(await screen.findByText(/Upload a PDF, STEP file/)).toBeTruthy();
+  });
+});
+
 describe('FileUpload drop zone', () => {
   const api = {} as FileUploadApi;
 

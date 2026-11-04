@@ -30,13 +30,14 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
   await axe(page, 'wizard step 1');
   await button(page, 'Next').click();
 
-  await page.getByLabel('2D drawing', { exact: false }).setInputFiles(join(FIXTURES, 'drawing.pdf'));
+  // Next waits for the drawing (VF-17).
+  await button(page, 'Next').click();
+  await expect(visible(page, /Upload a drawing/)).toBeVisible();
+  await page.getByLabel('Upload File', { exact: false }).setInputFiles(join(FIXTURES, 'drawing.pdf'));
   await expect(visible(page, 'Scanned clean and attached to this enquiry.')).toBeVisible({ timeout: 60_000 });
   await field(page, 'Specifications / comments').fill('Break all sharp edges. Bore concentric to 0.02.');
-  await field(page, 'Surface finish').fill('Ra 1.6');
-  await field(page, 'Tolerance class').fill('IT8');
-  await choose(page.getByLabel('Inspection needed', { exact: false }), /Dimensional report/);
-  await field(page, 'Required by').fill(daysFromNow(60));
+  await choose(page.getByLabel('Surface Finish', { exact: false }), /Anodized/);
+  await choose(page.getByLabel('Tolerance', { exact: false }), /0\.1 mm/);
   await axe(page, 'wizard step 2');
   await button(page, 'Next').click();
 

@@ -1,4 +1,5 @@
 import { expect, type Locator, test } from '@playwright/test';
+import { join } from 'node:path';
 import { expectAccessible } from '../support/a11y';
 import { PORTAL } from '../support/api';
 import { signIn } from '../support/session';
@@ -27,10 +28,9 @@ test('raises an enquiry through the wizard, every stage accessible', async ({ pa
   await page.getByRole('button', { name: 'Next' }).click();
 
   // Requirements
-  await page.getByLabel(/Flange drawing/).check();
-  await page.getByLabel('Tolerance class').fill('IT8');
-  const due = new Date(Date.now() + 45 * 86_400_000).toISOString().slice(0, 10);
-  await page.getByLabel(/^Required by/).fill(due);
+  await page.getByLabel(/Upload File/).setInputFiles(join(__dirname, '..', 'walk', 'fixtures', 'drawing.pdf'));
+  await expect(page.getByText('Scanned clean and attached to this enquiry.')).toBeVisible({ timeout: 60_000 });
+  await choose(page.getByLabel('Tolerance'), /0\.1 mm/);
   await expectAccessible(page, 'enquiry wizard: requirements');
   await page.getByRole('button', { name: 'Next' }).click();
 
