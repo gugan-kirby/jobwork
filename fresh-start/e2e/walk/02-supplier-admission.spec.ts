@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
-import { axe, button, command, daysFromNow, expect, field, FIXTURES, OPERATIONS, open, PORTAL, recall, remember, section, signInAs, test, visible } from './support/walk';
+import { axe, button, command, daysFromNow, expect, field, FIXTURES, OPERATIONS, open, PORTAL, recall, remember, section, signInAs, test, visible, expand } from './support/walk';
 
 /** FW.2 Supplier admission: application → admission → onboarding → evidence review → decision → availability. */
 test.describe.configure({ mode: 'serial' });
@@ -167,6 +167,7 @@ test('ops · a second reviewer admits the supplier, suspends and reinstates it',
 test('supplier · pauses new work and starts again; home tiles count its work', async ({ page }) => {
   await signInSupplier(page);
   await open(page, `${PORTAL}/supplier`);
+  await expand(page, 'Account & Availability');
   await field(page, 'Why, and for how long?').fill('Annual maintenance shutdown');
   await field(page, 'Back on').fill(daysFromNow(10));
   await command(page, 'Pause new work');
@@ -179,7 +180,7 @@ test('supplier · an active supplier sees its bids and orders counted on home', 
   // W1: the home tiles count the supplier's own bids and purchase orders (they read 0 before).
   await signInAs(page, 'supplierA');
   await open(page, `${PORTAL}/supplier`);
-  for (const tile of ['Bids sent', 'Purchase orders']) {
+  for (const tile of ['Quotes Sent', 'Active Orders']) {
     await expect(page.getByRole('link', { name: new RegExp(tile, 'i') }).first()).toContainText(/^[1-9]\d*/);
   }
   await axe(page, 'supplier home with work');

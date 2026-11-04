@@ -52,6 +52,7 @@ function customerStatusOf(enquiry: Enquiry): CustomerEnquiryStatus {
 export function projectForCustomer(enquiry: Enquiry): CustomerEnquiry {
   const status = customerStatusOf(enquiry);
   const openQuestionCount = enquiry.clarifications.filter((c) => c.status === 'open').length;
+  const first = enquiry.items[0];
 
   let actionNeeded: CustomerEnquiry['actionNeeded'] = null;
   if (status === 'information_needed') {
@@ -83,8 +84,15 @@ export function projectForCustomer(enquiry: Enquiry): CustomerEnquiry {
     statusLabel: STATUS_LABELS[status],
     actionNeeded,
     itemCount: enquiry.items.length,
-    processCapabilityId: enquiry.items[0]?.processCapabilityId ?? null,
-    materialCapabilityId: enquiry.items[0]?.materialCapabilityId ?? null,
+    processCapabilityId: first?.processCapabilityId ?? null,
+    materialCapabilityId: first?.materialCapabilityId ?? null,
+    quantity: first?.quantityBreakpoints[0]?.quantity ?? null,
+    unit: first?.quantityBreakpoints[0]?.unit ?? null,
+    deliverySiteId: enquiry.deliverySiteId,
+    specifications: [first?.description, first?.surfaceFinish, first?.toleranceClass ? `Tolerance ${first.toleranceClass}` : '']
+      .filter(Boolean)
+      .join(', '),
+    documentVersionIds: enquiry.documents.map((doc) => doc.documentVersionId),
     aggregateVersion: enquiry.aggregateVersion,
     requiredByDate: enquiry.requiredByDate,
     submittedAt: enquiry.submittedAt,

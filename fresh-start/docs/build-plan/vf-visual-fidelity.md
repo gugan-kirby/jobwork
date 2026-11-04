@@ -299,3 +299,9 @@ This supersedes the corrections and "Kept" notes in VF-01–VF-16 wherever they 
 | 11 | All · In Progress · Completed · Cancelled; short status pills; no amount |
 | 13 | No outstanding total; the card shows the order number only |
 | 16 | Company Details, Account Settings, Payment Methods (opens Payments: no card is stored), Notifications, Privacy & Security, Help & Support, Log Out, App Version 1.0.0. Addresses, Documents, Team, About and Terms move to the header menu |
+| 09 | Enquiry summary, Quotes / Enquiry Details tabs, one card per quote with the supplier's name, city, Verified and rating, Quote Amount, Lead Time, Min. Qty, View Details, Accept Quote. A quote from a split award has no single supplier and reads JobWork |
+| 10 | Supplier card, Quote Summary, Enquiry Details, Specifications, Attachments. Call and chat reach JobWork until ADR-0007 P5. One closed row, Price & Terms, holds the breakdown, terms, revision and reject, because a customer must read what they accept |
+| 12 | Summary card, four milestones, Current Status, a four-stage timeline, Contact Vendor, Order Details. Order Details opens deliveries, payments, changes, documents and messages in place |
+| 15 | Vendor Dashboard wording, New Enquiries, Quotes Sent, Active Orders, Total Revenue (taxable value of its own paid bills), Enquiry Requests with Quote Now, Orders Overview, Revenue with a six-month line. An active vendor's account sections sit behind one closed row; a joining vendor sees them in full. `/rfqs/quotes` is the Quotes tab |
+
+Not yet built, ADR-0007: several suppliers quoted on one enquiry (P2), giving a rating (P4), shared threads (P5). Until P2 a quote shows one supplier. Browser tests are updated but not yet run on this work.

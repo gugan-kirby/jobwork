@@ -264,6 +264,7 @@ test('offstage · JobWork dispatches and the parts are delivered', async () => {
 test('scene · 8 · Receive the parts', async ({ page, director }) => {
   await signIn(page, director, APPROVER, 'The manager', 'The parts have been delivered');
   await page.goto(`${PORTAL}/orders/${orderId}`);
+  await page.getByRole('button', { name: 'Order Details', exact: true }).click();
   await read(page, 300, 900);
   await tap(page, link(page, /SD-|DL-|SH-/), 'Check the delivery and accept it');
   await expect(page).toHaveURL(/\/deliveries\/[0-9a-f-]{36}$/);

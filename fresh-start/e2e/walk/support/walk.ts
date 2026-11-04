@@ -203,6 +203,11 @@ export async function command(page: Page, name: string | RegExp, scope: Page | L
 export const section = (page: Page, heading: string | RegExp): Locator =>
   page.locator('section, article, [class*="card"]:not(.jw-card-head):not(.jw-card-body), fieldset, details').filter({ has: page.getByRole('heading', { name: heading }) }).last();
 
+/** Order Tracking keeps deliveries, payments, changes and messages behind Order Details (VF-18). */
+export async function showOrderDetails(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Order Details', exact: true }).click();
+}
+
 export const FIXTURES = join(__dirname, '..', 'fixtures');
 export const daysFromNow = (days: number): string => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 export { OPERATIONS, PORTAL };

@@ -46,6 +46,7 @@ export { TabBar, type TabBarProps, type TabItem, type TabPrimaryAction } from '.
 export { Hero, type HeroProps } from './layout/Hero';
 export { TopBar } from './layout/TopBar';
 export { Donut, type DonutSlice } from './data/Donut';
+export { Sparkline } from './data/Sparkline';
 export { IconTextInput, type IconTextInputProps } from './forms/IconTextInput';
 export { activeHref, isActivePath } from './layout/paths';
 export { Inline, SplitPane, Stack, type InlineProps, type StackProps } from './layout/Stack';

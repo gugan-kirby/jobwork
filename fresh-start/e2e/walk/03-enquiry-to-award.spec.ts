@@ -64,7 +64,6 @@ test('customer · resumes and discards a draft, withdraws and repeats an enquiry
   await field(page, 'Part / job name').fill(bushing);
   await expect(page.getByRole('status').filter({ hasText: /Draft saved/ })).toBeAttached();
   await open(page, `${PORTAL}/enquiries`);
-  await page.getByRole('radio', { name: /Drafts/ }).click();
   await page.getByRole('link', { name: new RegExp(bushing) }).first().click();
   await expect(field(page, 'Part / job name')).toHaveValue(bushing);
   const draftId = new URL(page.url()).searchParams.get('draft');
@@ -77,8 +76,7 @@ test('customer · resumes and discards a draft, withdraws and repeats an enquiry
   await command(page, 'Withdraw enquiry');
   // Withdrawing returns to the list, where withdrawn enquiries are hidden until asked for.
   await expect(page).toHaveURL(/\/enquiries$/);
-  await expect(page.getByText(spacer)).toHaveCount(0);
-  await button(page, 'Show withdrawn').click();
+  await page.getByRole('radio', { name: /Closed/ }).click();
   await expect(page.getByText(spacer).first()).toBeVisible();
   await field(page, 'Search').fill(run);
   await page.getByRole('link', { name: new RegExp(spacer) }).first().click();

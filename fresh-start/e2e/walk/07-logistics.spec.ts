@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { ok, type Body } from '../support/api';
 import { as, atJobWork, customerSite, dispatched, inProduction, orderedDeal, pay, proofOfDelivery, released, salesOrder, supplierSite } from './support/flows';
-import { axe, button, choose, freshMinute, localStamp, command, daysFromNow, expand, expect, field, FIXTURES, OPERATIONS, open, PORTAL, recall, remember, signInAs, test, visible } from './support/walk';
+import { axe, button, choose, freshMinute, localStamp, command, daysFromNow, expand, expect, field, FIXTURES, OPERATIONS, open, PORTAL, recall, remember, signInAs, test, visible, showOrderDetails } from './support/walk';
 
 /** FW.7 Logistics, both legs: supplier shipment → release → pickup → receiving; customer material; dispatch → POD → acceptance; a delivery problem. */
 test.describe.configure({ mode: 'serial' });
@@ -177,6 +177,7 @@ test('ops · logistics records the proof of delivery', async ({ page }) => {
 test('customer · accepts the delivery and reads its documents', async ({ page }) => {
   await signInAs(page, 'approver');
   await open(page, `${PORTAL}/orders/${recall('lgOrderId')}`);
+  await showOrderDetails(page);
   await page.getByRole('link', { name: /SD-|DL-|SH-/ }).first().click();
   await expect(page).toHaveURL(/\/deliveries\/[0-9a-f-]{36}$/);
   await expect(page.locator('body')).not.toContainText(/Anand|LOT-L1/);

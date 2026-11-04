@@ -1,6 +1,6 @@
 import { as, inProduction, orderedDeal, upload } from './support/flows';
 import { ok } from '../support/api';
-import { axe, button, choose, command, daysFromNow, expand, expect, field, OPERATIONS, open, PORTAL, recall, remember, signInAs, test, visible } from './support/walk';
+import { axe, button, choose, command, daysFromNow, expand, expect, field, OPERATIONS, open, PORTAL, recall, remember, signInAs, test, visible, showOrderDetails } from './support/walk';
 
 /** FW.8 Engineering changes: customer request → triage → question → classify → interim stop → impact → approvals → release → supplier → verify → close; a withdrawn change. */
 test.describe.configure({ mode: 'serial' });
@@ -12,6 +12,7 @@ test('customer · requests a change on its order', async ({ page }) => {
   remember('chPurchaseOrderId', deal.purchaseOrderId);
   await signInAs(page, 'buyer');
   await open(page, `${PORTAL}/orders/${deal.orderId}`);
+  await showOrderDetails(page);
   const box = await expand(page, 'Request a change');
   await box.getByLabel('What should change', { exact: false }).fill('Laser-mark the part number');
   await box.getByLabel('Why, and which drawing or part', { exact: false }).fill('Our assembly line needs traceability on every housing.');
@@ -43,6 +44,7 @@ test('ops · engineering triages, stops the affected work and asks the customer 
 test('customer · answers the change question', async ({ page }) => {
   await signInAs(page, 'buyer');
   await open(page, `${PORTAL}/orders/${recall('chOrderId')}`);
+  await showOrderDetails(page);
   await field(page, 'Your answer').fill('On the flange face, 3 mm characters.');
   await command(page, 'Send answer');
 });
@@ -103,6 +105,7 @@ test('ops · sales approves the change', async ({ page }) => {
 test('customer · the approver approves the change and its effect', async ({ page }) => {
   await signInAs(page, 'approver');
   await open(page, `${PORTAL}/orders/${recall('chOrderId')}`);
+  await showOrderDetails(page);
   await page.getByRole('checkbox', { name: /I understand this/ }).check();
   await command(page, 'Approve change');
   await expect(page.locator('body')).not.toContainText(/Anand/);
