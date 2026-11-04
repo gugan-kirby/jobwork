@@ -314,3 +314,7 @@ This supersedes the corrections and "Kept" notes in VF-01–VF-16 wherever they 
 | P5 | Audience `customer_supplier` on the sales-order thread, read by the customer and the named supplier once its purchase order exists. The supplier sees "Customer"; the customer sees the supplier's name. The gate holds contact details and identity for review; the other parties see nothing |
 
 Before an order exists there is no thread, so Chat on Quote Details still opens Support. Browser tests are updated but not yet run on this work.
+
+## VF-19 Operations home
+
+Owner asked for a better admin home. The page is now a control room: a status band (waiting, oldest, stages clear), the work laid out along the line it moves on (intake, network, sourcing, orders, quality, delivery, finance and control), and a worklist ordered by age. Picking a stage narrows the worklist; queues stay role-filtered by the server. Long status chips now wrap, which stopped the supplier-copy upload overflowing its card.
