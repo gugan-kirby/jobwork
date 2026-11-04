@@ -59,21 +59,17 @@ Organization / team / approvals
 
 ### Enquiry wizard
 
-Use category-driven progressive steps:
+Three stages, exactly as the reference screens 05–07 (VF-17, owner decision 2026-11-03):
 
-1. Job type (job work / new model / correction-ECN, `FR-307`), job/application and confidentiality.
-2. Items, process (category → sub category) and quantity/prototype-production breakpoints.
-3. Material grade/standard, who supplies it, and source restrictions.
-4. CAD/drawing/BOM upload with revision/governing document.
-5. Tolerance/surface/heat treatment/coating/quality requirements.
-6. target/required date, location, packaging and partial-delivery policy.
-7. Review completeness, conflicts, terms and submit.
+1. **Details** — part / job name, category → sub category, material, quantity and unit, delivery location.
+2. **Requirements** — one drawing upload (PDF, DWG, STEP, JPG, up to 10 MB), specifications / comments, surface finish, tolerance.
+3. **Review** — the summary, the file, the specifications, Back and Submit Enquiry.
 
-On a phone the seven concerns are presented as three stages — **Details** (1–3, 6 location), **Requirements** (4–5, 6 dates/packaging), **Review** (7) — matching the prototype's three-step wizard (F-MX.6, 2026-09-30); the data captured is the same. A correction/ECN adds its change reference, description and the enquiry it corrects to stage 1.
-
-Autosave locally/server-side safely, show missing mandatory inputs, scan state, upload recovery, and assisted-intake path.
+Each stage checks its own fields before Next. The file is required at submit; a required-by date is not asked for. Job type, material supplier, assisted intake, grade, target price, quantity breaks, multiple parts, application notes, inspection level, heat treatment, coating, confidentiality, packaging and partial delivery are no longer on the form: enquiries take their defaults (job work, JobWork sources the material, standard inspection, confidential, deliver complete).
 
 ### Customer quotation
+
+ADR-0007: quotes, orders and tracking name the supplier on a public card, the customer chooses between offered suppliers, rates the supplier after completion, and can write to it on the order thread.
 
 - JobWork legal identity and quote revision/status/validity countdown.
 - Standard/Fast/Premium options only if each is a JobWork-created sell offer.

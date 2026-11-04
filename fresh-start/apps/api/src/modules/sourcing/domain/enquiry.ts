@@ -221,13 +221,5 @@ export function validateForSubmission(candidate: SubmissionCandidate): FieldIssu
     });
   }
 
-  if (!candidate.requiredByDate) {
-    issues.push({
-      path: 'requiredByDate',
-      code: 'required',
-      message: 'State when you need this by',
-    });
-  }
-
   return issues;
 }

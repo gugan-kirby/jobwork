@@ -5,6 +5,11 @@ import { TabBar } from '../src/layout/TabBar';
 import { AppShell } from '../src/layout/AppShell';
 import { Page } from '../src/layout/Page';
 import { Hero } from '../src/layout/Hero';
+import { BrandGlyph } from '../src/primitives/BrandGlyph';
+import { WorkshopIllustration } from '../src/primitives/WorkshopIllustration';
+import { IconTextInput } from '../src/forms/IconTextInput';
+import { TopBar } from '../src/layout/TopBar';
+import { processArtFor } from '../src/primitives/IndustryArt';
 import { activeHref, isActivePath } from '../src/layout/paths';
 import { QuickAction, QuickActionGrid } from '../src/status/QuickAction';
 import { FilterChips } from '../src/data/FilterChips';
@@ -214,6 +219,85 @@ describe('Page back header', () => {
     unmount();
     render(<Hero headline="Precision work." />);
     expect(screen.queryByRole('heading')).toBeNull();
+  });
+
+  it('pins the splash actions outside the centred block (VF-01)', () => {
+    const { container } = render(
+      <Hero variant="splash" headline="JobWork" actions={<a href="/start">Get Started</a>} />,
+    );
+    const centre = container.querySelector('.jw-hero-splash-centre');
+    const actions = container.querySelector('.jw-hero-actions');
+    expect(centre?.contains(screen.getByRole('heading', { level: 1 }))).toBe(true);
+    expect(actions && centre?.contains(actions)).toBe(false);
+  });
+});
+
+describe('BrandGlyph', () => {
+  it('is decorative and gives every instance its own mask ids (VF-01)', () => {
+    const { container } = render(
+      <>
+        <BrandGlyph />
+        <BrandGlyph />
+      </>,
+    );
+    const svgs = container.querySelectorAll('svg');
+    expect([...svgs].every((svg) => svg.getAttribute('aria-hidden') === 'true')).toBe(true);
+    const ids = [...container.querySelectorAll('mask')].map((mask) => mask.id);
+    expect(ids).toHaveLength(4);
+    expect(new Set(ids).size).toBe(4);
+  });
+});
+
+describe('WorkshopIllustration', () => {
+  it('is decorative and draws only from tokens (VF-02)', () => {
+    const { container } = render(<WorkshopIllustration />);
+    const svg = container.querySelector('svg');
+    expect(svg?.getAttribute('aria-hidden')).toBe('true');
+    expect(svg?.getAttribute('focusable')).toBe('false');
+    // jsdom drops custom-property values from the CSSOM, so read the declared style text.
+    const paints = [...container.querySelectorAll('[style]')]
+      .map((node) => node.getAttribute('style') ?? '')
+      .filter((style) => /fill|stroke/.test(style));
+    expect(paints.length).toBeGreaterThan(20);
+    expect(paints.filter((style) => /#[0-9a-f]{3,8}|rgb\(/i.test(style))).toEqual([]);
+  });
+});
+
+describe('IconTextInput', () => {
+  it('keeps a real label behind the placeholder and chains the error (VF-03)', () => {
+    render(<IconTextInput icon="mail" label="Email Address" required error="Enter your email address" />);
+    const input = screen.getByLabelText(/Email Address/);
+    expect(input.getAttribute('placeholder')).toBe('Email Address');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    const describedBy = input.getAttribute('aria-describedby') ?? '';
+    expect(document.getElementById(describedBy)?.textContent).toBe('Enter your email address');
+  });
+});
+
+describe('TopBar', () => {
+  it('makes the title the h1 and names the icon-only back link (VF-03)', () => {
+    render(<TopBar title="Register" back="/start" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Register' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/start');
+  });
+});
+
+describe('QuickAction accent (VF-04)', () => {
+  it('draws the glyph without a disc and still speaks the count', () => {
+    render(<QuickAction href="/quotations" icon="quote" label="Quotations" accent="green" count={2} countLabel="to decide" />);
+    const link = screen.getByRole('link', { name: /Quotations\s*2\s*to decide/ });
+    expect(link.querySelector('.jw-quick-glyph-green')).toBeTruthy();
+    expect(link.querySelector('.jw-quick-disc')).toBeNull();
+  });
+});
+
+describe('processArtFor (VF-04)', () => {
+  it('maps the taxonomy codes to a picture, with a fallback', () => {
+    expect(processArtFor('vmc_machining')).toBe('vmc');
+    expect(processArtFor('cnc_turning')).toBe('turning');
+    expect(processArtFor('fabrication_welding')).toBe('welding');
+    expect(processArtFor('sheet_metal_bending')).toBe('sheet');
+    expect(processArtFor('something_new')).toBe('milling');
   });
 });
 

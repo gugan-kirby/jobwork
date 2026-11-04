@@ -712,21 +712,6 @@ export class EnquiryRepository {
     return res.rows[0]?.display_name ?? '';
   }
 
-  /**
-   * A correction may only point at the customer's own enquiry. Same answer for
-   * "not yours" and "does not exist", so the check cannot be used to probe for ids.
-   */
-  async enquiryBelongsTo(
-    enquiryId: string,
-    organizationId: string,
-    tx?: Queryable,
-  ): Promise<boolean> {
-    const res = await this.q(tx).query(
-      `SELECT 1 FROM sourcing.enquiry WHERE id = $1 AND customer_organization_id = $2`,
-      [enquiryId, organizationId],
-    );
-    return (res.rowCount ?? 0) > 0;
-  }
 
   /** The address book check behind `FR-301`. */
   async siteBelongsTo(siteId: string, organizationId: string, tx?: Queryable): Promise<boolean> {

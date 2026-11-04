@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { SourcingModule } from '../sourcing';
 import { CommercialModule } from '../commercial';
 import { IamModule } from '../iam';
 import { AcceptQuoteCommand } from './application/accept-quote.command';
+import { RateSupplierCommand } from './application/rate-supplier.command';
 import { DispatchFinance } from './application/dispatch-finance';
 import { CustomerRemedy } from './application/customer-remedy';
 import { OrderClosure } from './application/order-closure';
@@ -40,7 +42,7 @@ import {
  * registry at start-up).
  */
 @Module({
-  imports: [IamModule, CommercialModule],
+  imports: [IamModule, CommercialModule, SourcingModule],
   controllers: [
     AcceptQuoteController,
     CustomerOrdersController,
@@ -69,6 +71,7 @@ import {
     JobMarginView,
     OrdersView,
     AcceptQuoteCommand,
+    RateSupplierCommand,
     OrderCommand,
     PaymentCommand,
     ProductionRepository,

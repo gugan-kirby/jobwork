@@ -20,7 +20,7 @@ test.describe('customer journeys', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectAccessible(page, 'quotation detail');
     // Nothing of the buy side reaches the customer.
-    await expect(page.locator('body')).not.toContainText(/Anand|Balaji/);
+    await expect(page.locator('body')).not.toContainText(/margin|landed cost/i);
 
     await page.goto(`${PORTAL}/quotations/${openQuoteId}/accept`);
     await expectAccessible(page, 'acceptance');
@@ -38,8 +38,9 @@ test.describe('customer journeys', () => {
     const { orderId } = world();
     await signIn(page, PORTAL, 'approver@kovai.test');
     await page.goto(`${PORTAL}/orders/${orderId}`);
+    await page.getByRole('button', { name: 'Order Details', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectAccessible(page, 'order tracking');
-    await expect(page.locator('body')).not.toContainText(/Anand|Balaji|PO-/);
+    await expect(page.locator('body')).not.toContainText(/PO-/);
   });
 });

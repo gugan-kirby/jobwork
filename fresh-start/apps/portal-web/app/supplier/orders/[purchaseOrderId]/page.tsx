@@ -145,6 +145,8 @@ export default function SupplierPurchaseOrderPage() {
         <InspectionsPanel purchaseOrderId={purchaseOrderId} />
         <ShipmentsPanel purchaseOrderId={purchaseOrderId} acknowledged={po.status === 'acknowledged'} />
         <ThreadPanel contextType="purchase_order" contextId={purchaseOrderId} description="Anything about this purchase order, between you and JobWork." />
+        {/* ADR-0007: the shared thread with the customer of this order; it never names them. */}
+        <ThreadPanel contextType="sales_order" contextId={po.salesOrderId} description="Questions from the customer of this order. They appear to you as Customer." />
       </Stack>
     </Page>
   );

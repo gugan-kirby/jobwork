@@ -117,6 +117,31 @@
   /* The one light-on-brand surface in the system: the hero. Tested as a pair. */
   --brand-hero-bg: linear-gradient(135deg, var(--blue-800) 0%, var(--blue-600) 60%, var(--blue-500) 100%);
   --brand-hero-bg-solid: var(--blue-700);
+  --brand-splash-bg: radial-gradient(120% 70% at 50% 45%, #2a3ac4 0%, #1b2898 42%, #121b6c 78%, #0e1556 100%);
+  --brand-splash-bg-solid: var(--blue-900);
+  /* VF reference palette (image/*.png, sampled 2026-11-03): the saturated call-to-action
+     blue and the near-black navy ink the high-fidelity screens use for headlines. */
+  --brand-strong: #0b22d4;
+  --brand-strong-hover: #081ab0;
+  --color-ink: #0a0d3c;
+  --color-ink-muted: #3e425b;
+  --brand-banner-bg: linear-gradient(110deg, #0b1d9e 0%, #1531d6 55%, #2a4cf0 100%);
+  /* Quick-action glyph accents (reference home); each tile also has a text label. */
+  --accent-orange: #e8580a;
+  --accent-green: #15803d;
+  --accent-sky: #1677c9;
+  /* The select chevron for the portal phone theme (neutral-700 stroke). */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5468' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  /* Categorical chart slots, fixed order (validated 2026-11-03 with the dataviz
+     validator, light surface: CVD ΔE ≥ 23; slot 3 is below 3:1, so every use carries a
+     visible label and count). */
+  --chart-1: #3d53df;
+  --chart-2: #16a34a;
+  --chart-3: #a78bfa;
+  /* Illustration fills (the welcome workshop); decorative only, never carry meaning. */
+  --illus-skin: #f1c6a3;
+  --illus-hair: #1b2042;
+  --illus-accent: #f5b301;
   --brand-hero-fg: #ffffff;
   --brand-hero-fg-muted: var(--blue-100);
   --surface-tint: var(--blue-50);
@@ -135,9 +160,16 @@
   --button-danger-bg: var(--status-blocked-fg);
   --button-danger-fg: #ffffff;
   --button-radius: var(--radius-sm);
+  --button-border-width: 1px;
+  --button-secondary-border: var(--color-border);
+  --button-font: var(--text-body-strong);
+  --chip-pad: 2px var(--space-2);
+  --chip-radius: var(--radius-sm);
+  --chip-font: var(--text-caption);
   --field-border: var(--color-border);
   --field-border-invalid: var(--status-blocked-fg);
   --field-bg: var(--color-surface);
+  --field-fg: var(--color-text);
   --field-radius: var(--radius-sm);
   /* Narrowest a text field may get before a row wraps instead of squeezing. */
   --field-min-width: 240px;

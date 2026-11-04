@@ -41,13 +41,12 @@ test('public · a customer registers, confirms the email and signs in', async ({
   await field(page, 'Full name').fill('Walk Owner');
   await field(page, 'Mobile number').fill('9840099911');
   await field(page, 'Email address').fill(mail);
-  await field(page, 'Company (optional)').fill('Walk Fabrications');
   await field(page, /^Password/).fill('walk-owner-password-1');
   await field(page, 'Confirm password').fill('walk-owner-password-2');
   await expect(visible(page, 'The two passwords do not match')).toBeVisible();
   await field(page, 'Confirm password').fill('walk-owner-password-1');
   await expect(button(page, 'Register')).toBeDisabled();
-  await page.getByLabel('I agree to the Terms & Conditions').check();
+  await page.getByLabel('I agree to Terms & Conditions').check();
   await axe(page, 'register');
   const registered = page.waitForResponse((r) => r.url().endsWith('/auth/register') && r.request().method() === 'POST');
   await button(page, 'Register').click();
@@ -75,7 +74,7 @@ test('public · a workshop applies to join as a supplier', async ({ page }) => {
     ['Walk Sheet Metal', 'applicationDecline'],
   ] as const) {
     await page.goto(`${PORTAL}/register`);
-    await page.getByRole('button', { name: 'Supplier' }).click();
+    await page.getByRole('button', { name: 'Vendor' }).click();
     await field(page, 'Company name').fill(company);
     await field(page, 'Contact name').fill('Walk Contact');
     await field(page, 'Mobile number').fill('9840054321');
@@ -85,7 +84,7 @@ test('public · a workshop applies to join as a supplier', async ({ page }) => {
     await expect(processes.first()).toBeVisible();
     await processes.first().check();
     await field(page, 'Anything else').fill('Three VMCs and a CMM.');
-    await page.getByLabel('I agree to the Terms & Conditions').check();
+    await page.getByLabel('I agree to Terms & Conditions').check();
     await axe(page, 'supplier application');
     await button(page, 'Send application').click();
     await expect(visible(page, 'Application received')).toBeVisible();

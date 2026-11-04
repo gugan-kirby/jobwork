@@ -62,6 +62,26 @@ beforeEach(() => {
 });
 
 describe('PortalShell identity', () => {
+  it('gives a staff session a way out instead of customer pages that refuse it', async () => {
+    serve({ organizationType: 'internal' });
+    render(shell());
+    expect(await screen.findByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(link('Enquiries')).toBeNull();
+    expect(screen.queryByText('page')).toBeNull();
+    expect(calls('/portal/summary')).toBe(0);
+  });
+
+  it('keeps the header to six entries and every screen reachable', async () => {
+    serve({ organizationType: 'customer' });
+    render(shell());
+    await waitFor(() => expect(link('Enquiries')).not.toBeNull());
+    const primary = screen.getAllByRole('navigation', { name: 'Primary', hidden: true })[0]!;
+    expect(primary.querySelectorAll('.jw-nav-group').length).toBe(2);
+    for (const name of ['Invoices', 'Payments', 'Support', 'Documents', 'Addresses', 'Team', 'About', 'Terms']) {
+      expect(link(name)).not.toBeNull();
+    }
+  });
+
   it('shows the public navigation only when the API says there is no session', async () => {
     serve(problem(401, 'NOT_AUTHENTICATED'));
     render(shell());
@@ -145,7 +165,8 @@ describe('PortalShell identity', () => {
 
     await act(async () => answer({ organizationType: 'supplier' }));
     expect(link('RFQs')).not.toBeNull();
-    expect(link('Enquiries')).toBeNull();
+    // The vendor's Enquiries tab (reference 15) is its own requests, never the customer's list.
+    expect(link('Enquiries')?.getAttribute('href')).toBe('/rfqs');
     expect(calls('/portal/summary')).toBe(0);
   });
 });

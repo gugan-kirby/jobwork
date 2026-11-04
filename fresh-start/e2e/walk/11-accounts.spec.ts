@@ -32,11 +32,11 @@ test('customer · invites a teammate and manages the address book', async ({ pag
   await field(page, 'Who receives it').fill('S. Devi');
   await field(page, 'Their phone').fill('+91 98940 77777');
   await command(page, 'Add address');
-  const row = page.locator('tr, li').filter({ hasText: 'Kovai Pumps stores' }).first();
+  const row = page.locator('tr, li').filter({ hasText: 'Kovai Pumps stores', visible: true }).first();
   await row.getByRole('button', { name: 'Edit' }).click();
   await field(page, 'Address line 2').fill('Gate 3');
   await command(page, 'Save changes');
-  await command(page, 'Archive', page.locator('tr, li').filter({ hasText: 'Kovai Pumps stores' }).first());
+  await command(page, 'Archive', page.locator('tr, li').filter({ hasText: 'Kovai Pumps stores', visible: true }).first());
   await axe(page, 'addresses');
 });
 
@@ -79,7 +79,7 @@ test('supplier · invites a teammate, reads notifications and its documents', as
   await axe(page, 'supplier documents');
   await notificationsOn(page, PORTAL);
   await open(page, `${PORTAL}/profile`);
-  await expect(page.getByRole('link', { name: 'Compliance & evidence' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Company Details' })).toBeVisible();
 });
 
 test('ops · staff read their notifications and their sessions', async ({ page }) => {
@@ -126,8 +126,11 @@ test('customer · the owner turns on two-factor sign-in and signs in with a code
 test('customer · signs out from the profile', async ({ page }) => {
   await signInAs(page, 'buyer');
   await open(page, `${PORTAL}/profile`);
-  await button(page, 'Logout').click();
+  await button(page, 'Log Out').click();
   await expect(page).toHaveURL(/\/welcome$/);
   await page.goto(`${PORTAL}/orders`);
-  await expect(page.getByRole('link', { name: /Sign in|Login/ }).first()).toBeVisible();
+  // On a phone the header's links sit behind the menu button.
+  const menu = page.getByRole('button', { name: 'Menu', exact: true });
+  if (await menu.isVisible()) await menu.click();
+  await expect(page.getByRole('link', { name: /Sign in|Login/ }).filter({ visible: true }).first()).toBeVisible();
 });

@@ -1,59 +1,42 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { CustomerQuoteListItem } from '@jobwork/contracts';
-import {
-  ButtonLink,
-  Card,
-  EmptyState,
-  ErrorState,
-  FilterChips,
-  LoadingState,
-  Page,
-  RecordCard,
-  RecordList,
-  Stack,
-  StatusChip,
-  formatMoney,
-  type Tone,
-} from '@jobwork/ui';
+import { Card, ButtonLink, EmptyState, ErrorState, Icon, LoadingState, Page, Stack, StatusChip } from '@jobwork/ui';
 import { api, ApiError } from '../../lib/api';
+import { displayMoney, unitLabel } from '../../lib/enquiry-facts';
 
 /**
- * Quotations (prototype tile 9, corrected per doc 14 §4): every offer is from JobWork.
- * There is no supplier on this page because there is no supplier in the payload — the
- * customer projection has no field for one.
+ * Quotes Received (VF-09, VF-18, reference screen 09, ADR-0007): one summary per enquiry,
+ * then a card per quote naming its supplier, with city, verified state and rating, the
+ * amount, lead time and quantity, View Details and Accept Quote. The amount is JobWork's
+ * price; a rating is earned and a supplier with none reads "New". Accept goes to the
+ * acceptance page, which carries the approval and terms checks.
  */
 
-const TONE: Record<CustomerQuoteListItem['status'], Tone> = {
-  quotation_ready: 'attention',
-  revision_requested: 'progress',
-  accepted: 'positive',
-  rejected: 'neutral',
-  expired: 'neutral',
-  withdrawn: 'neutral',
-};
+type Group = { key: string; enquiryId: string; title: string; reference: string | null; sentAt: string | null; offers: CustomerQuoteListItem[] };
 
-type Filter = 'all' | 'quotation_ready' | 'revision_requested' | 'accepted' | 'closed';
+const shortDate = (iso: string): string =>
+  new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
-const FILTERS: Array<{ value: Filter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'quotation_ready', label: 'To decide' },
-  { value: 'revision_requested', label: 'Being revised' },
-  { value: 'accepted', label: 'Accepted' },
-  { value: 'closed', label: 'Closed' },
-];
+/** Offers grouped by the enquiry they answer, newest group first. */
+function byEnquiry(list: CustomerQuoteListItem[]): Group[] {
+  const groups = new Map<string, Group>();
+  for (const q of list) {
+    const group = groups.get(q.enquiryId) ?? { key: q.enquiryId, enquiryId: q.enquiryId, title: q.enquiryTitle, reference: q.enquiryReference, sentAt: null, offers: [] };
+    group.offers.push(q);
+    if (q.sentAt && (!group.sentAt || q.sentAt > group.sentAt)) group.sentAt = q.sentAt;
+    groups.set(q.enquiryId, group);
+  }
+  return [...groups.values()].sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
+}
 
-const OPTION_LABEL: Record<CustomerQuoteListItem['optionLabel'], string> = {
-  standard: 'Standard',
-  fast: 'Fast',
-  premium: 'Premium',
-};
+const TINTS = ['jw-record-tile-green', 'jw-record-tile-violet', 'jw-record-tile-orange'];
 
 export default function QuotationsPage() {
   const [quotations, setQuotations] = useState<CustomerQuoteListItem[] | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
 
   useEffect(() => {
     api<{ quotations: CustomerQuoteListItem[] }>('/quotations')
@@ -64,83 +47,127 @@ export default function QuotationsPage() {
   }, []);
 
   const all = quotations ?? [];
-  const counts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const q of all) map.set(q.status, (map.get(q.status) ?? 0) + 1);
-    return map;
-  }, [all]);
-  const visible = all.filter((q) => {
-    if (filter === 'all') return true;
-    if (filter === 'closed') return ['rejected', 'expired', 'withdrawn'].includes(q.status);
-    return q.status === filter;
-  });
 
   return (
-    <Page
-      title="Quotations"
-      back={{ href: '/', label: 'Back to home' }}
-      description="Offers from JobWork. Each one is valid until its stated date; the decision is yours."
-    >
+    <Page title="Quotes Received" back={{ href: '/', label: 'Back to home' }}>
       <Stack gap={4}>
-        {error ? (
-          <ErrorState message={error.problem.detail ?? error.problem.title} code={error.problem.code} />
-        ) : null}
-
-        <FilterChips
-          label="Filter quotations by status"
-          value={filter}
-          options={FILTERS.map((f) => ({
-            ...f,
-            count:
-              f.value === 'all'
-                ? all.length
-                : f.value === 'closed'
-                  ? (counts.get('rejected') ?? 0) + (counts.get('expired') ?? 0) + (counts.get('withdrawn') ?? 0)
-                  : counts.get(f.value) ?? 0,
-          }))}
-          onChange={setFilter}
-        />
+        {error ? <ErrorState message={error.problem.detail ?? error.problem.title} code={error.problem.code} /> : null}
 
         {error ? null : quotations === null ? (
           <Card>
-            <LoadingState label="Loading your quotations" />
+            <LoadingState label="Loading your quotes" />
           </Card>
-        ) : visible.length === 0 ? (
+        ) : all.length === 0 ? (
           <Card>
             <EmptyState
-              title={all.length === 0 ? 'No quotations yet' : 'Nothing matches'}
-              detail={
-                all.length === 0
-                  ? 'A quotation from JobWork follows the review and sourcing of an enquiry. When one is ready it appears here with its validity, lines and terms.'
-                  : 'Try another filter.'
-              }
-              action={
-                all.length === 0 ? (
-                  <ButtonLink href="/enquiries" variant="secondary">See your enquiries</ButtonLink>
-                ) : undefined
-              }
+              title="No quotes yet"
+              detail="Quotes follow the review of an enquiry. When one is ready it appears here."
+              action={<ButtonLink href="/enquiries" variant="secondary">See your enquiries</ButtonLink>}
             />
           </Card>
         ) : (
-          <RecordList>
-            {visible.map((q) => (
-              <RecordCard
-                key={q.quotationId}
-                href={`/quotations/${q.quotationId}`}
-                reference={q.reference}
-                title={q.enquiryTitle}
-                caption={`${OPTION_LABEL[q.optionLabel]} option · v${q.versionNo}${
-                  q.status === 'quotation_ready'
-                    ? q.daysToExpiry >= 0
-                      ? ` · valid ${q.daysToExpiry} more day${q.daysToExpiry === 1 ? '' : 's'}`
-                      : ' · validity passed'
-                    : ''
-                }`}
-                figure={formatMoney({ amountMinor: q.totalMinor, currency: q.currency })}
-                status={<StatusChip tone={TONE[q.status]}>{q.statusLabel}</StatusChip>}
-              />
+          <div className="jw-offer-groups">
+            {byEnquiry(all).map((group) => (
+              <section key={group.key} className="jw-offer-group" aria-label={`Quotes for ${group.title}`}>
+                <div className="jw-offer-summary">
+                  <span className="jw-record-tile jw-record-tile-blue" aria-hidden="true">
+                    <Icon name="settings" size={1.9} />
+                  </span>
+                  <span className="jw-offer-summary-main">
+                    <span className="jw-offer-summary-title">{group.title}</span>
+                    {group.reference ? <span className="jw-record-caption mono">{group.reference}</span> : null}
+                    {group.sentAt ? (
+                      <span className="jw-record-date">
+                        <Icon name="calendar" size={1.15} />
+                        {shortDate(group.sentAt)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="jw-count-badge">
+                    {group.offers.length} {group.offers.length === 1 ? 'Quote' : 'Quotes'}
+                  </span>
+                </div>
+
+                <nav className="jw-underline-tabs" aria-label={`Quotes and details for ${group.title}`}>
+                  <span aria-current="page">Quotes ({group.offers.length})</span>
+                  <Link href={`/enquiries/${group.enquiryId}`}>Enquiry Details</Link>
+                </nav>
+
+                {group.offers.map((q, index) => {
+                  const name = q.supplier?.name ?? 'JobWork';
+                  const open = q.status === 'quotation_ready';
+                  return (
+                    <article key={q.quotationId} className="jw-offer" aria-labelledby={`offer-${q.quotationId}`}>
+                      <div className="jw-offer-head">
+                        <span className={`jw-record-tile ${TINTS[index % TINTS.length]}`} aria-hidden="true">
+                          <Icon name="factory" size={1.9} />
+                        </span>
+                        <span className="jw-offer-name">
+                          <span id={`offer-${q.quotationId}`} className="jw-offer-title">
+                            {name}
+                          </span>
+                          {q.supplier ? (
+                            <span className="jw-supplier-line">
+                              {q.supplier.city ? (
+                                <span>
+                                  <Icon name="location" size={1.1} /> {[q.supplier.city, q.supplier.state].filter(Boolean).join(', ')}
+                                </span>
+                              ) : null}
+                              <span className="jw-rating">
+                                <Icon name="star" size={1.1} />{' '}
+                                {q.supplier.ratingAverage !== null ? `${q.supplier.ratingAverage.toFixed(1)} (${q.supplier.ratingCount})` : 'New'}
+                              </span>
+                            </span>
+                          ) : null}
+                        </span>
+                        {q.supplier?.verified && open ? (
+                          <StatusChip tone="positive" silent>
+                            Verified
+                          </StatusChip>
+                        ) : open ? null : (
+                          <StatusChip tone={q.status === 'accepted' ? 'positive' : 'neutral'}>{q.statusLabel}</StatusChip>
+                        )}
+                      </div>
+
+                      <dl className="jw-offer-metrics">
+                        <div>
+                          <dt>Quote Amount</dt>
+                          <dd className="jw-offer-amount numeric">{displayMoney(q.totalMinor, q.currency)}</dd>
+                        </div>
+                        <div>
+                          <dt>Lead Time</dt>
+                          <dd>
+                            <Icon name="calendar" size={1.15} />
+                            {q.deliveryLeadDays} Days
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Min. Qty</dt>
+                          <dd>
+                            <Icon name="layers" size={1.15} />
+                            {q.quantity ?? '—'} {unitLabel(q.unit)}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <div className="jw-action-pair">
+                        <Link href={`/quotations/${q.quotationId}`} className="jw-cta-outline jw-cta-sm">
+                          View Details<span className="jw-visually-hidden">, {name}</span>
+                        </Link>
+                        {open ? (
+                          <Link href={`/quotations/${q.quotationId}/accept`} className="jw-cta jw-cta-sm">
+                            Accept Quote<span className="jw-visually-hidden">, {name}</span>
+                          </Link>
+                        ) : (
+                          <span className="jw-cta jw-cta-sm jw-cta-off">{q.statusLabel}</span>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
             ))}
-          </RecordList>
+          </div>
         )}
       </Stack>
     </Page>

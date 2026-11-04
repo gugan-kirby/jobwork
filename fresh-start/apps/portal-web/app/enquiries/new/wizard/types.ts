@@ -4,32 +4,27 @@ import type {
   Enquiry,
   EnquiryDocumentInput,
   EnquiryItemInput,
-  JobType,
   MaterialSupply,
 } from '@jobwork/contracts';
 
 /**
- * The wizard's shared vocabulary (F-MX.6). Three stages — the prototype's Details /
- * Requirements / Review — over the doc 14 §4 fields; the data is the same seven
- * concerns, grouped so a phone screen asks one kind of question at a time.
+ * The wizard's shared vocabulary. Three stages — Details, Requirements, Review — asking
+ * only what reference screens 05–07 ask (VF-17, doc 14 §4); everything else takes its
+ * default. Each stage checks its own fields before Next (`stageIssues`).
  */
 
 export const STAGES = ['Details', 'Requirements', 'Review'] as const;
 
 /** Which stage owns which field path, so a 422 can put the customer in front of the problem. */
 export function stageForPath(path: string): number {
-  if (/^(title|jobType|changeReference|changeDescription|relatedEnquiryId|deliverySiteId|materialSupply)/.test(path)) return 0;
+  if (/^(title|deliverySiteId)/.test(path)) return 0;
   if (/partName|processCapabilityId|materialCapabilityId|materialGrade|quantityBreakpoints/.test(path)) return 0;
-  if (/^documents|tolerance|inspection|quality|surface|heat|coating|requiredByDate|packaging|partialDelivery|confidentiality/i.test(path)) return 1;
+  if (/^documents|tolerance|surface/i.test(path)) return 1;
   return 2;
 }
 
 export interface DraftState {
-  jobType: JobType;
   materialSupply: MaterialSupply;
-  changeReference: string;
-  changeDescription: string;
-  relatedEnquiryId: string;
   deliverySiteId: string;
   title: string;
   applicationNote: string;
@@ -47,18 +42,17 @@ export function emptyItem(lineNo: number): EnquiryItemInput {
     lineNo,
     partName: '',
     description: '',
-    quantityBreakpoints: [{ quantity: 1, unit: 'piece', kind: 'production' }],
+    // Quantity 0 is "not entered yet": the field shows its placeholder and the unit
+    // has somewhere to live. `toPayload` never sends it.
+    quantityBreakpoints: [{ quantity: 0, unit: 'piece', kind: 'production' }],
     inspectionLevel: 'standard',
     qualityNote: '',
   };
 }
 
 export const INITIAL: DraftState = {
-  jobType: 'job_work',
-  materialSupply: 'customer_supplied',
-  changeReference: '',
-  changeDescription: '',
-  relatedEnquiryId: '',
+  // The form names a material and the quotation prices it, so JobWork sources it (VF-17).
+  materialSupply: 'to_be_sourced',
   deliverySiteId: '',
   title: '',
   applicationNote: '',
@@ -74,11 +68,7 @@ export const INITIAL: DraftState = {
 /** Server state replaces local state wholesale; a half-applied draft is worse than none. */
 export function fromEnquiry(fresh: Enquiry): DraftState {
   return {
-    jobType: fresh.jobType,
     materialSupply: fresh.materialSupply,
-    changeReference: fresh.changeReference,
-    changeDescription: fresh.changeDescription,
-    relatedEnquiryId: fresh.relatedEnquiryId ?? '',
     title: fresh.title,
     applicationNote: fresh.applicationNote,
     confidentiality: fresh.confidentiality,
@@ -87,7 +77,9 @@ export function fromEnquiry(fresh: Enquiry): DraftState {
     deliverySiteId: fresh.deliverySiteId ?? '',
     partialDelivery: fresh.partialDelivery,
     packagingNote: fresh.packagingNote,
-    items: fresh.items.map(({ enquiryItemId: _id, ...rest }) => rest),
+    items: fresh.items.map(({ enquiryItemId: _id, ...rest }) =>
+      rest.quantityBreakpoints.length > 0 ? rest : { ...rest, quantityBreakpoints: emptyItem(rest.lineNo).quantityBreakpoints },
+    ),
     documents: fresh.documents.map((d) => ({
       documentVersionId: d.documentVersionId,
       ...(d.lineNo !== null ? { lineNo: d.lineNo } : {}),
@@ -101,11 +93,8 @@ export function fromEnquiry(fresh: Enquiry): DraftState {
 export function toPayload(draft: DraftState, version: number | null): Record<string, unknown> {
   return {
     ...(version !== null ? { expectedVersion: version } : {}),
-    jobType: draft.jobType,
+    jobType: 'job_work',
     materialSupply: draft.materialSupply,
-    changeReference: draft.changeReference,
-    changeDescription: draft.changeDescription,
-    ...(draft.relatedEnquiryId ? { relatedEnquiryId: draft.relatedEnquiryId } : {}),
     title: draft.title,
     applicationNote: draft.applicationNote,
     confidentiality: draft.confidentiality,
@@ -114,9 +103,31 @@ export function toPayload(draft: DraftState, version: number | null): Record<str
     partialDelivery: draft.partialDelivery,
     packagingNote: draft.packagingNote,
     ...(draft.deliverySiteId ? { deliverySiteId: draft.deliverySiteId } : {}),
-    items: draft.items,
+    items: draft.items.map((item) => ({
+      ...item,
+      quantityBreakpoints: item.quantityBreakpoints.filter((bp) => bp.quantity > 0),
+    })),
     documents: draft.documents,
   };
+}
+
+/** The problems that hold a stage back, as field paths the stage already shows errors on. */
+export function stageIssues(stage: number, draft: DraftState): Array<{ path: string; message: string }> {
+  const issues: Array<{ path: string; message: string }> = [];
+  if (stage === 0) {
+    if (!draft.title.trim()) issues.push({ path: 'title', message: 'Enter the part or job name' });
+    for (const item of draft.items) {
+      const at = `items[${item.lineNo}]`;
+      if (!item.processCapabilityId) issues.push({ path: `${at}.processCapabilityId`, message: 'Select a category and sub category' });
+      if (!item.materialCapabilityId && !item.materialGrade) issues.push({ path: `${at}.materialCapabilityId`, message: 'Select a material' });
+      if (!item.quantityBreakpoints.some((bp) => bp.quantity > 0)) issues.push({ path: `${at}.quantityBreakpoints`, message: 'Enter a quantity' });
+    }
+    if (!draft.deliverySiteId) issues.push({ path: 'deliverySiteId', message: 'Select a delivery location' });
+  }
+  if (stage === 1 && draft.documents.length === 0) {
+    issues.push({ path: 'documents', message: 'Upload a drawing. It attaches once its scan clears.' });
+  }
+  return issues;
 }
 
 /**
@@ -138,6 +149,17 @@ export function attachability(doc: DocumentSummary): { versionId: string | null;
     default:
       return { versionId: null, reason: 'The scan refused this file; it cannot be attached' };
   }
+}
+
+/** A document's name as the customer knows it: the file they uploaded. */
+export function fileName(doc: DocumentSummary | undefined): string {
+  return doc?.currentVersionFilename ?? doc?.title ?? 'Attached file';
+}
+
+/** The extension, upper-cased, from a file name ("Bracket Drawing.pdf" → "PDF"). */
+export function extensionOf(name: string): string {
+  const match = name.match(/\.([a-z0-9]{2,5})$/i);
+  return match ? match[1]!.toUpperCase() : 'FILE';
 }
 
 /** The taxonomy split the Category → Sub category pair reads from. */

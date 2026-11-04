@@ -609,13 +609,33 @@ code,
   gap: var(--space-4);
 }
 
+/* VF-01 splash: deep navy with a lit centre behind the mark, actions on the bottom edge. */
 .jw-hero-splash {
   border-radius: 0;
   min-height: 100vh;
-  padding: var(--space-8) var(--space-5) calc(var(--space-8) + var(--safe-bottom));
-  align-content: center;
+  min-height: 100dvh;
+  padding: var(--space-8) var(--space-4) calc(var(--space-7) + var(--safe-bottom));
+  background: var(--brand-splash-bg-solid);
+  background-image: var(--brand-splash-bg);
+  grid-template-rows: 1fr auto;
+  gap: var(--space-6);
   justify-items: center;
   text-align: center;
+}
+
+.jw-hero-splash-centre {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  /* The block sits a little below the geometric middle, as in the reference. */
+  padding-top: 18vh;
+  max-width: 560px;
+}
+
+.jw-hero-splash .jw-hero-art {
+  margin-bottom: var(--space-2);
+  filter: drop-shadow(0 6px 18px rgb(5 10 60 / 0.35));
 }
 
 .jw-hero-body {
@@ -629,7 +649,14 @@ code,
 }
 
 .jw-hero-splash .jw-hero-headline {
-  font: 700 40px/44px var(--font-sans);
+  font: 700 48px/56px var(--font-sans);
+  letter-spacing: -0.5px;
+}
+
+.jw-hero-splash .jw-hero-subline {
+  color: var(--brand-hero-fg);
+  opacity: 0.92;
+  font: 500 18px/27px var(--font-sans);
 }
 
 .jw-hero-subline {
@@ -646,6 +673,56 @@ code,
 
 .jw-hero-splash .jw-hero-actions {
   justify-content: center;
+  width: 100%;
+  margin-top: 0;
+  padding: 0 var(--space-4);
+}
+
+.jw-splash-actions {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: center;
+  width: 100%;
+  max-width: 420px;
+}
+
+.jw-splash-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60px;
+  border-radius: 14px;
+  background: var(--brand-hero-fg);
+  color: var(--blue-900);
+  font: 600 18px/24px var(--font-sans);
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgb(5 10 60 / 0.28);
+}
+
+.jw-splash-cta:hover {
+  background: var(--blue-50);
+}
+
+.jw-splash-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  color: var(--brand-hero-fg);
+  font: 600 17px/24px var(--font-sans);
+  text-decoration: none;
+}
+
+.jw-splash-link:hover {
+  text-decoration: underline;
+}
+
+.jw-splash-cta:focus-visible,
+.jw-splash-link:focus-visible {
+  outline: 3px solid var(--brand-hero-fg);
+  outline-offset: 3px;
 }
 
 .jw-hero-art {
@@ -1305,4 +1382,2212 @@ code,
 .jw-notification-unread .jw-notification-body,
 .jw-notification-unread .jw-notification-time {
   color: var(--color-text-muted-on-tint);
+}
+
+/* VF-02 entry fork (/start): white field, display headline, workshop art, stacked actions. */
+.jw-entry {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  padding: 72px var(--space-5) calc(var(--space-6) + var(--safe-bottom));
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.jw-entry-eyebrow {
+  font: 700 30px/36px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-entry-title {
+  font: 800 58px/64px var(--font-sans);
+  letter-spacing: -1px;
+  color: var(--brand-strong);
+}
+
+.jw-entry-lede {
+  margin-top: var(--space-4);
+  font: 400 19px/27px var(--font-sans);
+  color: var(--color-ink);
+  max-width: 300px;
+}
+
+.jw-entry-art {
+  margin: var(--space-6) calc(var(--space-2) * -1) 0;
+}
+
+.jw-entry-actions {
+  display: grid;
+  gap: var(--space-4);
+  align-content: end;
+  padding-top: var(--space-6);
+}
+
+.jw-cta,
+.jw-cta-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 54px;
+  border-radius: 12px;
+  font: 600 18px/24px var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.jw-cta {
+  background: var(--brand-strong);
+  color: var(--brand-hero-fg);
+  border: 2px solid var(--brand-strong);
+}
+
+.jw-cta:hover {
+  background: var(--brand-strong-hover);
+  border-color: var(--brand-strong-hover);
+}
+
+.jw-cta-outline {
+  background: var(--color-surface);
+  color: var(--brand-strong);
+  border: 2px solid var(--brand-strong);
+}
+
+.jw-cta-outline:hover {
+  background: var(--blue-50);
+}
+
+.jw-text-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font: 600 18px/24px var(--font-sans);
+  color: var(--brand-strong);
+  text-decoration: none;
+}
+
+.jw-text-cta:hover {
+  text-decoration: underline;
+}
+
+.jw-cta:focus-visible,
+.jw-cta-outline:focus-visible,
+.jw-text-cta:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+.jw-assurance {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--space-7);
+  text-align: center;
+}
+
+.jw-assurance li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink-muted);
+  font: 500 17px/22px var(--font-sans);
+}
+
+.jw-assurance svg {
+  color: var(--brand-strong);
+}
+
+/* VF-03 inner header: back chevron, h1 title, optional trailing control. */
+.jw-topbar {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  color: var(--color-ink);
+}
+
+.jw-topbar-back,
+.jw-topbar-trailing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--color-ink);
+  border-radius: var(--radius-md);
+}
+
+.jw-topbar-back:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+}
+
+.jw-topbar-title {
+  font: 700 24px/30px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-topbar-centred .jw-topbar-title {
+  text-align: center;
+}
+
+/* VF-03 fields: glyph + placeholder label in a 52 px rounded box. */
+.jw-icon-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.jw-icon-field-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+}
+
+.jw-icon-field-box:focus-within {
+  border-color: var(--brand-strong);
+  box-shadow: 0 0 0 3px var(--blue-100);
+}
+
+.jw-icon-field-invalid {
+  border-color: var(--status-blocked-fg);
+}
+
+.jw-icon-field-box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink);
+  padding: var(--space-3) 0;
+}
+
+.jw-icon-field-box input::placeholder {
+  color: var(--neutral-600);
+}
+
+.jw-icon-field-hint,
+.jw-icon-field-error {
+  font: var(--text-caption);
+  padding-left: var(--space-1);
+}
+
+.jw-icon-field-hint {
+  color: var(--color-text-muted);
+}
+
+.jw-icon-field-error {
+  color: var(--status-blocked-fg);
+}
+
+/* VF-03 two-way switch: the chosen side tinted with a brand underline. */
+.jw-segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.jw-segment button {
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  font: 600 18px/24px var(--font-sans);
+  color: var(--color-ink);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+
+.jw-segment button[aria-pressed='true'] {
+  background: var(--blue-50);
+  color: var(--brand-strong);
+  border-bottom-color: var(--brand-strong);
+  border-radius: 12px 0 0 0;
+}
+
+.jw-segment button:last-child[aria-pressed='true'] {
+  border-radius: 0 12px 0 0;
+}
+
+.jw-segment button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: -3px;
+}
+
+/* VF-03 form page column. */
+.jw-form-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-surface);
+  max-width: 520px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) calc(var(--space-6) + var(--safe-bottom));
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+}
+
+.jw-form-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.jw-agree {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  font: 400 18px/24px var(--font-sans);
+  color: var(--color-ink);
+  padding: var(--space-3) var(--space-1);
+}
+
+.jw-agree input {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  accent-color: var(--brand-strong);
+}
+
+.jw-agree a,
+.jw-inline-link {
+  color: var(--brand-strong);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.jw-agree a:hover,
+.jw-inline-link:hover {
+  text-decoration: underline;
+}
+
+.jw-form-foot {
+  text-align: center;
+  font: 400 18px/24px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* VF-04 shell header: sticky white bar; on phones menu · name · bell, no rule under it. */
+.jw-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.jw-shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--text-heading-2);
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .jw-shell-header {
+    border-bottom-color: transparent;
+  }
+
+  .jw-shell-brand {
+    font: 700 26px/32px var(--font-sans);
+    color: var(--color-ink);
+    margin-left: var(--space-2);
+  }
+
+  .jw-shell-brand .jw-brand-mark {
+    display: none;
+  }
+
+  .jw-shell-header .jw-icon-button {
+    color: var(--color-ink);
+  }
+}
+
+/* VF-04 home banner: brand gradient card, copy left, machines right. */
+.jw-banner {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 46%);
+  align-items: center;
+  min-width: 0;
+  min-height: 142px;
+  border-radius: var(--radius-lg);
+  background: var(--brand-splash-bg-solid);
+  background-image: var(--brand-banner-bg);
+  color: var(--brand-hero-fg);
+  padding: var(--space-4) 0 var(--space-4) var(--space-5);
+}
+
+.jw-banner-title {
+  font: 700 22px/28px var(--font-sans);
+}
+
+.jw-banner-sub {
+  font: 500 17px/24px var(--font-sans);
+  margin-top: var(--space-1);
+}
+
+.jw-banner-art {
+  align-self: end;
+  margin-bottom: calc(var(--space-4) * -1);
+}
+
+/* VF-04 home sections are grid items; without this a sideways row widens the page. */
+.jw-home-section {
+  min-width: 0;
+}
+
+/* VF-04 section headings on the phone home. */
+.jw-home-title {
+  font: 700 21px/28px var(--font-sans);
+  color: var(--color-ink);
+  margin-bottom: var(--space-4);
+}
+
+/* VF-04 quick-action tile: white card, coloured glyph, no disc. */
+.jw-quick-accent {
+  min-height: 104px;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 18px rgb(16 28 102 / 0.07);
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+}
+
+.jw-quick-accent .jw-quick-label {
+  font: 500 16px/20px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-quick-accent:hover {
+  box-shadow: 0 6px 22px rgb(16 28 102 / 0.13);
+}
+
+.jw-quick-glyph { display: inline-flex; }
+.jw-quick-glyph-blue { color: var(--brand-strong); }
+.jw-quick-glyph-orange { color: var(--accent-orange); }
+.jw-quick-glyph-green { color: var(--accent-green); }
+.jw-quick-glyph-ink { color: var(--neutral-800); }
+.jw-quick-glyph-sky { color: var(--accent-sky); }
+
+/* VF-04 category row: four illustrated tiles, scrolling sideways when there are more. */
+.jw-category-row {
+  min-width: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 3 * var(--space-3)) / 4);
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: var(--space-1) var(--space-1) var(--space-3);
+  margin: 0 calc(var(--space-1) * -1);
+}
+
+.jw-category-row::-webkit-scrollbar {
+  display: none;
+}
+
+.jw-category {
+  scroll-snap-align: start;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-2);
+  min-height: 108px;
+  padding: var(--space-3) var(--space-1);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 4px 18px rgb(16 28 102 / 0.07);
+  color: var(--color-ink);
+  text-decoration: none;
+  text-align: center;
+  font: 500 13px/17px var(--font-sans);
+}
+
+.jw-category:hover {
+  box-shadow: 0 6px 22px rgb(16 28 102 / 0.13);
+}
+
+.jw-category:focus-visible,
+.jw-quick:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* VF-04 tab bar: rounded top, reference blue for the current tab and the raised action. */
+.jw-tabbar {
+  border-top: 0;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgb(16 28 102 / 0.08);
+}
+
+.jw-tab {
+  font: 500 14px/18px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-tab-current {
+  color: var(--brand-strong);
+  font: 600 14px/18px var(--font-sans);
+}
+
+.jw-tab-primary-disc {
+  width: 58px;
+  height: 58px;
+  background: var(--brand-strong);
+  box-shadow: 0 8px 20px rgb(11 34 212 / 0.35);
+  transform: translateY(-18px);
+}
+
+.jw-tab-primary:hover .jw-tab-primary-disc {
+  background: var(--brand-strong-hover);
+}
+
+/* VF-05 stepper: discs on a rail, labels under, the passed rail in brand blue. */
+.jw-stepper ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+.jw-step {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.jw-step:first-child { justify-content: flex-start; }
+.jw-step:last-child { justify-content: flex-end; }
+
+/* The rail runs from this disc's centre to the next one's. */
+.jw-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--neutral-300);
+  z-index: 0;
+}
+
+.jw-step:first-child:not(:last-child)::after { left: 18px; width: calc(150% - 18px); }
+.jw-step:nth-last-child(2)::after { width: calc(150% - 18px); }
+.jw-step:first-child:nth-last-child(2)::after { width: calc(200% - 36px); }
+
+.jw-step-passed::after,
+.jw-step-current:not(:last-child)::after {
+  background: linear-gradient(90deg, var(--brand-strong) 0 50%, var(--neutral-300) 50% 100%);
+}
+
+.jw-step.jw-step-passed:not(:last-child)::after {
+  background: var(--brand-strong);
+}
+
+.jw-step button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  font: 500 16px/20px var(--font-sans);
+}
+
+.jw-step:first-child button { justify-items: start; }
+.jw-step:last-child button { justify-items: end; }
+.jw-step button:disabled { cursor: default; }
+
+.jw-step-disc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--neutral-400);
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+  font: 700 17px/1 var(--font-sans);
+}
+
+.jw-step:first-child .jw-step-label { margin-left: -6px; }
+.jw-step:last-child .jw-step-label { margin-right: -6px; }
+
+.jw-step-current button,
+.jw-step-passed button {
+  color: var(--brand-strong);
+}
+
+.jw-step-current .jw-step-label { font-weight: 600; }
+
+.jw-step-current .jw-step-disc,
+.jw-step-passed .jw-step-disc {
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
+  color: var(--brand-hero-fg);
+}
+
+.jw-step-error .jw-step-disc {
+  background: var(--status-blocked-bg);
+  border-color: var(--status-blocked-fg);
+  color: var(--status-blocked-fg);
+}
+
+.jw-step-error button { color: var(--status-blocked-fg); }
+
+.jw-step-current.jw-step-error .jw-step-disc {
+  box-shadow: 0 0 0 3px var(--blue-100);
+}
+
+.jw-step button:focus-visible .jw-step-disc {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* VF-05 portal theme: the reference's 52 px rounded controls, saturated blue and pills,
+   for the customer and supplier portal (the apps with a tab bar) at every width.
+   Operations keeps its dense desktop look. */
+.jw-has-tabbar {
+  --control-height: 52px;
+  --field-radius: 12px;
+  --button-radius: 12px;
+  --field-border: var(--neutral-200);
+  --color-action: var(--brand-strong);
+  --color-action-hover: var(--brand-strong-hover);
+  --color-focus-ring: var(--brand-strong);
+  --button-primary-bg: var(--brand-strong);
+  --button-primary-bg-hover: var(--brand-strong-hover);
+  --button-secondary-fg: var(--brand-strong);
+  --button-border-width: 2px;
+  --button-secondary-border: var(--brand-strong);
+  --button-font: 600 18px/24px var(--font-sans);
+  --chip-pad: 4px 12px;
+  --chip-radius: 999px;
+  --chip-font: 600 14px/20px var(--font-sans);
+}
+
+.jw-has-tabbar input:not([type='checkbox']):not([type='radio']),
+.jw-has-tabbar select,
+.jw-has-tabbar textarea {
+  font-size: 17px;
+  border-width: 1.5px;
+}
+
+.jw-has-tabbar select {
+  appearance: none;
+  padding-right: var(--space-7);
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right var(--space-4) center;
+  background-size: 18px;
+}
+
+.jw-has-tabbar label {
+  color: var(--color-ink);
+}
+
+/* Below md an inner page is headed by its back row alone; the app bar returns on tab roots. */
+@media (max-width: 767px) {
+  .jw-has-tabbar:has(.jw-page-back) .jw-shell-header {
+    display: none;
+  }
+
+  .jw-has-tabbar .jw-page-head-back {
+    --text-display: 700 24px/30px var(--font-sans);
+  }
+
+  .jw-has-tabbar .jw-page-head-back .jw-page-title {
+    color: var(--color-ink);
+  }
+}
+
+/* Card surface (moved from inline styles, VF-05). */
+.jw-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
+}
+
+.jw-card-head {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.jw-card-body {
+  padding: var(--space-5);
+}
+
+/* VF-05 flat region: a form laid straight on white, as the reference wizard is. Cards
+   inside become plain sections separated by space. */
+html:has(.jw-flat) {
+  background: var(--color-surface);
+}
+
+.jw-flat .jw-card {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.jw-flat .jw-card-head {
+  padding: 0 0 var(--space-3);
+  border-bottom: 0;
+}
+
+.jw-flat .jw-card-body {
+  padding: 0;
+}
+
+.jw-step button { font-size: 15px; }
+
+/* VF-06 upload drop zone: dashed brand outline, cloud glyph, the whole zone clickable. */
+.jw-dropzone {
+  border: 1.5px dashed var(--blue-300);
+  border-radius: 12px;
+  background: var(--color-surface);
+  padding: var(--space-5) var(--space-4);
+  min-width: 0;
+  text-align: center;
+}
+
+/* A card body has no gap of its own: whatever follows an upload box keeps clear of it. */
+.jw-card-body > .jw-dropzone + * {
+  margin-top: var(--space-3);
+}
+
+.jw-card-body > .jw-dropzone + * + p {
+  margin-top: var(--space-2);
+}
+
+.jw-dropzone-over {
+  border-color: var(--brand-strong);
+  background: var(--blue-50);
+}
+
+.jw-dropzone:focus-within {
+  border-style: solid;
+  border-color: var(--color-focus-ring);
+  box-shadow: 0 0 0 3px var(--blue-100);
+}
+
+.jw-dropzone .jw-dropzone-target {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  color: var(--brand-strong);
+}
+
+.jw-dropzone-title {
+  font: 700 20px/26px var(--font-sans);
+  color: var(--brand-strong);
+}
+
+.jw-dropzone-caption {
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+/* VF-06: a step already passed is an outlined disc, as in the reference. */
+.jw-step-passed .jw-step-disc {
+  background: var(--color-surface);
+  color: var(--brand-strong);
+}
+.jw-step-passed .jw-step-label { font-weight: 500; color: var(--color-ink-muted); }
+
+/* VF-07 split description list: muted label left, value right, generous rows. */
+.jw-dl-split {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.jw-dl-split > div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-3) 0;
+}
+
+.jw-dl-split dt {
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-dl-split dd {
+  margin: 0;
+  text-align: right;
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+/* VF-07 file-type badge beside a file name. */
+.jw-file-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.jw-file-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 40px;
+  padding: 0 var(--space-1);
+  border-radius: 4px;
+  border: 1.5px solid var(--status-blocked-border);
+  background: var(--color-surface);
+  color: var(--color-surface);
+  font: 700 11px/1 var(--font-sans);
+  position: relative;
+}
+
+.jw-file-badge span {
+  background: var(--status-blocked-fg);
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+/* VF-07 flat sections keep a rule under their heading, and the heading is larger. */
+.jw-flat {
+  --text-heading-2: 700 20px/26px var(--font-sans);
+}
+
+.jw-flat .jw-card-head {
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.jw-flat .jw-card-head h2 {
+  color: var(--color-ink);
+}
+
+.jw-action-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.jw-action-pair-wide {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.18fr);
+}
+
+.jw-action-pair-wide button {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+  white-space: nowrap;
+}
+
+/* VF-08 rich record card: tinted glyph tile, title + status row, reference · caption,
+   calendar date, chevron. */
+.jw-record-rich {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border-color: var(--neutral-200);
+  box-shadow: 0 2px 10px rgb(16 28 102 / 0.04);
+}
+
+.jw-record-rich .jw-record-main {
+  gap: var(--space-1);
+}
+
+.jw-record-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+}
+
+.jw-record-top .jw-record-title {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.jw-record-rich .jw-record-title {
+  font: 700 17px/22px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-record-rich .jw-record-caption {
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.jw-record-rich .jw-record-caption .mono {
+  font: 500 13px/20px var(--font-mono);
+}
+
+.jw-record-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.jw-record-date {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-record-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+}
+
+.jw-record-tile-blue { background: var(--blue-50); color: var(--brand-strong); }
+.jw-record-tile-violet { background: var(--status-special-bg); color: var(--status-special-fg); }
+.jw-record-tile-orange { background: var(--status-attention-bg); color: var(--accent-orange); }
+.jw-record-tile-sky { background: var(--blue-50); color: var(--accent-sky); }
+.jw-record-tile-green { background: var(--status-positive-bg); color: var(--status-positive-fg); }
+.jw-record-tile-neutral { background: var(--neutral-100); color: var(--neutral-700); }
+
+.jw-record-rich .jw-record-chevron {
+  color: var(--neutral-600);
+}
+
+/* VF-08 filter chips read as the reference's tab strip, counts in brackets; tab-root
+   pages get the large left-aligned title. */
+.jw-has-tabbar .jw-chips {
+  gap: 0;
+  padding: 0;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.jw-has-tabbar .jw-chip {
+  min-height: 50px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font: 500 16px/20px var(--font-sans);
+  gap: var(--space-1);
+}
+
+.jw-has-tabbar .jw-chip-on {
+  background: var(--blue-50);
+  color: var(--brand-strong);
+  border-bottom-color: var(--brand-strong);
+  border-radius: 10px 10px 0 0;
+  font-weight: 600;
+}
+
+.jw-has-tabbar .jw-chip-count {
+  font: inherit;
+  opacity: 1;
+}
+
+.jw-has-tabbar .jw-chip-count::before { content: '('; }
+.jw-has-tabbar .jw-chip-count::after { content: ')'; }
+
+.jw-has-tabbar .jw-page-head:not(.jw-page-head-back) {
+  --text-display: 700 30px/36px var(--font-sans);
+}
+
+.jw-has-tabbar .jw-page-head:not(.jw-page-head-back) .jw-page-title {
+  color: var(--color-ink);
+}
+
+@media (max-width: 767px) {
+  .jw-desktop-only {
+    display: none;
+  }
+}
+
+/* VF-08 search row: glyph field plus a square options button. */
+.jw-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.jw-square-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.jw-square-button[aria-expanded='true'] {
+  border-color: var(--brand-strong);
+  color: var(--brand-strong);
+}
+
+.jw-square-button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* VF-09 quotation groups: enquiry summary card, then one card per JobWork option. */
+.jw-offer-groups,
+.jw-offer-group {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.jw-offer-groups {
+  gap: var(--space-6);
+}
+
+.jw-offer-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--blue-50);
+}
+
+.jw-offer-summary-main {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.jw-offer-summary-title {
+  font: 700 20px/26px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-count-badge {
+  align-self: start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--blue-100);
+  color: var(--brand-strong);
+  font: 600 15px/20px var(--font-sans);
+  white-space: nowrap;
+}
+
+.jw-offer {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1.5px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 2px 10px rgb(16 28 102 / 0.04);
+}
+
+.jw-offer-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.jw-offer-name {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.jw-offer-title {
+  font: 700 18px/24px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-offer-metrics {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  margin: 0;
+}
+
+.jw-offer-metrics > div {
+  display: grid;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--neutral-200);
+  min-width: 0;
+}
+
+.jw-offer-metrics > div:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.jw-offer-metrics dt {
+  font: 400 14px/18px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-offer-metrics dd {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 500 16px/22px var(--font-sans);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.jw-offer-metrics .jw-offer-amount {
+  font: 700 21px/26px var(--font-sans);
+  color: var(--brand-strong);
+}
+
+.jw-cta-sm {
+  min-height: 46px;
+  font-size: 17px;
+  padding: 0 var(--space-2);
+}
+
+.jw-action-pair .jw-cta-sm {
+  font-size: 16px;
+}
+
+.jw-offer .jw-record-tile svg {
+  color: currentColor;
+}
+
+.jw-offer-summary .jw-record-tile {
+  background: var(--blue-100);
+}
+
+@media (max-width: 380px) {
+  .jw-offer-metrics dd svg {
+    display: none;
+  }
+}
+
+/* VF-10 quote detail: tinted counterpart card, tinted summary card, bordered panels. */
+.jw-tinted-card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--blue-50);
+}
+
+.jw-counterpart-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.jw-counterpart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.jw-counterpart-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  background: var(--blue-100);
+  color: var(--brand-strong);
+}
+
+.jw-counterpart-name {
+  font: 700 20px/26px var(--font-sans);
+  overflow-wrap: anywhere;
+  color: var(--color-ink);
+}
+
+.jw-counterpart-line {
+  font: 400 15px/22px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-counterpart-line-strong {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--brand-strong);
+  font-weight: 500;
+}
+
+.jw-icon-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.jw-icon-actions a,
+.jw-icon-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.jw-icon-actions a:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.jw-summary-figures {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.jw-summary-figures > div + div {
+  border-left: 1px solid var(--neutral-300);
+  padding-left: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.jw-summary-label {
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-summary-amount {
+  font: 700 26px/32px var(--font-sans);
+  overflow-wrap: anywhere;
+  color: var(--brand-strong);
+}
+
+.jw-summary-fact {
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-summary-fact svg {
+  margin-right: var(--space-2);
+}
+
+.jw-summary-fact strong {
+  white-space: nowrap;
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.jw-section-heading {
+  font: 700 20px/26px var(--font-sans);
+  color: var(--color-ink);
+  margin-bottom: var(--space-3);
+}
+
+.jw-panel {
+  border: 1.5px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: var(--space-1) var(--space-4);
+}
+
+.jw-panel .jw-dl-split > div + div {
+  border-top: 1px solid var(--neutral-200);
+}
+
+.jw-note-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+  padding: var(--space-4) 0;
+  color: var(--color-ink);
+  font: 400 16px/24px var(--font-sans);
+}
+
+.jw-note-row + .jw-note-row {
+  border-top: 1px solid var(--neutral-200);
+}
+
+.jw-note-row svg {
+  color: var(--brand-strong);
+}
+
+.jw-cta-icon {
+  gap: var(--space-2);
+}
+
+/* VF-11 progress bar inside a rich record card. */
+.jw-record-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+.jw-progress {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--neutral-200);
+  overflow: hidden;
+}
+
+.jw-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--brand-strong);
+}
+
+.jw-record-progress-value {
+  font: 500 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+/* VF-12 four-milestone progress: discs on a rail, label and date under each. */
+.jw-milestones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.jw-milestone {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.jw-milestone:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 21px;
+  left: calc(50% + 22px);
+  right: calc(-50% + 22px);
+  height: 2px;
+  background: var(--neutral-300);
+}
+
+.jw-milestone-done:not(:last-child)::after {
+  background: var(--brand-strong);
+}
+
+.jw-milestone-disc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--neutral-300);
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+  margin-bottom: var(--space-1);
+}
+
+.jw-milestone-done .jw-milestone-disc {
+  border-color: var(--brand-strong);
+  color: var(--brand-strong);
+}
+
+.jw-milestone-current .jw-milestone-disc {
+  border-color: var(--brand-strong);
+  background: var(--brand-strong);
+  color: var(--brand-hero-fg);
+}
+
+.jw-milestone-label {
+  font: 600 14px/18px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-milestone-current .jw-milestone-label {
+  color: var(--brand-strong);
+}
+
+.jw-milestone-date {
+  font: 400 13px/18px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+/* VF-12 current-status panel. */
+.jw-status-panel {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.jw-status-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.jw-progress-lg {
+  height: 12px;
+  border-radius: 6px;
+}
+
+/* VF-12 vertical production timeline. */
+.jw-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.jw-timeline-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-3);
+  border-radius: 12px;
+}
+
+.jw-timeline-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-3) + 21px);
+  top: calc(var(--space-3) + 44px);
+  bottom: calc(var(--space-3) * -1);
+  width: 2px;
+  background: var(--neutral-200);
+}
+
+.jw-timeline-current {
+  background: var(--blue-50);
+}
+
+.jw-timeline-disc {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--neutral-100);
+  color: var(--color-ink-muted);
+}
+
+.jw-timeline-done .jw-timeline-disc {
+  background: var(--status-positive-bg);
+  color: var(--status-positive-fg);
+}
+
+.jw-timeline-current .jw-timeline-disc {
+  background: var(--blue-100);
+  color: var(--brand-strong);
+}
+
+.jw-timeline-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.jw-timeline-title {
+  font: 700 16px/22px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-timeline-pending .jw-timeline-title {
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.jw-timeline-detail,
+.jw-timeline-at {
+  font: 400 14px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-timeline-at {
+  white-space: nowrap;
+}
+
+/* VF-13 invoice card: the record link, then a due strip with its own Pay Now. */
+.jw-invoice {
+  border: 1.5px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgb(16 28 102 / 0.04);
+}
+
+.jw-invoice .jw-invoice-main {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.jw-invoice-amount {
+  font: 700 20px/26px var(--font-sans);
+  color: var(--brand-strong);
+  white-space: nowrap;
+}
+
+.jw-due {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 var(--space-3) var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-radius: 10px;
+  background: var(--status-attention-bg);
+  color: var(--status-attention-fg);
+}
+
+.jw-due-overdue {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+}
+
+.jw-due-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 500 14px/20px var(--font-sans);
+}
+
+/* VF-14 payments summary: two figures side by side with tinted glyph tiles. */
+.jw-pay-summary {
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.jw-pay-summary > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.jw-pay-summary > div + div {
+  border-left: 1px solid var(--neutral-300);
+  padding-left: var(--space-3);
+}
+
+.jw-pay-summary > div > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.jw-pay-summary .jw-record-tile {
+  width: 42px;
+  height: 42px;
+  background: var(--color-surface);
+}
+
+.jw-pay-summary {
+  padding: var(--space-4) var(--space-3);
+}
+
+.jw-pay-summary > div {
+  gap: var(--space-2);
+}
+
+.jw-pay-figure {
+  font: 700 17px/24px var(--font-sans);
+  color: var(--brand-strong);
+  white-space: nowrap;
+}
+
+.jw-record-static {
+  grid-template-columns: auto minmax(0, 1fr);
+  cursor: default;
+}
+
+/* VF-15 donut with its legend. */
+.jw-donut {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: center;
+  margin: 0;
+}
+
+.jw-donut-total {
+  font: 700 20px/1 var(--font-sans);
+  fill: var(--color-ink);
+}
+
+.jw-donut-caption {
+  font: 500 10px/1 var(--font-sans);
+  fill: var(--color-ink-muted);
+}
+
+.jw-donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.jw-donut-legend li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-donut-legend li + li {
+  border-top: 1px solid var(--neutral-200);
+}
+
+.jw-donut-key {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.jw-donut-value {
+  font-weight: 600;
+}
+
+/* VF-15 supplier home: welcome banner, tinted stat tiles, panel lists. */
+.jw-welcome {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--blue-50);
+}
+
+.jw-welcome-eyebrow {
+  font: 500 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-welcome-title {
+  font: 700 22px/28px var(--font-sans);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.jw-welcome-sub {
+  font: 400 15px/21px var(--font-sans);
+  color: var(--color-ink-muted);
+  margin-top: var(--space-1);
+}
+
+.jw-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.jw-tile {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--neutral-200);
+  text-decoration: none;
+  color: var(--color-ink);
+}
+
+.jw-tile:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.jw-tile-blue { background: var(--blue-50); border-color: var(--blue-100); }
+.jw-tile-violet { background: var(--status-special-bg); border-color: var(--status-special-border); }
+.jw-tile-green { background: var(--status-positive-bg); border-color: var(--status-positive-border); }
+.jw-tile-orange { background: var(--status-attention-bg); border-color: var(--status-attention-border); }
+
+.jw-tile-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.jw-tile-blue .jw-tile-glyph { color: var(--brand-strong); }
+.jw-tile-violet .jw-tile-glyph { color: var(--status-special-fg); }
+.jw-tile-green .jw-tile-glyph { color: var(--status-positive-fg); }
+.jw-tile-orange .jw-tile-glyph { color: var(--accent-orange); }
+
+.jw-tile-value {
+  font: 700 26px/30px var(--font-sans);
+}
+
+.jw-tile-label {
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+@media (min-width: 768px) {
+  .jw-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.jw-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) 0 var(--space-3);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.jw-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font: 700 19px/24px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  color: var(--brand-strong);
+  font: 500 15px/20px var(--font-sans);
+  text-decoration: none;
+}
+
+.jw-panel-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0;
+}
+
+.jw-panel-row + .jw-panel-row {
+  border-top: 1px solid var(--neutral-200);
+}
+
+.jw-panel-row .jw-record-tile {
+  width: 46px;
+  height: 46px;
+}
+
+.jw-panel-body {
+  padding: var(--space-4) 0;
+}
+
+.jw-cta-xs {
+  min-height: 40px;
+  min-width: 96px;
+  padding: 0 var(--space-3);
+  font-size: 15px;
+}
+
+/* VF-16 profile: identity card, rich menu rows, tinted log-out. */
+.jw-identity {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  text-decoration: none;
+  color: var(--color-ink);
+  border: 1.5px solid var(--blue-100);
+}
+
+.jw-identity:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.jw-identity-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 16px;
+  background: var(--blue-100);
+  color: var(--brand-strong);
+  font: 700 26px/1 var(--font-sans);
+}
+
+.jw-identity-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--blue-900);
+  color: var(--brand-hero-fg);
+  border: 2px solid var(--color-surface);
+}
+
+.jw-identity-main {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.jw-identity-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.jw-identity-top .jw-count-badge {
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
+.jw-menu-rich {
+  border: 1.5px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  padding: 0 var(--space-3);
+}
+
+.jw-menu-rich .jw-menu-row {
+  min-height: 72px;
+  padding: var(--space-2) 0;
+  gap: var(--space-4);
+}
+
+.jw-menu-rich .jw-record-tile {
+  width: 46px;
+  height: 46px;
+}
+
+.jw-menu-title {
+  display: block;
+  font: 700 16px/22px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-menu-detail {
+  display: block;
+  font: 400 14px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 54px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--status-blocked-border);
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+  font: 600 18px/24px var(--font-sans);
+  cursor: pointer;
+}
+
+.jw-logout:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.jw-logout:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* VF-17 wizard: full screen on white, the reference's gutters, no tab bar, no required
+   marks, grey placeholder selects, the quantity and unit on one row. */
+.jw-flat {
+  padding: 0 10px;
+}
+
+.jw-flat .jw-required-mark {
+  display: none;
+}
+
+.jw-flat select:has(option[value='']:checked) {
+  --field-fg: var(--neutral-600);
+}
+
+.jw-quantity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+/* The unit's label is hidden, so it clears the height of the Quantity label itself. */
+.jw-quantity-row > :last-child {
+  padding-top: 22px;
+}
+
+@media (max-width: 767px) {
+  .jw-has-tabbar:has(.jw-flat) .jw-tabbar {
+    display: none;
+  }
+
+  .jw-has-tabbar:has(.jw-flat) main {
+    padding-bottom: 0;
+  }
+
+  .jw-has-tabbar .jw-page-head-back .jw-page-back {
+    color: var(--color-ink);
+  }
+
+  .jw-has-tabbar .jw-page-head-back .jw-page-back svg {
+    stroke-width: 2.6;
+  }
+}
+
+.jw-review-file {
+  padding-top: var(--space-3);
+}
+
+.jw-review-file-label {
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-review-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 48px;
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+/* VF-17 requirements: the plain bold heading over the drop zone, attached-file rows. */
+.jw-field-heading {
+  font: var(--text-body-strong);
+  color: var(--color-ink);
+  margin-bottom: var(--space-1);
+}
+
+.jw-attached {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.jw-attached li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  color: var(--color-ink);
+  font: 400 16px/22px var(--font-sans);
+  overflow-wrap: anywhere;
+}
+
+.jw-attached button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+
+.jw-attached button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+}
+
+/* Muted text on a tinted fill stays above 4.5:1 (the walk's axe scan). */
+.jw-offer-summary .jw-record-caption,
+.jw-tinted-card .jw-record-caption {
+  color: var(--color-ink-muted);
+}
+
+/* VF-18 phone chrome: the bell's count is a small dot (the number stays in its name), and
+   the current tab's glyph is filled. */
+@media (max-width: 767px) {
+  .jw-shell-header .jw-icon-button-badge {
+    top: 10px;
+    right: 10px;
+    min-width: 10px;
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+  }
+}
+
+.jw-tab-current .jw-tab-icon svg {
+  fill: currentColor;
+  fill-opacity: 0.18;
+}
+
+.jw-tab-current[href='/'] .jw-tab-icon svg,
+.jw-tab-current[href='/profile'] .jw-tab-icon svg,
+.jw-tab-current[href='/supplier'] .jw-tab-icon svg {
+  fill-opacity: 1;
+}
+
+.jw-app-version {
+  text-align: center;
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+/* VF-18 supplier card details, underline tabs, closed row. */
+.jw-supplier-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-rating svg {
+  color: var(--illus-accent);
+  fill: var(--illus-accent);
+}
+
+.jw-underline-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1.5px solid var(--neutral-200);
+  text-align: center;
+  font: 600 17px/24px var(--font-sans);
+}
+
+.jw-underline-tabs span[aria-current] {
+  color: var(--brand-strong);
+  border-bottom: 3px solid var(--brand-strong);
+  margin-bottom: -1.5px;
+  padding-bottom: var(--space-2);
+}
+
+.jw-underline-tabs a {
+  color: var(--color-ink-muted);
+  text-decoration: none;
+}
+
+.jw-cta-off {
+  background: var(--neutral-100);
+  border-color: var(--neutral-100);
+  color: var(--color-ink-muted);
+}
+
+.jw-cta-off:hover {
+  background: var(--neutral-100);
+  border-color: var(--neutral-100);
+}
+
+.jw-more summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font: 600 16px/22px var(--font-sans);
+  color: var(--brand-strong);
+}
+
+.jw-spark-area { fill: var(--blue-100); opacity: 0.6; }
+.jw-spark-line { fill: none; stroke: var(--chart-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.jw-spark-dot { fill: var(--color-surface); stroke: var(--chart-1); stroke-width: 2; }
+
+.jw-revenue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0 var(--space-4);
+}
+
+.jw-revenue-amount {
+  font: 700 26px/32px var(--font-sans);
+  color: var(--color-ink);
+}
+
+.jw-tiles {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.jw-tile {
+  padding: var(--space-2);
+}
+
+.jw-tile-value {
+  font: 700 19px/24px var(--font-sans);
+  overflow-wrap: anywhere;
+}
+
+.jw-tile-label {
+  font: 400 13px/17px var(--font-sans);
+}
+
+/* ADR-0007 rating prompt. */
+.jw-rate {
+  padding: var(--space-4);
+}
+
+.jw-stars {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.jw-stars button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+
+.jw-stars .jw-star-on {
+  color: var(--illus-accent);
+}
+
+.jw-stars .jw-star-on svg {
+  fill: var(--illus-accent);
+}
+
+.jw-stars button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+}
+
+/* VF-19 operations home: the vendor dashboard's parts at desktop size, despite compact density. */
+.jw-ops-home .jw-welcome {
+  padding: var(--space-5) var(--space-6);
+  background: linear-gradient(100deg, var(--blue-50) 0%, var(--blue-100) 100%);
+}
+
+.jw-ops-home .jw-welcome-title {
+  margin: var(--space-1) 0;
+  font: 700 30px/38px var(--font-sans);
+}
+
+.jw-ops-art {
+  flex: none;
+  width: clamp(112px, 26vw, 320px);
+}
+
+.jw-ops-home .jw-tile {
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.jw-ops-home .jw-tile-value {
+  font: 700 30px/36px var(--font-sans);
+}
+
+.jw-ops-home .jw-tile-label {
+  font: 500 14px/20px var(--font-sans);
+}
+
+.jw-ops-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 1023px) {
+  .jw-ops-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .jw-ops-home .jw-welcome {
+    padding: var(--space-4);
+  }
+
+  .jw-ops-home .jw-welcome-title {
+    font: 700 22px/28px var(--font-sans);
+  }
+
+  .jw-ops-home .jw-tile {
+    padding: var(--space-2);
+  }
+
+  .jw-ops-home .jw-tile-value {
+    font: 700 22px/28px var(--font-sans);
+  }
+
+  .jw-ops-home .jw-tile-label {
+    font: 500 12px/16px var(--font-sans);
+  }
 }

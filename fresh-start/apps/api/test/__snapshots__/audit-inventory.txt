@@ -90,6 +90,7 @@ orders.accept-quote  modules/orders/application/accept-quote.command.ts
 orders.acknowledge-purchase-order  modules/orders/application/order.command.ts
 orders.issue-purchase-orders  modules/orders/application/order.command.ts
 orders.plan-work-package  modules/orders/application/production.command.ts
+orders.rate-supplier  modules/orders/application/rate-supplier.command.ts
 orders.record-containment  modules/orders/application/production.command.ts
 orders.release-commercial  modules/orders/application/order.command.ts
 orders.release-work-package  modules/orders/application/production.command.ts

@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
+import { disclosedSupplier } from '../../supplier/infrastructure/disclosed-supplier.query';
 import type {
   ApprovalKind,
   ApprovalRequestStatus,
   AwardStatus,
   CostComponent,
   CostSheetStatus,
+  DisclosedSupplier,
   EvaluationComponents,
   EvaluationLine,
   EvaluationScenario,
@@ -111,6 +113,7 @@ export interface AwardRecord {
   enquiryId: string;
   evaluationId: string | null;
   status: AwardStatus;
+  customerChoice: boolean;
   singleSource: boolean;
   rationale: string;
   fallbackNote: string;
@@ -200,6 +203,8 @@ export interface QuoteRecord {
   optionLabel: QuoteOptionLabel;
   reference: string | null;
   costSheetVersionId: string | null;
+  supplierOrganizationId: string | null;
+  supplier: DisclosedSupplier | null;
   status: QuoteStatus;
   currentVersionNo: number;
   decisionReason: string | null;
@@ -459,6 +464,7 @@ export class CommercialRepository {
     input: {
       rfqId: string;
       evaluationId: string | null;
+      customerChoice: boolean;
       singleSource: boolean;
       rationale: string;
       fallbackNote: string;
@@ -471,9 +477,9 @@ export class CommercialRepository {
   ): Promise<string> {
     const res = await tx.query<{ id: string }>(
       `INSERT INTO commercial.award
-         (rfq_id, evaluation_id, single_source, rationale, fallback_note, proposed_by, currency, buy_total_minor)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-      [input.rfqId, input.evaluationId, input.singleSource, input.rationale, input.fallbackNote, input.proposedBy, input.currency, input.buyTotalMinor],
+         (rfq_id, evaluation_id, single_source, rationale, fallback_note, proposed_by, currency, buy_total_minor, customer_choice)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [input.rfqId, input.evaluationId, input.singleSource, input.rationale, input.fallbackNote, input.proposedBy, input.currency, input.buyTotalMinor, input.customerChoice],
     );
     const id = res.rows[0]!.id;
     for (const line of input.lines) {
@@ -505,7 +511,7 @@ export class CommercialRepository {
   async findAward(id: string, tx?: Queryable, forUpdate = false): Promise<AwardRecord | null> {
     const res = await this.q(tx).query(
       `SELECT a.id, a.rfq_id AS "rfqId", r.reference AS "rfqReference", r.enquiry_id AS "enquiryId",
-              a.evaluation_id AS "evaluationId", a.status, a.single_source AS "singleSource",
+              a.evaluation_id AS "evaluationId", a.status, a.single_source AS "singleSource", a.customer_choice AS "customerChoice",
               a.rationale, a.fallback_note AS "fallbackNote", a.proposed_by AS "proposedBy",
               a.proposed_at AS "proposedAt", a.approval_request_id AS "approvalRequestId",
               a.decided_at AS "decidedAt", a.currency, a.buy_total_minor AS "buyTotalMinor",
@@ -544,6 +550,15 @@ export class CommercialRepository {
         lineTotalMinor: num(row['lineTotalMinor']),
       })),
     };
+  }
+
+  /** The other offers still standing on a round the customer has just decided (ADR-0007). */
+  async listApprovedChoiceAwards(rfqId: string, tx: Queryable): Promise<string[]> {
+    const res = await tx.query<{ id: string }>(
+      `SELECT id FROM commercial.award WHERE rfq_id = $1 AND status = 'approved' AND customer_choice`,
+      [rfqId],
+    );
+    return res.rows.map((row) => row.id);
   }
 
   async listAwardsForRfq(rfqId: string): Promise<AwardRecord[]> {
@@ -738,15 +753,16 @@ export class CommercialRepository {
       customerOrganizationId: string;
       optionLabel: QuoteOptionLabel;
       costSheetVersionId: string | null;
+      supplierOrganizationId: string | null;
       createdBy: string;
     },
     tx: Queryable,
   ): Promise<string> {
     const res = await tx.query<{ id: string }>(
       `INSERT INTO commercial.customer_quote
-         (offer_set_id, enquiry_id, rfq_id, customer_organization_id, option_label, cost_sheet_version_id, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [input.offerSetId, input.enquiryId, input.rfqId, input.customerOrganizationId, input.optionLabel, input.costSheetVersionId, input.createdBy],
+         (offer_set_id, enquiry_id, rfq_id, customer_organization_id, option_label, cost_sheet_version_id, supplier_organization_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [input.offerSetId, input.enquiryId, input.rfqId, input.customerOrganizationId, input.optionLabel, input.costSheetVersionId, input.supplierOrganizationId, input.createdBy],
     );
     return res.rows[0]!.id;
   }
@@ -851,7 +867,8 @@ export class CommercialRepository {
       `SELECT q.id, q.offer_set_id AS "offerSetId", q.enquiry_id AS "enquiryId", e.reference AS "enquiryReference",
               e.title AS "enquiryTitle", q.rfq_id AS "rfqId", q.customer_organization_id AS "customerOrganizationId",
               o.display_name AS "customerDisplayName", q.option_label AS "optionLabel", q.reference,
-              q.cost_sheet_version_id AS "costSheetVersionId", q.status, q.current_version_no AS "currentVersionNo",
+              q.cost_sheet_version_id AS "costSheetVersionId", q.supplier_organization_id AS "supplierOrganizationId",
+              q.status, q.current_version_no AS "currentVersionNo",
               q.decision_reason AS "decisionReason", q.accepted_version_id AS "acceptedVersionId",
               q.aggregate_version AS "aggregateVersion", q.created_at AS "createdAt"
          FROM commercial.customer_quote q
@@ -860,9 +877,10 @@ export class CommercialRepository {
         WHERE q.id = $1 ${forUpdate ? 'FOR UPDATE OF q' : ''}`,
       [id],
     );
-    const head = res.rows[0] as Omit<QuoteRecord, 'versions'> | undefined;
+    const head = res.rows[0] as Omit<QuoteRecord, 'versions' | 'supplier'> | undefined;
     if (!head) return null;
-    return { ...head, versions: await this.listQuoteVersions(id, tx) };
+    const supplier = head.supplierOrganizationId ? await disclosedSupplier(this.q(tx), head.supplierOrganizationId) : null;
+    return { ...head, supplier, versions: await this.listQuoteVersions(id, tx) };
   }
 
   async listQuoteVersions(quoteId: string, tx?: Queryable): Promise<QuoteVersionRecord[]> {

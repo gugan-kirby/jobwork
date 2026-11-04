@@ -47,13 +47,15 @@ export function StatusChip({ tone, children, silent }: StatusChipProps): React.J
         display: 'inline-flex',
         alignItems: 'center',
         gap: 'var(--space-1)',
-        padding: '2px var(--space-2)',
-        borderRadius: 'var(--radius-sm)',
+        padding: 'var(--chip-pad)',
+        borderRadius: 'var(--chip-radius)',
         background: `var(--status-${tone}-bg)`,
         border: `1px solid var(--status-${tone}-border)`,
         color: `var(--status-${tone}-fg)`,
-        font: 'var(--text-caption)',
-        whiteSpace: 'nowrap',
+        font: 'var(--chip-font)',
+        // A long status wraps inside its parent; on one line it widens the whole card.
+        maxWidth: '100%',
+        whiteSpace: 'normal',
       }}
     >
       <span aria-hidden style={{ fontWeight: 700 }}>

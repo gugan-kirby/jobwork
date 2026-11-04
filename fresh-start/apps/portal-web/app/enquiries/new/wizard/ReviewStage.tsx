@@ -1,23 +1,14 @@
 'use client';
 
 import type { DocumentSummary, OrganizationSite } from '@jobwork/contracts';
-import { JOB_TYPE_LABELS } from '@jobwork/contracts/constants';
-import { Callout, Card, CommandButton, DescriptionList, formatMoney, Icon, Stack } from '@jobwork/ui';
-
-const INSPECTION_LABELS: Record<string, string> = {
-  standard: 'Standard checks',
-  dimensional_report: 'Dimensional report',
-  first_article: 'First-article inspection',
-  third_party: 'Third-party inspection',
-};
+import { Button, Card, CommandButton, DescriptionList, Icon, Stack } from '@jobwork/ui';
 import type { DraftApi } from './useDraft';
-import type { Taxonomy } from './types';
+import { extensionOf, fileName, type Taxonomy } from './types';
 
 /**
- * Stage 3 — Review (prototype tile 7): what will be frozen, read back in plain words.
- * Submitting freezes this requirement as revision 1; later changes are made by
- * answering our questions, which adds a new revision — what was submitted stays
- * readable exactly as it is now.
+ * Stage 3 — Review (VF-17, reference screen 07): what will be frozen, read back. Part,
+ * category, material, quantity, delivery location, the file, the specifications, then
+ * Back and Submit Enquiry. Submitting freezes this as revision 1.
  */
 
 export interface ReviewStageProps {
@@ -27,119 +18,87 @@ export interface ReviewStageProps {
   documents: DocumentSummary[];
   submit: () => Promise<void>;
   canSubmit: boolean;
+  /** Returns to Requirements; drawn beside Submit, as in the reference. */
+  onBack: () => void;
 }
 
-export function ReviewStage({ api: draftApi, taxonomy, sites, documents, submit, canSubmit }: ReviewStageProps): React.JSX.Element {
+export function ReviewStage({ api: draftApi, taxonomy, sites, documents, submit, canSubmit, onBack }: ReviewStageProps): React.JSX.Element {
   const { draft } = draftApi;
-  const label = (id: string | undefined, list: Taxonomy['processes']): string =>
-    list.find((c) => c.capabilityId === id)?.label ?? '—';
   const site = sites.find((s) => s.siteId === draft.deliverySiteId);
   const attached = draft.documents.map((d) => ({
     ...d,
     doc: documents.find((doc) => doc.currentVersionId === d.documentVersionId),
   }));
+  const specifications = draft.items
+    .map((item) => [item.description, item.surfaceFinish, item.toleranceClass ? `Tolerance ${item.toleranceClass}` : ''].filter(Boolean).join(', '))
+    .filter(Boolean);
 
   return (
-    <Stack gap={4}>
-      <Card title="Enquiry details">
+    <Stack gap={5}>
+      <Card title="Enquiry Details">
         <DescriptionList
-          columns={1}
+          layout="split"
           items={[
-            { label: 'Job type', value: JOB_TYPE_LABELS[draft.jobType] },
-            ...(draft.jobType === 'correction_ecn'
-              ? [
-                  { label: 'Change reference', value: draft.changeReference || <em>not set</em>, mono: true },
-                  { label: 'What changed', value: draft.changeDescription || <em>not set</em> },
-                ]
-              : []),
-            { label: 'Part name', value: draft.title || <em>not set</em> },
-            {
-              label: 'Material supplied by',
-              value: draft.materialSupply === 'customer_supplied' ? 'Us (customer)' : 'JobWork',
-            },
+            { label: 'Part Name', value: draft.title || '—' },
             ...draft.items.flatMap((item) => {
               const process = taxonomy.processes.find((p) => p.capabilityId === item.processCapabilityId);
               const family = taxonomy.families.find((f) => f.capabilityId === process?.parentId);
+              const material = taxonomy.materials.find((m) => m.capabilityId === item.materialCapabilityId);
               const prefix = draft.items.length > 1 ? `Part ${item.lineNo} · ` : '';
               return [
-                { label: `${prefix}Category`, value: family?.label ?? (draft.assistedIntake ? 'Assisted intake' : '—') },
-                { label: `${prefix}Sub category`, value: process?.label ?? '—' },
-                {
-                  label: `${prefix}Material`,
-                  value: [label(item.materialCapabilityId, taxonomy.materials), item.materialGrade].filter((v) => v && v !== '—').join(' · ') || '—',
-                },
+                { label: `${prefix}Category`, value: family?.label ?? '—' },
+                { label: `${prefix}Material`, value: [material?.label, item.materialGrade].filter(Boolean).join(' ') || '—' },
                 {
                   label: `${prefix}Quantity`,
                   value: item.quantityBreakpoints
-                    .map((bp) => `${bp.quantity} ${bp.unit === 'piece' ? 'Nos' : bp.unit}${bp.kind === 'prototype' ? ' (prototype)' : ''}`)
-                    .join(' · '),
+                    .filter((bp) => bp.quantity > 0)
+                    .map((bp) => `${bp.quantity} ${bp.unit === 'piece' ? 'Nos' : bp.unit}`)
+                    .join(', '),
                   numeric: true,
-                },
-                {
-                  label: `${prefix}Your target price`,
-                  value: item.targetUnitPriceMinor !== undefined ? `${formatMoney({ amountMinor: item.targetUnitPriceMinor, currency: 'INR' })} per unit` : <em>not given</em>,
-                  numeric: item.targetUnitPriceMinor !== undefined,
                 },
               ];
             }),
-            { label: 'Delivery location', value: site ? `${site.city}, ${site.state}` : <em>not set</em> },
-            { label: 'Required by', value: draft.requiredByDate || <em>not set</em> },
-            { label: 'Confidentiality', value: draft.confidentiality.replace(/_/g, ' ') },
+            { label: 'Delivery Location', value: site ? `${site.city}, ${site.state}` : '—' },
           ]}
         />
-      </Card>
-
-      <Card title="Files">
-        {attached.length === 0 ? (
-          <p style={{ color: 'var(--color-text-muted)' }}>No file attached yet.</p>
-        ) : (
-          <ul style={{ listStyle: 'none', display: 'grid', gap: 'var(--space-2)' }}>
-            {attached.map((entry) => (
-              <li key={entry.documentVersionId} style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-                <span style={{ color: 'var(--status-blocked-fg)', display: 'inline-flex' }}>
-                  <Icon name="document" />
+        <div className="jw-review-file">
+          <p className="jw-review-file-label">File</p>
+          {attached.length === 0 ? (
+            <p className="jw-review-file-row">No file attached</p>
+          ) : (
+            attached.map((entry) => (
+              <p key={entry.documentVersionId} className="jw-review-file-row">
+                <Icon name="document" size={1.3} />
+                <span className="jw-file-row">
+                  <span className="jw-file-badge" aria-hidden="true">
+                    <span>{extensionOf(fileName(entry.doc))}</span>
+                  </span>
+                  {fileName(entry.doc)}
                 </span>
-                <span>{entry.doc?.title ?? 'Attached file'}</span>
-                <span style={{ font: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-                  {entry.role.replace(/_/g, ' ')}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+              </p>
+            ))
+          )}
+        </div>
       </Card>
 
       <Card title="Specifications">
-        {draft.items.map((item) => (
-          <p key={item.lineNo} style={{ marginBottom: 'var(--space-2)' }}>
-            {draft.items.length > 1 ? <strong>Part {item.lineNo}: </strong> : null}
-            {[
-              item.description,
-              item.surfaceFinish ? `Finish: ${item.surfaceFinish}` : '',
-              item.toleranceClass ? `Tolerance: ${item.toleranceClass}` : '',
-              `Inspection: ${INSPECTION_LABELS[item.inspectionLevel] ?? item.inspectionLevel}`,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        ))}
+        {specifications.length === 0 ? <p>None added</p> : specifications.map((line) => <p key={line}>{line}</p>)}
       </Card>
 
-      <Callout tone="neutral" title="What happens when you submit">
-        This requirement is frozen as revision 1 and given a reference. A JobWork engineer reviews
-        it and either asks structured questions or starts sourcing. Nothing is shared with any
-        workshop before that review.
-      </Callout>
-
-      <CommandButton
-        onCommand={submit}
-        receiptLabel="Submitted"
-        fullWidth
-        disabled={!canSubmit}
-        disabledReason="The draft is still saving — one moment"
-      >
-        Submit enquiry
-      </CommandButton>
+      <div className="jw-action-pair jw-action-pair-wide">
+        <Button variant="secondary" onClick={onBack}>
+          Back
+        </Button>
+        <CommandButton
+          onCommand={submit}
+          receiptLabel="Submitted"
+          fullWidth
+          disabled={!canSubmit}
+          disabledReason="The draft is still saving — one moment"
+        >
+          Submit Enquiry
+        </CommandButton>
+      </div>
     </Stack>
   );
 }

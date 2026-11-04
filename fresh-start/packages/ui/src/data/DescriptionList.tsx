@@ -18,10 +18,27 @@ export interface DescriptionItem {
 export function DescriptionList({
   items,
   columns = 1,
+  layout = 'stacked',
 }: {
   items: readonly DescriptionItem[];
   columns?: 1 | 2 | undefined;
+  /** `split` (VF-07, reference screen 07): label left and muted, value right, one row each. */
+  layout?: 'stacked' | 'split' | undefined;
 }): React.JSX.Element {
+  if (layout === 'split') {
+    return (
+      <dl className="jw-dl-split">
+        {items.map((item) => (
+          <div key={item.label}>
+            <dt>{item.label}</dt>
+            <dd className={[item.numeric ? 'numeric' : '', item.mono ? 'mono' : ''].join(' ').trim() || undefined}>
+              {item.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
   return (
     <dl
       style={{

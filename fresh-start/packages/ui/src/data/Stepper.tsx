@@ -20,24 +20,6 @@ export interface Step {
   state: StepState;
 }
 
-const STATE_TONE: Record<StepState, { fg: string; bg: string; border: string }> = {
-  complete: {
-    fg: 'var(--status-positive-fg)',
-    bg: 'var(--status-positive-bg)',
-    border: 'var(--status-positive-border)',
-  },
-  incomplete: {
-    fg: 'var(--color-text-muted)',
-    bg: 'var(--color-surface)',
-    border: 'var(--color-border)',
-  },
-  error: {
-    fg: 'var(--status-blocked-fg)',
-    bg: 'var(--status-blocked-bg)',
-    border: 'var(--status-blocked-border)',
-  },
-};
-
 const STATE_PREFIX: Record<StepState, string> = {
   complete: 'Completed',
   incomplete: 'Not started',
@@ -64,34 +46,24 @@ export function Stepper({
   onSelect,
   ariaLabel = 'Progress',
 }: StepperProps): React.JSX.Element {
+  // VF-05 (reference screen 05): numbered discs on one rail, labels underneath. The rail
+  // segment after a step fills as the reader moves past it.
   return (
-    <nav aria-label={ariaLabel}>
-      <ol
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 'var(--space-2)',
-          listStyle: 'none',
-          margin: 0,
-          padding: 0,
-        }}
-      >
+    <nav aria-label={ariaLabel} className="jw-stepper">
+      <ol>
         {steps.map((step, index) => {
           const isCurrent = index === current;
-          // An untroubled current step wears the action colour; a current step that is
-          // in error keeps the error colour and gains a ring, so both facts survive.
-          const tone =
-            isCurrent && step.state === 'incomplete'
-              ? {
-                  fg: 'var(--button-primary-fg)',
-                  bg: 'var(--color-action)',
-                  border: 'var(--color-action)',
-                }
-              : STATE_TONE[step.state];
           const mark = STATE_MARK[step.state];
-
+          const classes = [
+            'jw-step',
+            isCurrent ? 'jw-step-current' : '',
+            index < current ? 'jw-step-passed' : '',
+            `jw-step-${step.state}`,
+          ]
+            .filter(Boolean)
+            .join(' ');
           return (
-            <li key={step.label}>
+            <li key={step.label} className={classes}>
               <button
                 type="button"
                 onClick={onSelect ? () => onSelect(index) : undefined}
@@ -100,25 +72,11 @@ export function Stepper({
                 aria-label={`Step ${index + 1} of ${steps.length}: ${step.label}. ${
                   STATE_PREFIX[step.state]
                 }.${isCurrent ? ' You are here.' : ''}`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-2)',
-                  minHeight: 32,
-                  padding: '0 var(--space-3)',
-                  borderRadius: 'var(--radius-sm)',
-                  border: `var(--hairline) solid ${tone.border}`,
-                  background: tone.bg,
-                  color: tone.fg,
-                  font: isCurrent ? 'var(--text-body-strong)' : 'var(--text-caption)',
-                  cursor: onSelect ? 'pointer' : 'default',
-                  // The ring is what says "you are here" when the tone is already
-                  // spoken for by an error.
-                  boxShadow: isCurrent ? `0 0 0 2px var(--color-action)` : undefined,
-                }}
               >
-                <span aria-hidden>{mark || index + 1}</span>
-                <span>{step.label}</span>
+                <span className="jw-step-disc" aria-hidden>
+                  {mark || index + 1}
+                </span>
+                <span className="jw-step-label">{step.label}</span>
               </button>
             </li>
           );

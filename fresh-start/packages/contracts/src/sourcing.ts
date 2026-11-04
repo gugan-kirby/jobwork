@@ -110,14 +110,10 @@ export const saveDraftRequestSchema = z.object({
   title: z.string().trim().max(200).default(''),
   applicationNote: z.string().trim().max(4000).default(''),
   confidentiality: confidentialitySchema.default('confidential'),
-  jobType: jobTypeSchema.default('job_work'),
+  /** VF-17 (owner decision 2026-11-03): every new enquiry is job work; earlier records keep their type. */
+  jobType: z.literal('job_work').default('job_work'),
   /** Absent means "the default for the job type"; resolved by the command, never by the UI. */
   materialSupply: materialSupplySchema.optional(),
-  /** Correction/ECN only: the customer's change reference (ECN number) and what changed. */
-  changeReference: z.string().trim().max(80).default(''),
-  changeDescription: z.string().trim().max(4000).default(''),
-  /** Correction/ECN only: the enquiry being corrected; must be the customer's own. */
-  relatedEnquiryId: z.uuid().optional(),
   assistedIntake: z.boolean().default(false),
   deliverySiteId: z.uuid().optional(),
   requiredByDate: z.iso.date().optional(),
@@ -333,6 +329,15 @@ export const customerEnquirySchema = z.object({
     })
     .nullable(),
   itemCount: z.number().int().nonnegative(),
+  /** The first part's process and material, for the card's "category • material" line (VF-18). */
+  processCapabilityId: z.uuid().nullable(),
+  materialCapabilityId: z.uuid().nullable(),
+  /** The customer's own words back, for the quote and order screens (VF-18). */
+  quantity: z.number().nullable(),
+  unit: z.string().nullable(),
+  deliverySiteId: z.uuid().nullable(),
+  specifications: z.string(),
+  documentVersionIds: z.array(z.uuid()),
   /**
    * The concurrency token, not an internal fact: a customer command that changes this
    * enquiry — withdrawing it — has to say which version it was looking at. Without it the

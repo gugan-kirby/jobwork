@@ -22,7 +22,14 @@ export interface QuickActionProps {
   countLabel?: string | undefined;
   /** Colours the icon disc; `attention` when the count needs acting on. */
   tone?: Tone | undefined;
+  /**
+   * VF-04: the reference home draws each tile's glyph in its own colour, large and
+   * without a disc. An accent turns that on; without one the tile keeps its tone disc.
+   */
+  accent?: QuickAccent | undefined;
 }
+
+export type QuickAccent = 'blue' | 'orange' | 'green' | 'ink' | 'sky';
 
 export function QuickAction({
   href,
@@ -31,13 +38,20 @@ export function QuickAction({
   count,
   countLabel,
   tone = 'progress',
+  accent,
 }: QuickActionProps): React.JSX.Element {
   const showCount = typeof count === 'number' && count > 0;
   return (
-    <UiLink href={href} className="jw-quick">
-      <span className={`jw-quick-disc jw-quick-disc-${tone}`}>
-        <Icon name={icon} size={1.5} />
-      </span>
+    <UiLink href={href} className={accent ? 'jw-quick jw-quick-accent' : 'jw-quick'}>
+      {accent ? (
+        <span className={`jw-quick-glyph jw-quick-glyph-${accent}`}>
+          <Icon name={icon} size={2.3} />
+        </span>
+      ) : (
+        <span className={`jw-quick-disc jw-quick-disc-${tone}`}>
+          <Icon name={icon} size={1.5} />
+        </span>
+      )}
       <span className="jw-quick-label">{label}</span>
       {showCount ? (
         <span className="jw-quick-count">

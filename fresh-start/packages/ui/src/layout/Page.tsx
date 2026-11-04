@@ -114,16 +114,8 @@ export function Card({
   children,
 }: CardProps): React.JSX.Element {
   return (
-    <section
-      style={{
-        background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-raised)',
-        overflow: 'hidden',
-        ...style,
-      }}
-    >
+    // Surface styles live in `.jw-card` (VF-05) so a flat region can drop the box.
+    <section className="jw-card" style={style}>
       {title || actions ? (
         <header
           style={{
@@ -131,10 +123,9 @@ export function Card({
             gap: 'var(--space-3)',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: 'var(--space-4) var(--space-5)',
-            borderBottom: '1px solid var(--color-border)',
             flexWrap: 'wrap',
           }}
+          className="jw-card-head"
         >
           <div>
             {title ? <h2 style={{ font: 'var(--text-heading-2)', margin: 0 }}>{title}</h2> : null}
@@ -147,7 +138,7 @@ export function Card({
           {actions ? <div style={{ display: 'flex', gap: 'var(--space-2)' }}>{actions}</div> : null}
         </header>
       ) : null}
-      <div style={flush ? undefined : { padding: 'var(--space-5)' }}>{children}</div>
+      <div className={flush ? undefined : 'jw-card-body'}>{children}</div>
     </section>
   );
 }

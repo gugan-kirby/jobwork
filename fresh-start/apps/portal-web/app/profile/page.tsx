@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { MeResponse } from '@jobwork/contracts';
 import {
-  ButtonLink,
   Card,
   ErrorState,
   Icon,
@@ -18,19 +17,13 @@ import { purgeOfflineCaches } from '@jobwork/web-kit';
 import { api, ApiError } from '../../lib/api';
 
 /**
- * Profile (prototype tile 16, doc 14 §15 "expand to organization, security, verification,
- * sessions"). The header answers who you are and for whom; the list is every account
- * surface in one place; logout is the one destructive row and sits apart.
+ * Profile (VF-16, VF-18, reference screen 16): the reference's rows, word for word. Payment
+ * Methods opens the payments page: JobWork stores no cards or mandates (`F-08.4`), each
+ * invoice is paid through the gateway. Initials stand in for the photo, since no image is
+ * stored. Addresses, documents, team, about and terms are in the header menu.
  */
 
-const ROLE_LABELS: Record<string, string> = {
-  org_admin: 'Organization administrator',
-  customer_requester: 'Requester',
-  customer_approver: 'Approver',
-  supplier_estimator: 'Estimator',
-  supplier_production: 'Production',
-  supplier_quality: 'Quality',
-};
+const APP_VERSION = '1.0.0';
 
 function initials(name: string): string {
   return name
@@ -45,7 +38,8 @@ interface MenuRow {
   href: string;
   icon: IconName;
   label: string;
-  detail?: string;
+  detail: string;
+  tint: 'blue' | 'violet' | 'green' | 'orange' | 'sky' | 'neutral';
 }
 
 export default function ProfilePage() {
@@ -88,114 +82,83 @@ export default function ProfilePage() {
   }
 
   const supplier = me.organizationType === 'supplier';
-  const organization = me.memberships.find((m) => m.organizationId === me.organizationId);
-  const roleLine = me.roles.map((r) => ROLE_LABELS[r] ?? r.replace(/_/g, ' ')).join(' · ');
 
-  const rows: MenuRow[] = supplier
-    ? [
-        { href: '/supplier/company', icon: 'factory', label: 'Company profile' },
-        { href: '/supplier/compliance', icon: 'shield', label: 'Compliance & evidence' },
-        { href: '/capabilities', icon: 'capabilities', label: 'Capabilities & machines' },
-        { href: '/documents', icon: 'document', label: 'My documents' },
-        { href: '/supplier/team', icon: 'team', label: 'Team' },
-        { href: '/notifications', icon: 'bell', label: 'Notifications' },
-        { href: '/account/security', icon: 'settings', label: 'Security', detail: 'Password, two-factor, sessions' },
-      ]
-    : [
-        { href: '/account/addresses', icon: 'location', label: 'My addresses' },
-        { href: '/documents', icon: 'document', label: 'My documents' },
-        { href: '/team', icon: 'team', label: 'Team' },
-        { href: '/notifications', icon: 'bell', label: 'Notifications' },
-        { href: '/account/security', icon: 'settings', label: 'Security', detail: 'Password, two-factor, sessions' },
-      ];
-
-  const about: MenuRow[] = [
-    { href: '/help', icon: 'help', label: 'Help & support' },
-    { href: '/about', icon: 'info', label: 'About JobWork' },
-    { href: '/terms', icon: 'document', label: 'Terms & conditions' },
+  const rows: MenuRow[] = [
+    {
+      href: supplier ? '/supplier/company' : '/team',
+      icon: 'capabilities',
+      label: 'Company Details',
+      detail: 'Update your company information',
+      tint: 'blue',
+    },
+    { href: '/profile/edit', icon: 'profile', label: 'Account Settings', detail: 'Manage your login, email and security', tint: 'violet' },
+    {
+      href: supplier ? '/supplier/bills' : '/payments',
+      icon: 'payment',
+      label: 'Payment Methods',
+      detail: 'Add or manage payment options',
+      tint: 'green',
+    },
+    { href: '/notifications', icon: 'bell', label: 'Notifications', detail: 'Control your alerts and updates', tint: 'orange' },
+    { href: '/account/security', icon: 'shieldCheck', label: 'Privacy & Security', detail: 'Manage data, password and access', tint: 'violet' },
+    { href: '/help', icon: 'help', label: 'Help & Support', detail: 'Get help or raise a request', tint: 'sky' },
   ];
 
   return (
-    <Page title="Profile" back={{ href: supplier ? '/supplier' : '/', label: 'Back to home' }}>
+    <Page title="Profile" description="Manage your account, company and preferences">
       <Stack gap={4}>
-        <Card>
-          <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 'var(--space-9)',
-                height: 'var(--space-9)',
-                borderRadius: '50%',
-                background: 'var(--status-progress-bg)',
-                color: 'var(--color-action)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                font: 'var(--text-heading-1)',
-              }}
-            >
-              {initials(me.displayName || me.email)}
+        <Link href="/profile/edit" className="jw-tinted-card jw-identity">
+          <span className="jw-identity-avatar" aria-hidden="true">
+            {initials(me.displayName || me.email)}
+            <span className="jw-identity-badge">
+              <Icon name="edit" size={0.9} />
             </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ font: 'var(--text-heading-2)' }}>{me.displayName || me.email}</p>
-              <p style={{ color: 'var(--color-text-muted)', font: 'var(--text-caption)' }}>
-                {organization?.organizationName ?? 'No organization selected'}
-                {roleLine ? ` · ${roleLine}` : ''}
-              </p>
-              <p style={{ color: 'var(--color-text-muted)', font: 'var(--text-caption)' }}>{me.email}</p>
-            </div>
-            <ButtonLink
-              href="/profile/edit"
-              variant="secondary"
-              size="sm"
-              iconStart={<Icon name="edit" size={1} />}
-            >
-              Edit profile
-            </ButtonLink>
-          </div>
-        </Card>
+          </span>
+          <span className="jw-identity-main">
+            <span className="jw-identity-top">
+              <span className="jw-counterpart-name">{me.displayName || me.email}</span>
+              <span className="jw-count-badge">{supplier ? 'Vendor' : 'Buyer'}</span>
+            </span>
+            <span className="jw-summary-fact">
+              <Icon name="mail" size={1.15} />
+              {me.email}
+            </span>
+            {me.phone ? (
+              <span className="jw-summary-fact">
+                <Icon name="phone" size={1.15} />
+                {me.phone}
+              </span>
+            ) : null}
+            <span className="jw-visually-hidden">Edit profile</span>
+          </span>
+          <span className="jw-record-chevron" aria-hidden="true">
+            <Icon name="chevron" size={1.4} />
+          </span>
+        </Link>
 
-        <nav aria-label="Account" className="jw-menu">
+        <nav aria-label="Account" className="jw-menu jw-menu-rich">
           {rows.map((row) => (
             <Link key={row.href} href={row.href} className="jw-menu-row">
-              <span className="jw-menu-icon">
-                <Icon name={row.icon} size={1.3} />
+              <span className={`jw-record-tile jw-record-tile-${row.tint}`} aria-hidden="true">
+                <Icon name={row.icon} size={1.4} />
               </span>
               <span className="jw-menu-label">
-                {row.label}
-                {row.detail ? (
-                  <span style={{ display: 'block', font: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-                    {row.detail}
-                  </span>
-                ) : null}
+                <span className="jw-menu-title">{row.label}</span>
+                <span className="jw-menu-detail">{row.detail}</span>
               </span>
               <span className="jw-menu-chevron">
-                <Icon name="chevron" />
+                <Icon name="chevron" size={1.3} />
               </span>
             </Link>
           ))}
         </nav>
 
-        <nav aria-label="About" className="jw-menu">
-          {about.map((row) => (
-            <Link key={row.href} href={row.href} className="jw-menu-row">
-              <span className="jw-menu-icon">
-                <Icon name={row.icon} size={1.3} />
-              </span>
-              <span className="jw-menu-label">{row.label}</span>
-              <span className="jw-menu-chevron">
-                <Icon name="chevron" />
-              </span>
-            </Link>
-          ))}
-        </nav>
+        <button type="button" className="jw-logout" onClick={() => void logout()} disabled={busy}>
+          <Icon name="logout" size={1.3} />
+          Log Out
+        </button>
 
-        <div className="jw-menu">
-          <button type="button" className="jw-menu-row jw-menu-row-danger" onClick={() => void logout()} disabled={busy}>
-            <Icon name="logout" size={1.2} />
-            Logout
-          </button>
-        </div>
+        <p className="jw-app-version">App Version {APP_VERSION}</p>
       </Stack>
     </Page>
   );

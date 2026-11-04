@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useRouter, useSearchParams } from 'next/navigation';
 import type {
   CapabilityRef,
-  CustomerEnquiry,
   DocumentSummary,
   Enquiry,
   OrganizationSite,
@@ -14,7 +13,6 @@ import {
   Callout,
   Card,
   ErrorSummary,
-  Inline,
   LiveRegion,
   LoadingState,
   Page,
@@ -27,14 +25,15 @@ import { api, ApiError } from '../../../lib/api';
 import { DetailsStage } from './wizard/DetailsStage';
 import { RequirementsStage } from './wizard/RequirementsStage';
 import { ReviewStage } from './wizard/ReviewStage';
-import { STAGES, splitTaxonomy, stageForPath } from './wizard/types';
+import { STAGES, splitTaxonomy, stageForPath, stageIssues } from './wizard/types';
 import { useDraft } from './wizard/useDraft';
 
 /**
- * The enquiry wizard (F-MX.6): the prototype's three stages — Details, Requirements,
- * Review — over the doc 14 §4 intake. The draft's lifecycle (autosave under version,
- * conflict handling, resume from the URL) lives in `useDraft`; this page wires the
- * stages, the stepper and the submit.
+ * The enquiry wizard (VF-17, reference screens 05–07): Details, Requirements, Review,
+ * full screen with no tab bar. The draft's lifecycle (autosave under version, conflict
+ * handling, resume from the URL) lives in `useDraft`; this page wires the stages, the
+ * stepper, the check each stage makes before moving on, and the submit. Autosave stays
+ * spoken but unseen unless it needs the customer: a failed save or a conflict shows.
  */
 export default function NewEnquiryPage(): React.JSX.Element {
   // `useSearchParams` reads the draft this wizard is editing, so the tree that uses it
@@ -42,7 +41,7 @@ export default function NewEnquiryPage(): React.JSX.Element {
   return (
     <Suspense
       fallback={
-        <Page title="New enquiry" width="narrow">
+        <Page title="New Enquiry" width="narrow">
           <LoadingState label="Opening your enquiry" />
         </Page>
       }
@@ -66,13 +65,14 @@ function NewEnquiryWizard(): React.JSX.Element {
       : 0,
   );
   const draftApi = useDraft(openedWithDraftId.current);
-  const { enquiryId, version, saveState, saveMessage, conflictDetail, resuming, save, reloadFromServer } = draftApi;
+  const { enquiryId, saveState, saveMessage, conflictDetail, resuming, save, reloadFromServer } = draftApi;
 
   const [taxonomyRows, setTaxonomyRows] = useState<CapabilityRef[]>([]);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [sites, setSites] = useState<OrganizationSite[]>([]);
-  const [related, setRelated] = useState<CustomerEnquiry[]>([]);
   const [issues, setIssues] = useState<Array<{ path: string; message: string }>>([]);
+  // A stage shows its own errors once the customer has tried to leave it.
+  const [tried, setTried] = useState<number[]>([]);
 
   const loadDocuments = useCallback(async (): Promise<DocumentSummary[]> => {
     try {
@@ -96,9 +96,6 @@ function NewEnquiryWizard(): React.JSX.Element {
     api<{ capabilities: CapabilityRef[] }>('/suppliers/me/taxonomy')
       .then((res) => setTaxonomyRows(res.capabilities))
       .catch(() => setTaxonomyRows([]));
-    api<{ enquiries: CustomerEnquiry[] }>('/enquiries')
-      .then((res) => setRelated(res.enquiries.filter((e) => e.reference !== null)))
-      .catch(() => setRelated([]));
     void loadDocuments();
   }, [loadDocuments]);
 
@@ -135,23 +132,32 @@ function NewEnquiryWizard(): React.JSX.Element {
     }
   }
 
+  const draftIssues = tried.flatMap((index) => stageIssues(index, draftApi.draft));
   const issueFor = (prefix: string): string | undefined =>
-    issues.find((issue) => issue.path.startsWith(prefix))?.message;
-
-  // Leaving for the library is a detour, not an exit: it is told where to come back to.
-  const libraryHref = `/documents?returnTo=${encodeURIComponent(
-    `/enquiries/new?${enquiryId ? `draft=${enquiryId}&` : ''}step=1`,
-  )}`;
+    [...issues, ...draftIssues].find((issue) => issue.path.startsWith(prefix))?.message;
 
   const steps: Step[] = STAGES.map((label, index): Step => {
-    const hasError = issues.some((issue) => stageForPath(issue.path) === index);
+    const hasError = [...issues, ...draftIssues].some((issue) => stageForPath(issue.path) === index);
     const state: StepState = hasError ? 'error' : index < stage ? 'complete' : 'incomplete';
     return { label, state };
   });
 
+  /** Moves to a stage, stopping at the first earlier stage that is still short. */
+  function goTo(target: number): void {
+    for (let index = stage; index < target; index += 1) {
+      if (stageIssues(index, draftApi.draft).length > 0) {
+        setTried((current) => (current.includes(index) ? current : [...current, index]));
+        setStage(index);
+        return;
+      }
+    }
+    if (target > stage) void save();
+    setStage(target);
+  }
+
   if (resuming) {
     return (
-      <Page title="New enquiry" back={{ href: '/enquiries', label: 'Back to enquiries' }}>
+      <Page title="New Enquiry" back={{ href: '/enquiries', label: 'Back to enquiries' }}>
         <Card>
           <LoadingState label="Opening the draft you were working on" />
         </Card>
@@ -159,95 +165,79 @@ function NewEnquiryWizard(): React.JSX.Element {
     );
   }
 
-  const last = stage === STAGES.length - 1;
-
   return (
     <Page
-      title={last ? 'Review enquiry' : 'New enquiry'}
+      title={stage === 2 ? 'Review Enquiry' : 'New Enquiry'}
       back={{ href: stage === 0 ? '/enquiries' : `?${enquiryId ? `draft=${enquiryId}&` : ''}step=${stage - 1}`, label: stage === 0 ? 'Back to enquiries' : 'Previous step' }}
       width="narrow"
     >
-      <Stack gap={4}>
-        <Stepper steps={steps} current={stage} onSelect={setStage} ariaLabel="Enquiry steps" />
+      {/* VF-05–07: the wizard is laid flat on white, as the reference screens are. */}
+      <div className="jw-flat">
+        <Stack gap={5}>
+          <Stepper steps={steps} current={stage} onSelect={goTo} ariaLabel="Enquiry steps" />
 
-        <Inline gap={3} justify="space-between">
-          <LiveRegion message={saveMessage} />
+          <LiveRegion message={saveMessage} visuallyHidden={saveState !== 'failed' && saveState !== 'conflict'} />
           {saveState === 'conflict' ? (
             <Button variant="secondary" size="sm" onClick={() => void reloadFromServer()}>
               Reload their version
             </Button>
           ) : null}
-        </Inline>
 
-        {conflictDetail ? (
-          <Callout tone="attention" assertive>
-            {conflictDetail}
-          </Callout>
-        ) : null}
+          {conflictDetail ? (
+            <Callout tone="attention" assertive>
+              {conflictDetail}
+            </Callout>
+          ) : null}
 
-        <ErrorSummary issues={issues} onNavigate={(path) => setStage(stageForPath(path))} />
+          <ErrorSummary issues={issues} onNavigate={(path) => setStage(stageForPath(path))} />
 
-        {stage === 0 ? (
-          <DetailsStage
-            api={draftApi}
-            taxonomy={taxonomy}
-            sites={sites}
-            onSiteAdded={(site) => setSites((current) => [...current, site])}
-            relatedEnquiries={related.filter((e) => e.enquiryId !== enquiryId)}
-            initialFamilyCode={initialFamilyCode.current}
-            issueFor={issueFor}
-          />
-        ) : null}
+          {stage === 0 ? (
+            <DetailsStage
+              api={draftApi}
+              taxonomy={taxonomy}
+              sites={sites}
+              onSiteAdded={(site) => setSites((current) => [...current, site])}
+              initialFamilyCode={initialFamilyCode.current}
+              issueFor={issueFor}
+            />
+          ) : null}
 
-        {stage === 1 ? (
-          <RequirementsStage
-            api={draftApi}
-            documents={documents}
-            reloadDocuments={loadDocuments}
-            libraryHref={libraryHref}
-            issueFor={issueFor}
-          />
-        ) : null}
+          {stage === 1 ? (
+            <RequirementsStage
+              api={draftApi}
+              documents={documents}
+              reloadDocuments={loadDocuments}
+              issueFor={issueFor}
+            />
+          ) : null}
 
-        {stage === 2 ? (
-          <ReviewStage
-            api={draftApi}
-            taxonomy={taxonomy}
-            sites={sites}
-            documents={documents}
-            submit={submit}
-            canSubmit={saveState !== 'saving'}
-          />
-        ) : null}
+          {stage === 2 ? (
+            <ReviewStage
+              api={draftApi}
+              taxonomy={taxonomy}
+              sites={sites}
+              documents={documents}
+              submit={submit}
+              canSubmit={saveState !== 'saving'}
+              onBack={() => setStage(1)}
+            />
+          ) : null}
 
-        {last ? (
-          <div>
-            <Button variant="secondary" fullWidth onClick={() => setStage((s) => Math.max(0, s - 1))}>
-              Back
-            </Button>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: stage === 0 ? '1fr' : '1fr 1fr', gap: 'var(--space-3)' }}>
-            {stage > 0 ? (
-              <Button variant="secondary" onClick={() => setStage((s) => Math.max(0, s - 1))}>
-                Back
-              </Button>
-            ) : null}
-            <Button
-              onClick={() => {
-                void save();
-                setStage((s) => Math.min(STAGES.length - 1, s + 1));
-              }}
-            >
+          {stage === 0 ? (
+            <Button fullWidth onClick={() => goTo(1)}>
               Next
             </Button>
-          </div>
-        )}
-        <p style={{ font: 'var(--text-caption)', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-          You can leave and come back — everything is saved as you go
-          {version !== null ? ` (version ${version})` : ''}.
-        </p>
-      </Stack>
+          ) : null}
+          {stage === 1 ? (
+            <div className="jw-action-pair">
+              <Button variant="secondary" onClick={() => setStage(0)}>
+                Back
+              </Button>
+              <Button onClick={() => goTo(2)}>Next</Button>
+            </div>
+          ) : null}
+        </Stack>
+      </div>
     </Page>
   );
 }

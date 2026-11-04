@@ -95,7 +95,18 @@ const IGNORED_CONSOLE = [
  * Every walk test gets `guard`: uncaught page errors, console errors and API 5xx responses
  * fail the test at its end, with the list, so a broken screen cannot pass by looking right.
  */
+/**
+ * FW_MOBILE=1 records the customer's side of the walk on a phone (390 × 844, touch), for the
+ * client cut `walk:videos` makes in that mode; JobWork staff and suppliers stay on desktop.
+ */
+const MOBILE = process.env.FW_MOBILE === '1';
+const onPhone = (title: string): boolean => MOBILE && /^(customer|public) ·/.test(title);
+
 export const test = base.extend<{ guard: string[] }>({
+  viewport: async ({ viewport }, use, testInfo) => use(onPhone(testInfo.title) ? { width: 390, height: 844 } : viewport),
+  isMobile: async ({ isMobile }, use, testInfo) => use(onPhone(testInfo.title) || isMobile),
+  hasTouch: async ({ hasTouch }, use, testInfo) => use(onPhone(testInfo.title) || hasTouch),
+  deviceScaleFactor: async ({ deviceScaleFactor }, use, testInfo) => use(onPhone(testInfo.title) ? 2 : deviceScaleFactor),
   guard: [
     async ({ page }, use, testInfo) => {
       const problems: string[] = [];
@@ -190,7 +201,12 @@ export async function command(page: Page, name: string | RegExp, scope: Page | L
 
 /** A card or section found by its heading text. */
 export const section = (page: Page, heading: string | RegExp): Locator =>
-  page.locator('section, article, [class*="card"], fieldset, details').filter({ has: page.getByRole('heading', { name: heading }) }).last();
+  page.locator('section, article, [class*="card"]:not(.jw-card-head):not(.jw-card-body), fieldset, details').filter({ has: page.getByRole('heading', { name: heading }) }).last();
+
+/** Order Tracking keeps deliveries, payments, changes and messages behind Order Details (VF-18). */
+export async function showOrderDetails(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Order Details', exact: true }).click();
+}
 
 export const FIXTURES = join(__dirname, '..', 'fixtures');
 export const daysFromNow = (days: number): string => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);

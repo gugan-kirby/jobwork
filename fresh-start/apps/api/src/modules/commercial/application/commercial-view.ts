@@ -99,6 +99,7 @@ export class CommercialView {
       enquiryId: record.enquiryId,
       evaluationId: record.evaluationId,
       status: record.status,
+      customerChoice: record.customerChoice,
       singleSource: record.singleSource,
       rationale: record.rationale,
       fallbackNote: record.fallbackNote,

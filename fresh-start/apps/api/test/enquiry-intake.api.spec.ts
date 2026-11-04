@@ -196,7 +196,8 @@ describe('Enquiry intake and triage (IN-05)', () => {
     expect(paths).toContain('items[1].processCapabilityId');
     expect(paths).toContain('items[1].materialCapabilityId');
     expect(paths).toContain('documents');
-    expect(paths).toContain('requiredByDate');
+    // VF-17: a required-by date is optional; the reference form does not ask for one.
+    expect(paths).not.toContain('requiredByDate');
 
     // Nothing was frozen and nothing was numbered: a refused submit leaves no trace
     // that a later citation could point at.
@@ -362,124 +363,58 @@ describe('Enquiry intake and triage (IN-05)', () => {
 
   // ---------------------------------------------------------------- F-MX.1 job types
 
-  it('defaults a plain enquiry to job work on customer-supplied material and says so to the customer', async () => {
+  it('raises every new enquiry as job work and refuses the retired job types (VF-17)', async () => {
     const created = await customer.post('/api/v1/enquiries/draft', completeDraft());
     expect(created.status).toBe(201);
     expect(created.body['jobType']).toBe('job_work');
     expect(created.body['materialSupply']).toBe('customer_supplied');
 
-    const asNewModel = await customer.post(
-      `/api/v1/enquiries/${created.body['enquiryId'] as string}/draft`,
-      { ...completeDraft(), jobType: 'new_model', expectedVersion: created.body['aggregateVersion'] },
-    );
-    expect(asNewModel.body['materialSupply']).toBe('to_be_sourced');
-
-    const list = await customer.get('/api/v1/enquiries');
-    const mine = (list.body['enquiries'] as Array<Record<string, unknown>>).find(
-      (e) => e['enquiryId'] === created.body['enquiryId'],
-    )!;
-    expect(mine['jobType']).toBe('new_model');
-    expect(mine['jobTypeLabel']).toBe('New model');
+    const enquiryId = created.body['enquiryId'] as string;
+    for (const retired of ['new_model', 'correction_ecn']) {
+      const refused = await customer.post(`/api/v1/enquiries/${enquiryId}/draft`, {
+        ...completeDraft(),
+        jobType: retired,
+        expectedVersion: created.body['aggregateVersion'],
+      });
+      expect(refused.status).toBe(400);
+    }
   });
 
-  it('refuses to submit a correction without its change reference and description', async () => {
+  it('keeps an earlier enquiry readable under its own job type, and copies it as job work (VF-17)', async () => {
     const drawing = await seedDocument(customerOrgId, 'drawing_2d');
     const created = await customer.post('/api/v1/enquiries/draft', {
-      ...completeDraft({ title: 'Bracket rev B' }),
-      jobType: 'correction_ecn',
+      ...completeDraft({ title: 'Raised before the change' }),
       documents: [{ documentVersionId: drawing, role: 'governing', lineNo: 1 }],
     });
     const enquiryId = created.body['enquiryId'] as string;
-
-    const refused = await customer.post(`/api/v1/enquiries/${enquiryId}/submit`, {
+    await customer.post(`/api/v1/enquiries/${enquiryId}/submit`, {
       expectedVersion: created.body['aggregateVersion'] as number,
     });
-    expect(refused.status).toBe(422);
-    const paths = (refused.body['errors'] as Array<{ path: string }>).map((e) => e.path);
-    expect(paths).toContain('changeReference');
-    expect(paths).toContain('changeDescription');
+    await pg.query(`UPDATE sourcing.enquiry SET job_type = 'new_model' WHERE id = $1`, [enquiryId]);
 
-    const completed = await customer.post(`/api/v1/enquiries/${enquiryId}/draft`, {
-      ...completeDraft({ title: 'Bracket rev B' }),
-      jobType: 'correction_ecn',
-      changeReference: 'ECN-0042',
-      changeDescription: 'Slot width 8 mm → 8.5 mm; added chamfer on mounting face.',
+    const list = await customer.get('/api/v1/enquiries');
+    const mine = (list.body['enquiries'] as Array<Record<string, unknown>>).find((e) => e['enquiryId'] === enquiryId)!;
+    expect(mine['jobType']).toBe('new_model');
+    expect(mine['jobTypeLabel']).toBe('New model');
+
+    const copy = await customer.post(`/api/v1/enquiries/${enquiryId}/copy`, {});
+    expect(copy.status).toBe(201);
+    expect(copy.body['jobType']).toBe('job_work');
+    expect(copy.body['relatedEnquiryId']).toBeNull();
+  });
+
+  it('submits without a required-by date (VF-17)', async () => {
+    const drawing = await seedDocument(customerOrgId, 'drawing_2d');
+    const { requiredByDate: _unused, ...draft } = completeDraft({ title: 'No date given' });
+    const created = await customer.post('/api/v1/enquiries/draft', {
+      ...draft,
       documents: [{ documentVersionId: drawing, role: 'governing', lineNo: 1 }],
-      expectedVersion: created.body['aggregateVersion'],
     });
-    const submitted = await customer.post(`/api/v1/enquiries/${enquiryId}/submit`, {
-      expectedVersion: completed.body['aggregateVersion'] as number,
+    const submitted = await customer.post(`/api/v1/enquiries/${created.body['enquiryId'] as string}/submit`, {
+      expectedVersion: created.body['aggregateVersion'] as number,
     });
     expect(submitted.status).toBe(201);
-    expect(submitted.body['jobType']).toBe('correction_ecn');
-
-    // The change is part of what was asked for, so it is inside the frozen revision.
-    const revision = await pg.query<{ snapshot: Record<string, unknown> }>(
-      `SELECT snapshot FROM sourcing.requirement WHERE enquiry_id = $1 AND revision_no = 1`,
-      [enquiryId],
-    );
-    expect(revision.rows[0]!.snapshot['jobType']).toBe('correction_ecn');
-    expect(revision.rows[0]!.snapshot['changeReference']).toBe('ECN-0042');
-  });
-
-  it('lets a correction point only at the customers own enquiry', async () => {
-    const theirs = await otherCustomer.post('/api/v1/enquiries/draft', { title: 'Not yours' });
-    const attempt = await customer.post('/api/v1/enquiries/draft', {
-      title: 'Correcting a stranger',
-      jobType: 'correction_ecn',
-      relatedEnquiryId: theirs.body['enquiryId'],
-    });
-    expect(attempt.status).toBe(422);
-    expect(attempt.body['code']).toBe('RELATED_ENQUIRY_NOT_USABLE');
-
-    const ghost = await customer.post('/api/v1/enquiries/draft', {
-      title: 'Correcting nothing',
-      jobType: 'correction_ecn',
-      relatedEnquiryId: '00000000-0000-4000-8000-000000000000',
-    });
-    // Same code for "not yours" and "does not exist": the check must not confirm ids.
-    expect(ghost.status).toBe(422);
-    expect(ghost.body['code']).toBe(attempt.body['code']);
-
-    const mine = await customer.post('/api/v1/enquiries/draft', { title: 'Original' });
-    const ok = await customer.post('/api/v1/enquiries/draft', {
-      title: 'Correcting my own',
-      jobType: 'correction_ecn',
-      relatedEnquiryId: mine.body['enquiryId'],
-    });
-    expect(ok.status).toBe(201);
-    expect(ok.body['relatedEnquiryId']).toBe(mine.body['enquiryId']);
-
-    // On any other job type the correction fields are dropped, not stored as stray text.
-    const plain = await customer.post('/api/v1/enquiries/draft', {
-      title: 'Plain job work',
-      jobType: 'job_work',
-      changeReference: 'ECN-9',
-      relatedEnquiryId: mine.body['enquiryId'],
-    });
-    expect(plain.body['changeReference']).toBe('');
-    expect(plain.body['relatedEnquiryId']).toBeNull();
-  });
-
-  it('copies a correction as a correction of its source, with the ECN number cleared', async () => {
-    const drawing = await seedDocument(customerOrgId, 'drawing_2d');
-    const created = await customer.post('/api/v1/enquiries/draft', {
-      ...completeDraft({ title: 'Housing rev C' }),
-      jobType: 'correction_ecn',
-      changeReference: 'ECN-0077',
-      changeDescription: 'Bore diameter tightened.',
-      documents: [{ documentVersionId: drawing, role: 'governing', lineNo: 1 }],
-    });
-    const sourceId = created.body['enquiryId'] as string;
-    await customer.post(`/api/v1/enquiries/${sourceId}/submit`, {
-      expectedVersion: created.body['aggregateVersion'] as number,
-    });
-
-    const copy = await customer.post(`/api/v1/enquiries/${sourceId}/copy`, {});
-    expect(copy.status).toBe(201);
-    expect(copy.body['jobType']).toBe('correction_ecn');
-    expect(copy.body['relatedEnquiryId']).toBe(sourceId);
-    expect(copy.body['changeReference']).toBe('');
+    expect(submitted.body['requiredByDate']).toBeNull();
   });
 
   it('shows the reviewer the job-type checklist rows', async () => {

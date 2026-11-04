@@ -2,6 +2,7 @@ import { Controller, Get, Param, Post, Req } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import {
   acceptQuoteRequestSchema,
+  rateSupplierRequestSchema,
   simulatePaymentRequestSchema,
   type CustomerInvoice,
   type CustomerOrder,
@@ -14,6 +15,7 @@ import { NotAuthorized } from '../../iam/domain/errors';
 import { AcceptQuoteCommand } from '../application/accept-quote.command';
 import { OrdersView } from '../application/orders-view';
 import { PaymentCommand } from '../application/payment.command';
+import { RateSupplierCommand } from '../application/rate-supplier.command';
 import { OrderNotFound } from '../domain/errors';
 import { OrdersRepository } from '../infrastructure/orders.repository';
 import { renderInvoiceDocument } from './invoice-document';
@@ -53,13 +55,24 @@ export class AcceptQuoteController {
   }
 }
 
-/** The customer's orders (prototype tiles 11–12, corrected): JobWork's commitment, no supplier anywhere. */
+/** The customer's orders (prototype tiles 11–12): JobWork's commitment, naming its supplier (ADR-0007). */
 @Controller('orders')
 export class CustomerOrdersController {
   constructor(
     private readonly orders: OrdersRepository,
     private readonly view: OrdersView,
+    private readonly rateSupplier: RateSupplierCommand,
   ) {}
+
+  @Post(':orderId/rating')
+  async rate(@CurrentActor() actor: Actor, @Param('orderId') orderId: string, @Req() request: FastifyRequest): Promise<CustomerOrder> {
+    const organizationId = requireCustomer(actor);
+    const body = parseBody(rateSupplierRequestSchema, request.body);
+    await this.rateSupplier.execute(actor, organizationId, orderId, body, { idempotencyKey: idempotencyKey(request) });
+    const order = await this.orders.findSalesOrder(orderId);
+    if (!order) throw new OrderNotFound();
+    return this.view.customerOrder(order);
+  }
 
   @Get()
   async list(@CurrentActor() actor: Actor): Promise<{ orders: CustomerOrderListItem[] }> {

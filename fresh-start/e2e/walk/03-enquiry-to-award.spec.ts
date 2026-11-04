@@ -10,17 +10,14 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
   await signInAs(page, 'buyer');
   await open(page, `${PORTAL}/`);
   await axe(page, 'customer home');
-  await page.getByRole('link', { name: 'Create enquiry' }).first().click();
+  await page.getByRole('link', { name: 'New Enquiry' }).first().click();
   await expect(page).toHaveURL(/\/enquiries\/new/);
-  await page.getByRole('radio', { name: /Job work/ }).check();
   await field(page, 'Part / job name').fill('Walk impeller housing');
-  await choose(page.getByLabel('Material supplied by', { exact: false }), /JobWork/);
   await choose(page.getByLabel('Category', { exact: false }).first(), /machin/i);
   await choose(page.getByLabel('Sub category', { exact: false }).first(), /milling/i);
   await choose(page.getByLabel('Material', { exact: true }).first(), /alumin/i);
-  await field(page, 'Grade or standard').fill('6061-T6');
   await field(page, 'Quantity').fill('100');
-  await button(page, 'Add a delivery address').click();
+  await choose(page.getByLabel('Delivery Location', { exact: false }), /Add new location/);
   await field(page, 'Name for this address').fill('Kovai Pumps assembly');
   await field(page, /^Address/).fill('SIDCO Industrial Estate, Mudalipalayam');
   await field(page, 'City').fill('Tiruppur');
@@ -29,31 +26,31 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
   await field(page, 'Who receives it').fill('R. Kumar');
   await field(page, 'Their phone').fill('+91 98400 12345');
   await command(page, 'Save address');
-  await field(page, 'What is this for?').fill('Housing for the drive impeller of a pump skid.');
-  await expect(visible(page, /Draft saved/)).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /Draft saved/ })).toBeAttached();
   await axe(page, 'wizard step 1');
   await button(page, 'Next').click();
 
-  await page.getByLabel('2D drawing', { exact: false }).setInputFiles(join(FIXTURES, 'drawing.pdf'));
+  // Next waits for the drawing (VF-17).
+  await button(page, 'Next').click();
+  await expect(visible(page, /Upload a drawing/)).toBeVisible();
+  await page.getByLabel('Upload File', { exact: false }).setInputFiles(join(FIXTURES, 'drawing.pdf'));
   await expect(visible(page, 'Scanned clean and attached to this enquiry.')).toBeVisible({ timeout: 60_000 });
   await field(page, 'Specifications / comments').fill('Break all sharp edges. Bore concentric to 0.02.');
-  await field(page, 'Surface finish').fill('Ra 1.6');
-  await field(page, 'Tolerance class').fill('IT8');
-  await choose(page.getByLabel('Inspection needed', { exact: false }), /Dimensional report/);
-  await field(page, 'Required by').fill(daysFromNow(60));
+  await choose(page.getByLabel('Surface Finish', { exact: false }), /Anodized/);
+  await choose(page.getByLabel('Tolerance', { exact: false }), /0\.1 mm/);
   await axe(page, 'wizard step 2');
   await button(page, 'Next').click();
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Review enquiry');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Review Enquiry');
   await axe(page, 'wizard review');
-  await command(page, 'Submit enquiry');
+  await command(page, 'Submit Enquiry');
   await expect(page).toHaveURL(/\/enquiries\/[0-9a-f-]{36}$/);
   const reference = (await page.getByText(/ENQ-\d{4}-\d{4}/).first().innerText()).match(/ENQ-\d{4}-\d{4}/)![0];
   remember('enquiryId', page.url().split('/').pop());
   remember('enquiryReference', reference);
   await axe(page, 'enquiry detail');
   await open(page, `${PORTAL}/enquiries`);
-  await expect(page.getByText(reference).first()).toBeVisible();
+  await expect(page.getByText('Walk impeller housing').first()).toBeVisible();
   await axe(page, 'enquiry list');
 });
 
@@ -65,9 +62,8 @@ test('customer · resumes and discards a draft, withdraws and repeats an enquiry
   await signInAs(page, 'buyer');
   await page.goto(`${PORTAL}/enquiries/new`);
   await field(page, 'Part / job name').fill(bushing);
-  await expect(visible(page, /Draft saved/)).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /Draft saved/ })).toBeAttached();
   await open(page, `${PORTAL}/enquiries`);
-  await page.getByRole('radio', { name: /Drafts/ }).click();
   await page.getByRole('link', { name: new RegExp(bushing) }).first().click();
   await expect(field(page, 'Part / job name')).toHaveValue(bushing);
   const draftId = new URL(page.url()).searchParams.get('draft');
@@ -80,8 +76,7 @@ test('customer · resumes and discards a draft, withdraws and repeats an enquiry
   await command(page, 'Withdraw enquiry');
   // Withdrawing returns to the list, where withdrawn enquiries are hidden until asked for.
   await expect(page).toHaveURL(/\/enquiries$/);
-  await expect(page.getByText(spacer)).toHaveCount(0);
-  await button(page, 'Show withdrawn').click();
+  await page.getByRole('radio', { name: /Closed/ }).click();
   await expect(page.getByText(spacer).first()).toBeVisible();
   await field(page, 'Search').fill(run);
   await page.getByRole('link', { name: new RegExp(spacer) }).first().click();

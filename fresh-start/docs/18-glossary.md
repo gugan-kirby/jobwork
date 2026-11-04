@@ -19,7 +19,7 @@
 | Configuration | The controlled technical definition of the product/work, including exact revisions and relationships. |
 | Concession/deviation | Scoped temporary authorization to accept known non-conformance; it does not change the specification/result. |
 | Contract snapshot | Immutable copy/hash of accepted commercial scope, terms, parties and referenced technical package. |
-| Correction / ECN | Enquiry job type: a correction or engineering change to a part already enquired or ordered, carrying the customer's change reference (ECN — Engineering Change Notice, the communicated approved change) and what changed; lineage to the corrected enquiry, never an edit of it (`FR-307`, `BR-ENG-09`). |
+| Correction / ECN | Retired enquiry job type (VF-17, 2026-11-03), readable on earlier records: a correction or engineering change to a part already enquired or ordered, carrying the customer's change reference (ECN — Engineering Change Notice, the communicated approved change) and what changed; lineage to the corrected enquiry, never an edit of it (`FR-307`, `BR-ENG-09`). |
 | Corrective action | Action addressing root cause, with implementation and effectiveness evidence. |
 | Cost sheet | JobWork-only landed-cost, risk, finance and margin scenario derived from selected supplier input. |
 | Customer quote | JobWork's sell-side commercial offer to customer; independent from supplier bid. |
@@ -34,9 +34,9 @@
 | JobWork | Middleman/reseller and accountable customer-facing commercial party in this product model. |
 | Legal hold | Retention override preventing destruction of defined records/documents. |
 | Middleman | JobWork's operational role controlling identity, sourcing, commercial, quality, payment and delivery handoffs. |
-| Job type | What kind of work an enquiry asks for: job work, new model, or correction/ECN (`FR-307`). First question of the wizard; part of the frozen requirement. |
+| Job type | What kind of work an enquiry asks for: every new enquiry is job work; new model and correction/ECN survive only on earlier records (`FR-307`). First question of the wizard; part of the frozen requirement. |
 | Job work | Enquiry job type: a treatment or process on goods the customer owns (CGST Act s.2(68)); the customer is the principal, normally supplies the material under a delivery challan and files ITC-04. JobWork and the supplier add process, not material. |
-| New model | Enquiry job type: a part JobWork has not made for this customer before — new part development from drawings; material is sourced by JobWork. First-article inspection is the suggested default. |
+| New model | Retired enquiry job type (VF-17, 2026-11-03), readable on earlier records: a part JobWork has not made for this customer before — new part development from drawings; material is sourced by JobWork. First-article inspection is the suggested default. |
 | Milestone | Planned production/operations step with evidence and verification policy. |
 | NCR | Non-Conformance Report describing failed requirement, affected scope, containment, disposition and closure. |
 | NRE | Non-recurring engineering/tooling/setup cost. |

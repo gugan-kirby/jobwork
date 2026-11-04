@@ -1,46 +1,55 @@
 'use client';
 
 import Link from 'next/link';
-import { ButtonLink, Icon } from '@jobwork/ui';
-import { AssuranceStrip, PublicFrame } from '../public-frame';
+import { Icon, WorkshopIllustration } from '@jobwork/ui';
 
 /**
- * The welcome fork (prototype tile 2): sign in, register, or look around as a guest.
- * Guest browsing is category education only (`D-17`) and the link says where it goes.
+ * The welcome fork (VF-02, VF-18, reference screen 02), word for word. Guest browsing is
+ * category education only (`D-17`).
  */
+const ASSURANCES = [
+  { icon: 'shieldLock' as const, label: 'Secure' },
+  { icon: 'shieldCheck' as const, label: 'Reliable' },
+  { icon: 'shieldBolt' as const, label: 'Fast' },
+];
+
 export default function StartPage() {
   return (
-    <PublicFrame
-      eyebrow="Welcome to"
-      title="JobWork"
-      lede="One place for all your job work needs — enquiry, quotation, production and delivery."
-      footer={<AssuranceStrip />}
-    >
-      <div
-        aria-hidden="true"
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 'var(--space-4)',
-          color: 'var(--color-action)',
-          padding: 'var(--space-4) 0',
-        }}
-      >
-        <Icon name="factory" size={3} />
-        <Icon name="settings" size={3} />
-        <Icon name="truck" size={3} />
+    <div className="jw-entry">
+      <header>
+        <p className="jw-entry-eyebrow">Welcome to</p>
+        <h1 className="jw-entry-title">JobWork</h1>
+        <p className="jw-entry-lede">
+          One Platform for All Your
+          <br />
+          Job Work Needs
+        </p>
+      </header>
+
+      <div className="jw-entry-art">
+        <WorkshopIllustration />
       </div>
 
-      <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-        <ButtonLink href="/login" fullWidth>Login</ButtonLink>
-        <ButtonLink href="/register" fullWidth variant="secondary">Register</ButtonLink>
-        <Link href="/explore" style={{ textAlign: 'center', font: 'var(--text-body-strong)' }}>
-          Continue as guest
+      <div className="jw-entry-actions">
+        <Link href="/login" className="jw-cta">
+          Login
         </Link>
-        <p style={{ font: 'var(--text-caption)', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-          As a guest you can see what we make. Raising an enquiry needs an account.
-        </p>
+        <Link href="/register" className="jw-cta-outline">
+          Register
+        </Link>
+        <Link href="/explore" className="jw-text-cta">
+          Continue as Guest
+        </Link>
       </div>
-    </PublicFrame>
+
+      <ul className="jw-assurance">
+        {ASSURANCES.map((item) => (
+          <li key={item.label}>
+            <Icon name={item.icon} size={1.7} />
+            <span>{item.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

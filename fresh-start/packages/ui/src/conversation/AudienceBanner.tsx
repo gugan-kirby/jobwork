@@ -13,6 +13,7 @@ export const AUDIENCE_STYLE: Record<MessageAudience, { tone: Tone; icon: IconNam
   customer: { tone: 'progress', icon: 'profile', name: 'Customer' },
   supplier: { tone: 'positive', icon: 'factory', name: 'Supplier' },
   shared_technical: { tone: 'attention', icon: 'team', name: 'Every invited supplier' },
+  customer_supplier: { tone: 'progress', icon: 'message', name: 'Customer and vendor' },
 };
 
 /** A compact audience label for a message in JobWork's view. */

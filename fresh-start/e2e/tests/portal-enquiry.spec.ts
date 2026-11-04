@@ -1,4 +1,5 @@
 import { expect, type Locator, test } from '@playwright/test';
+import { join } from 'node:path';
 import { expectAccessible } from '../support/a11y';
 import { PORTAL } from '../support/api';
 import { signIn } from '../support/session';
@@ -21,22 +22,21 @@ test('raises an enquiry through the wizard, every stage accessible', async ({ pa
   await choose(page.getByLabel('Category', { exact: true }), /machin|mill/i);
   await choose(page.getByLabel('Sub category'), /mill/i);
   await choose(page.getByLabel('Material', { exact: true }), /alumin/i);
-  await page.getByLabel('Grade or standard').fill('6061-T6');
   await page.getByRole('spinbutton', { name: /^Quantity/ }).fill('250');
+  await choose(page.getByLabel('Delivery Location'), / — /);
   await expectAccessible(page, 'enquiry wizard: details');
   await page.getByRole('button', { name: 'Next' }).click();
 
   // Requirements
-  await page.getByLabel(/Flange drawing/).check();
-  await page.getByLabel('Tolerance class').fill('IT8');
-  const due = new Date(Date.now() + 45 * 86_400_000).toISOString().slice(0, 10);
-  await page.getByLabel(/^Required by/).fill(due);
+  await page.getByLabel(/Upload File/).setInputFiles(join(__dirname, '..', 'walk', 'fixtures', 'drawing.pdf'));
+  await expect(page.getByText('Scanned clean and attached to this enquiry.')).toBeVisible({ timeout: 60_000 });
+  await choose(page.getByLabel('Tolerance'), /0\.1 mm/);
   await expectAccessible(page, 'enquiry wizard: requirements');
   await page.getByRole('button', { name: 'Next' }).click();
 
   // Review and submit
-  await expect(page.getByRole('button', { name: 'Submit enquiry' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit Enquiry' })).toBeVisible();
   await expectAccessible(page, 'enquiry wizard: review');
-  await page.getByRole('button', { name: 'Submit enquiry' }).click();
+  await page.getByRole('button', { name: 'Submit Enquiry' }).click();
   await expect(page.getByText(/ENQ-\d{4}-\d{4}/).first()).toBeVisible();
 });

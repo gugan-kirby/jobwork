@@ -7,6 +7,7 @@ import type { Award, BidVersion, Evaluation, Rfq } from '@jobwork/contracts';
 import {
   Callout,
   Card,
+  Checkbox,
   CommandButton,
   CopyableId,
   DataTable,
@@ -73,6 +74,7 @@ export default function RfqDetailPage(): React.JSX.Element {
   const [scenario, setScenario] = useState({ inspectionPackagingMinor: '0', financingRiskBp: '0', nreAllocation: 'value', freightPolicy: 'as_quoted', freightEstimateMinor: '0' });
   const [split, setSplit] = useState<Record<string, Record<string, string>>>({});
   const [rationale, setRationale] = useState('');
+  const [customerChoice, setCustomerChoice] = useState(false);
   const [fallback, setFallback] = useState('');
 
   const load = useCallback(async () => {
@@ -400,6 +402,12 @@ export default function RfqDetailPage(): React.JSX.Element {
                           </div>
                         );
                       })}
+                      <Checkbox
+                        label="Offer this supplier to the customer"
+                        hint="Other bids stay open. Propose one award per supplier; the customer's acceptance settles the round."
+                        checked={customerChoice}
+                        onChange={(e) => setCustomerChoice(e.target.checked)}
+                      />
                       <TextArea label="Rationale" value={rationale} onChange={(e) => setRationale(e.target.value)} />
                       {detail.singleSourceRisk || evaluation.rows.length === 1 ? (
                         <TextArea label="Fallback if this supplier fails" hint="Required: single source." value={fallback} onChange={(e) => setFallback(e.target.value)} />
@@ -425,6 +433,7 @@ export default function RfqDetailPage(): React.JSX.Element {
                                     return { bidVersionId, bidQuantity: line.quantity, quantity: Number(qty) };
                                   }),
                               })),
+                              customerChoice,
                               rationale: rationale.trim(),
                               fallbackNote: fallback.trim(),
                             },

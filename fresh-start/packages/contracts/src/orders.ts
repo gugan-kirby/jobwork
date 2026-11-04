@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { disclosedSupplierSchema } from './customer-quote';
 
 /**
  * Orders and the payment boundary (IN-08, `FR-407`, `FR-501`–`FR-502`, `FR-80x`).
@@ -356,6 +357,7 @@ export const customerOrderListItemSchema = z.object({
   orderId: z.uuid(),
   number: z.string(),
   title: z.string(),
+  supplier: disclosedSupplierSchema.nullable(),
   status: customerOrderStatusSchema,
   statusLabel: z.string(),
   currency: z.string(),
@@ -392,10 +394,20 @@ export const customerInvoiceSchema = z.object({
   pendingPayment: z.object({ paymentIntentId: z.uuid(), status: paymentIntentStatusSchema, createdAt: z.string() }).nullable(),
 });
 
+export const rateSupplierRequestSchema = z.object({
+  score: z.number().int().min(1).max(5),
+  note: z.string().trim().max(500).default(''),
+});
+
+export type RateSupplierRequest = z.infer<typeof rateSupplierRequestSchema>;
+
 export const customerOrderSchema = z.object({
   orderId: z.uuid(),
   number: z.string(),
   title: z.string(),
+  supplier: disclosedSupplierSchema.nullable(),
+  /** The customer's own rating of this order's supplier; null until they give one (ADR-0007). */
+  rating: z.object({ score: z.number().int(), note: z.string() }).nullable(),
   status: customerOrderStatusSchema,
   statusLabel: z.string(),
   quotation: z.object({ quotationId: z.uuid(), reference: z.string(), versionNo: z.number().int().positive() }),
@@ -465,6 +477,8 @@ export const orderVersionRequestSchema = z.object({
 
 export const supplierPurchaseOrderSchema = z.object({
   purchaseOrderId: z.uuid(),
+  /** Addresses the shared thread with the customer (ADR-0007); it names nobody. */
+  salesOrderId: z.uuid(),
   number: z.string(),
   status: purchaseOrderStatusSchema,
   baselineStatus: z.enum(['pending_baseline', 'baseline_released']),

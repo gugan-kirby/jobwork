@@ -6,7 +6,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type { CustomerOrder, CustomerPaymentIntent } from '@jobwork/contracts';
 import {
   ActionNeededCard,
-  ButtonLink,
   Callout,
   Card,
   CommandButton,
@@ -22,6 +21,9 @@ import {
   type Tone,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../../lib/api';
+import { loadEnquiryFacts, type EnquiryFacts } from '../../../lib/enquiry-facts';
+import { milestones, ORDER_PROGRESS } from '../../../lib/order-progress';
+import { RateSupplier } from './rate-supplier';
 import { ThreadPanel } from '../../thread-panel';
 import { ChangesPanel } from './changes-panel';
 import { DeliveriesPanel } from './deliveries-panel';
@@ -32,6 +34,12 @@ import { DeviationsPanel } from './deviations-panel';
  * step and whose it is, a curated timeline in the customer's words, what was ordered,
  * and the payment schedule with its invoices. No supplier, no workshop location, no
  * promised date before the order is released.
+ *
+ * VF-12, VF-18 (reference screen 12, ADR-0007): the summary card names the supplier, then
+ * four milestones, current status, the timeline, Contact Vendor and Order Details. Order
+ * Details opens everything else in place: deliveries, payments, changes, documents and
+ * messages. Contact Vendor reaches the order's thread with JobWork until shared threads
+ * land (ADR-0007 P5). The next-step card shows only when the step is the customer's.
  */
 
 const TONE: Record<CustomerOrder['status'], Tone> = {
@@ -46,11 +54,20 @@ const TONE: Record<CustomerOrder['status'], Tone> = {
   cancelled: 'neutral',
 };
 
-const STEP_TONE: Record<'done' | 'current' | 'pending', { fg: string; bg: string; border: string }> = {
-  done: { fg: 'var(--status-positive-fg)', bg: 'var(--status-positive-bg)', border: 'var(--status-positive-border)' },
-  current: { fg: 'var(--status-progress-fg)', bg: 'var(--status-progress-bg)', border: 'var(--status-progress-border)' },
-  pending: { fg: 'var(--color-text-muted)', bg: 'var(--color-surface)', border: 'var(--color-border)' },
-};
+const MILESTONE_DETAIL = {
+  confirmed: 'Your order has been received.',
+  production: 'Manufacturing is in progress.',
+  delivery: 'Your order will be dispatched soon.',
+  delivered: 'Order will be delivered to your location.',
+} as const;
+
+const SHORT_STATUS = (status: CustomerOrder['status']): string =>
+  status === 'completed' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : 'In Progress';
+
+const dayMonth = (iso: string): string =>
+  new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' });
+const longDate = (iso: string): string =>
+  new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
 function OrderDetail() {
   const orderId = useParams<{ orderId: string }>().orderId;
@@ -58,11 +75,15 @@ function OrderDetail() {
   const router = useRouter();
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  const [facts, setFacts] = useState<EnquiryFacts | null>(null);
+  const [details, setDetails] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setOrder(await api<CustomerOrder>(`/orders/${orderId}`));
+      const loaded = await api<CustomerOrder>(`/orders/${orderId}`);
+      setOrder(loaded);
       setError(null);
+      setFacts(await loadEnquiryFacts(loaded.enquiry.enquiryId).catch(() => null));
     } catch (err) {
       if (err instanceof ApiError) setError(err);
     }
@@ -89,73 +110,146 @@ function OrderDetail() {
   }
 
   return (
-    <Page
-      title="Order details"
-      back={{ href: '/orders', label: 'Back to orders' }}
-      meta={
-        <>
-          <span className="mono">{order.number}</span>
-          <StatusChip tone={TONE[order.status]}>{order.statusLabel}</StatusChip>
-        </>
-      }
-    >
-      <Stack gap={4}>
+    <Page title="Order Tracking" back={{ href: '/orders', label: 'Back to orders' }}>
+      <Stack gap={5}>
+        <section className="jw-tinted-card" aria-label="Order summary">
+          <div className="jw-counterpart">
+            <span className="jw-counterpart-tile" aria-hidden="true">
+              <Icon name="factory" size={2} />
+            </span>
+            <div style={{ display: 'grid', gap: 'var(--space-1)', minWidth: 0 }}>
+              <div className="jw-counterpart-top">
+                <p className="jw-counterpart-name">{order.title || order.number}</p>
+                <StatusChip tone={TONE[order.status]}>{SHORT_STATUS(order.status)}</StatusChip>
+              </div>
+              <p className="jw-counterpart-line">
+                Order #<span className="mono">{order.number}</span>
+              </p>
+              {order.supplier ? <p className="jw-counterpart-line">{order.supplier.name}</p> : null}
+              {facts && (facts.category !== '—' || facts.material !== '—') ? (
+                <p className="jw-counterpart-line">
+                  <Icon name="location" size={1.1} /> {facts.category} | {facts.material}
+                </p>
+              ) : null}
+              <p className="jw-summary-fact">
+                <Icon name="calendar" size={1.15} />
+                {longDate(order.acceptedAt)}
+                {facts && facts.quantity !== '—' ? (
+                  <>
+                    <span aria-hidden="true"> | </span>
+                    <Icon name="layers" size={1.15} />
+                    {facts.quantity}
+                  </>
+                ) : null}
+              </p>
+            </div>
+          </div>
+        </section>
         {justAccepted ? (
           <Callout tone="positive" title="Order placed">
             You accepted {order.quotation.reference} revision {order.quotation.versionNo}. This order is bound to exactly that revision and its terms.
           </Callout>
         ) : null}
 
-        <ActionNeededCard
-          title={order.nextStep.label}
-          detail={order.nextStep.detail}
-          owner={order.nextStep.owner === 'you' ? 'You' : 'JobWork'}
-          action={
-            order.nextStep.owner === 'you' && openInvoice ? (
-              <CommandButton size="sm" receiptLabel="Opening payment" onCommand={() => pay(openInvoice.invoiceId)}>
-                Pay {money(openInvoice.openMinor)}
-              </CommandButton>
-            ) : undefined
-          }
-        />
+        {/* VF-12: JobWork's own next step is the Current Status panel; this card is for yours. */}
+        {order.nextStep.owner === 'you' ? (
+          <ActionNeededCard
+            title={order.nextStep.label}
+            detail={order.nextStep.detail}
+            owner={order.nextStep.owner === 'you' ? 'You' : 'JobWork'}
+            action={
+              order.nextStep.owner === 'you' && openInvoice ? (
+                <CommandButton size="sm" receiptLabel="Opening payment" onCommand={() => pay(openInvoice.invoiceId)}>
+                  Pay {money(openInvoice.openMinor)}
+                </CommandButton>
+              ) : undefined
+            }
+          />
+        ) : null}
 
-        <Card title="Progress">
-          <ol aria-label="Order progress" style={{ listStyle: 'none', display: 'grid', gap: 'var(--space-3)' }}>
-            {order.timeline.map((step) => {
-              const tone = STEP_TONE[step.state];
-              return (
-                <li key={step.key} aria-current={step.state === 'current' ? 'step' : undefined} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 'var(--space-6)',
-                      height: 'var(--space-6)',
-                      flex: 'none',
-                      borderRadius: 'var(--radius-pill)',
-                      border: `var(--hairline) solid ${tone.border}`,
-                      background: tone.bg,
-                      color: tone.fg,
-                    }}
-                  >
-                    <Icon name={step.state === 'done' ? 'check' : step.state === 'current' ? 'clock' : 'info'} size={0.9} />
-                  </span>
-                  <span style={{ flex: 1 }}>
-                    <span style={{ display: 'block', font: step.state === 'current' ? 'var(--text-body-strong)' : 'var(--text-body)', color: step.state === 'pending' ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
-                      {step.label}
-                      <span className="jw-visually-hidden"> — {step.state === 'done' ? 'done' : step.state === 'current' ? 'in progress' : 'not started'}</span>
-                    </span>
-                    {step.at ? <span style={{ display: 'block', font: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>{step.at.slice(0, 10)}</span> : null}
-                    {step.detail ? <span style={{ display: 'block', font: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>{step.detail}</span> : null}
-                  </span>
-                </li>
-              );
-            })}
+        <section aria-labelledby="order-progress">
+          <h2 id="order-progress" className="jw-section-heading">
+            Order Progress
+          </h2>
+          <ol className="jw-milestones">
+            {milestones(order.timeline).map((m) => (
+              <li key={m.key} className={`jw-milestone jw-milestone-${m.state}`} aria-current={m.state === 'current' ? 'step' : undefined}>
+                <span className="jw-milestone-disc" aria-hidden="true">
+                  <Icon name={m.icon} size={1.3} />
+                </span>
+                <span className="jw-milestone-label">
+                  {m.label}
+                  <span className="jw-visually-hidden"> — {m.state === 'done' ? 'done' : m.state === 'current' ? 'in progress' : 'not started'}</span>
+                </span>
+                <span className="jw-milestone-date">{m.at ? dayMonth(m.at) : '—'}</span>
+              </li>
+            ))}
           </ol>
-        </Card>
+        </section>
 
+        {order.status !== 'cancelled' ? (
+          <section className="jw-panel jw-status-panel" aria-label="Current status">
+            <div className="jw-status-head">
+              <span className="jw-record-tile jw-record-tile-blue" aria-hidden="true">
+                <Icon name="factory" size={1.7} />
+              </span>
+              <span style={{ display: 'grid', gap: 'var(--space-1)', minWidth: 0 }}>
+                <span className="jw-offer-title">Current Status</span>
+                <span className="jw-record-caption">{order.nextStep.detail || order.statusLabel}</span>
+              </span>
+              <span className="jw-count-badge">{ORDER_PROGRESS[order.status]}%</span>
+            </div>
+            <span
+              className="jw-progress jw-progress-lg"
+              role="progressbar"
+              aria-label="Order progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={ORDER_PROGRESS[order.status]}
+            >
+              <span style={{ width: `${ORDER_PROGRESS[order.status]}%` }} />
+            </span>
+          </section>
+        ) : null}
+
+        <section aria-labelledby="order-timeline">
+          <h2 id="order-timeline" className="jw-section-heading">
+            Production Timeline
+          </h2>
+          <ol className="jw-timeline" aria-label="Order timeline">
+            {milestones(order.timeline).map((m) => (
+              <li key={m.key} className={`jw-timeline-step jw-timeline-${m.state}`} aria-current={m.state === 'current' ? 'step' : undefined}>
+                <span className="jw-timeline-disc" aria-hidden="true">
+                  <Icon name={m.icon} size={1.2} />
+                </span>
+                <span className="jw-timeline-body">
+                  <span className="jw-timeline-title">
+                    {m.label}
+                    <span className="jw-visually-hidden"> — {m.state === 'done' ? 'done' : m.state === 'current' ? 'in progress' : 'not started'}</span>
+                  </span>
+                  <span className="jw-timeline-detail">{MILESTONE_DETAIL[m.key]}</span>
+                </span>
+                <span className="jw-timeline-at">{m.at ? dayMonth(m.at) : ''}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <RateSupplier order={order} onRated={load} />
+
+        <div className="jw-action-pair">
+          <button type="button" className="jw-cta-outline jw-cta-sm jw-cta-icon" onClick={() => { setDetails(true); requestAnimationFrame(() => document.getElementById('messages')?.scrollIntoView()); }}>
+            <Icon name="message" size={1.2} />
+            Contact Vendor
+          </button>
+          <button type="button" className="jw-cta jw-cta-sm jw-cta-icon" aria-expanded={details} onClick={() => setDetails((v) => !v)}>
+            <Icon name="document" size={1.2} />
+            Order Details
+          </button>
+        </div>
+
+        {details ? (
+          <Stack gap={5}>
         <DeliveriesPanel orderId={order.orderId} />
 
         {order.scheduleUnderReview ? (
@@ -205,6 +299,7 @@ function OrderDetail() {
                 { label: 'Quotation', value: <Link href={`/quotations/${order.quotation.quotationId}`}>{order.quotation.reference} v{order.quotation.versionNo}</Link> },
                 ...(order.enquiry.reference ? [{ label: 'Enquiry', value: <Link href={`/enquiries/${order.enquiry.enquiryId}`}>{order.enquiry.reference}</Link> }] : []),
                 { label: 'Accepted', value: `${order.acceptedAt.slice(0, 10)} by ${order.acceptedBy}` },
+                { label: 'Documents', value: <Link href={`/orders/${order.orderId}/documents`}>Drawings, certificates and delivery papers</Link> },
               ]}
             />
           </div>
@@ -256,11 +351,10 @@ function OrderDetail() {
           <CopyableId label="Contract hash" value={order.contractHash} />
         </Card>
 
+        <div id="messages" />
         <ThreadPanel contextType="sales_order" contextId={orderId} description="Anything about this order, between you and JobWork." />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-          <ButtonLink href="/help" variant="secondary" fullWidth>Contact JobWork</ButtonLink>
-          <ButtonLink href={`/orders/${order.orderId}/documents`} variant="secondary" fullWidth>Documents</ButtonLink>
-        </div>
+          </Stack>
+        ) : null}
       </Stack>
     </Page>
   );

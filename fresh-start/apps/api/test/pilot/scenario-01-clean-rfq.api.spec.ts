@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type Body, Pilot, type SourcedDeal } from './driver';
+import { withoutSupplierCard } from '../disclosed-supplier';
 
 /**
  * Pilot scenario 1 (doc 19 §10): a clean single-item RFQ with two suppliers and one
@@ -78,10 +79,10 @@ describe('Pilot 1: clean RFQ, two suppliers, one accepted quote', () => {
 
   it('shows each party only its own side', async () => {
     const quotation = await p.as.approver.get(`/api/v1/quotations/${deal.quoteId}`);
-    p.expectNothingOf(quotation.body, ['Anand', 'Balaji', deal.winner.bidVersionId, 'buyTotal', 'margin'], 'customer quotation');
+    p.expectNothingOf(withoutSupplierCard(quotation.body), ['Anand', 'Balaji', deal.winner.bidVersionId, 'buyTotal', 'margin'], 'customer quotation');
     const order = await p.as.approver.get(`/api/v1/orders/${deal.orderId}`);
     expect(order.status).toBe(200);
-    p.expectNothingOf(order.body, ['Anand', 'Balaji', deal.purchaseOrderId], 'customer order');
+    p.expectNothingOf(withoutSupplierCard(order.body), ['Anand', 'Balaji', deal.purchaseOrderId], 'customer order');
     const enquiry = await p.as.buyer.get(`/api/v1/enquiries/${enquiryId}`);
     p.expectNothingOf(enquiry.body, ['Anand', 'Balaji', 'RFQ-'], 'customer enquiry');
 

@@ -71,6 +71,7 @@ export class LeakageReviews {
 
   private readerLabel(audience: ExternalAudience, review: ReviewRecord, context: ResolvedContext | null): string {
     if (audience === 'shared_technical') return 'every invited supplier';
+    if (audience === 'customer_supplier') return 'the customer and the supplier named on the order';
     if (audience === 'supplier') return `${review.message.counterpartName ?? 'a supplier'} (supplier)`;
     return `${context?.customerName ?? 'the customer'} (customer)`;
   }

@@ -36,7 +36,8 @@ export default defineConfig({
   reporter: [['list'], ['html', { outputFolder: 'walk-report', open: 'never' }], ['json', { outputFile: 'walk-results/results.json' }]],
   use: {
     viewport: { width: 1280, height: 800 },
-    video: { mode: 'on', size: { width: 1280, height: 800 } },
+    // FW_MOBILE=1: the phone-sized customer cut (see walk/support/walk.ts).
+    video: { mode: 'on', size: process.env.FW_MOBILE === '1' ? { width: 780, height: 1688 } : { width: 1280, height: 800 } },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     actionTimeout: 15_000,

@@ -34,6 +34,9 @@ export {
 } from './primitives/Field';
 export { ReasonField, type ReasonFieldProps } from './primitives/ReasonField';
 export { Icon, ICON_NAMES, type IconName, type IconProps } from './primitives/Icon';
+export { BrandGlyph } from './primitives/BrandGlyph';
+export { WorkshopIllustration } from './primitives/WorkshopIllustration';
+export { BannerMachines, ProcessArt, processArtFor } from './primitives/IndustryArt';
 export { ErrorSummary, type ErrorSummaryProps } from './primitives/ErrorSummary';
 
 // ---------------------------------------------------------------- layout
@@ -41,6 +44,10 @@ export { AppShell, type AppShellProps, type NavEntry, type NavGroup, type NavIte
 export { Card, Page, type CardProps, type PageProps } from './layout/Page';
 export { TabBar, type TabBarProps, type TabItem, type TabPrimaryAction } from './layout/TabBar';
 export { Hero, type HeroProps } from './layout/Hero';
+export { TopBar } from './layout/TopBar';
+export { Donut, type DonutSlice } from './data/Donut';
+export { Sparkline } from './data/Sparkline';
+export { IconTextInput, type IconTextInputProps } from './forms/IconTextInput';
 export { activeHref, isActivePath } from './layout/paths';
 export { Inline, SplitPane, Stack, type InlineProps, type StackProps } from './layout/Stack';
 
@@ -61,14 +68,14 @@ export {
 export { CopyableId, type CopyableIdProps } from './data/CopyableId';
 export { FilterChips, type FilterChipOption, type FilterChipsProps } from './data/FilterChips';
 export { DueLabel, QueueTable, formatAge, formatDue, type QueueState, type QueueTableItem, type QueueTableProps } from './data/QueueTable';
-export { RecordCard, RecordList, type RecordCardProps } from './data/RecordCard';
+export { RecordCard, RecordList, type RecordTint, type RecordCardProps } from './data/RecordCard';
 export { LiveRegion, type LiveRegionProps } from './feedback/LiveRegion';
 
 // ---------------------------------------------------------------- domain
 export { Chip, StatusChip, type StatusChipProps } from './status/StatusChip';
 export { ActionNeededCard, type ActionNeededCardProps } from './status/ActionNeededCard';
 export { QueueCard, describeAge, type QueueCardProps } from './status/QueueCard';
-export { QuickAction, QuickActionGrid, type QuickActionProps } from './status/QuickAction';
+export { QuickAction, QuickActionGrid, type QuickAccent, type QuickActionProps } from './status/QuickAction';
 export { GateMatrix, type GateMatrixGate, type GateMatrixProps } from './gates/GateMatrix';
 export { ManifestHeader, ManifestRow, type ManifestRowProps } from './document/ManifestRow';
 export {
@@ -76,6 +83,7 @@ export {
   formatBytes,
   type FileUploadApi,
   type FileUploadProps,
+  type UploadFormats,
   type UploadPhase,
   type UploadProblem,
   type VersionState,

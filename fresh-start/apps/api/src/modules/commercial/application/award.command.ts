@@ -174,6 +174,13 @@ export class ProposeAwardCommand {
 
     const policy = await this.repo.activePolicy('award');
     if (!policy) throw new PolicyRulesInvalid('award');
+    if (input.customerChoice && new Set(lines.map((line) => line.supplierOrganizationId)).size !== 1) {
+      throw new AwardRejected(
+        'AWARD_CHOICE_ONE_SUPPLIER',
+        'A customer choice names one supplier',
+        'A quote the customer chooses between must come from a single supplier, so a split award cannot be one.',
+      );
+    }
     const outcome = evaluateAwardPolicy(policy.rules, { singleSource });
 
     const awardId = await this.executor.execute(
@@ -184,6 +191,7 @@ export class ProposeAwardCommand {
             {
               rfqId: rfq.id,
               evaluationId: input.evaluationId ?? null,
+              customerChoice: input.customerChoice,
               singleSource,
               rationale: input.rationale,
               fallbackNote: input.fallbackNote,
