@@ -17,6 +17,8 @@ import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttribu
 
 export interface FieldProps {
   label: string;
+  /** Keeps the label for assistive technology when a neighbour carries the visible one. */
+  labelHidden?: boolean | undefined;
   hint?: string | undefined;
   error?: string | undefined;
   required?: boolean | undefined;
@@ -27,7 +29,7 @@ export interface FieldProps {
   }) => ReactNode;
 }
 
-export function Field({ label, hint, error, required, children }: FieldProps): React.JSX.Element {
+export function Field({ label, labelHidden, hint, error, required, children }: FieldProps): React.JSX.Element {
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -35,10 +37,14 @@ export function Field({ label, hint, error, required, children }: FieldProps): R
 
   return (
     <div style={{ marginBottom: 'var(--space-4)' }}>
-      <label htmlFor={id} style={{ display: 'block', font: 'var(--text-body-strong)' }}>
+      <label
+        htmlFor={id}
+        className={labelHidden ? 'jw-visually-hidden' : undefined}
+        style={labelHidden ? undefined : { display: 'block', font: 'var(--text-body-strong)' }}
+      >
         {label}
         {required ? (
-          <span aria-hidden style={{ color: 'var(--status-blocked-fg)' }}> *</span>
+          <span aria-hidden className="jw-required-mark" style={{ color: 'var(--status-blocked-fg)' }}> *</span>
         ) : null}
         {required ? <span className="jw-visually-hidden"> (required)</span> : null}
       </label>
@@ -72,7 +78,7 @@ const controlStyle = (invalid: boolean): React.CSSProperties => ({
   minHeight: 'var(--control-height)',
   padding: '0 var(--space-3)',
   backgroundColor: 'var(--field-bg)',
-  color: 'var(--color-text)',
+  color: 'var(--field-fg)',
   border: `1px solid ${invalid ? 'var(--field-border-invalid)' : 'var(--field-border)'}`,
   borderRadius: 'var(--field-radius)',
   font: 'var(--text-body)',
@@ -81,6 +87,7 @@ const controlStyle = (invalid: boolean): React.CSSProperties => ({
 export interface TextInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'className'> {
   label: string;
+  labelHidden?: boolean | undefined;
   hint?: string | undefined;
   error?: string | undefined;
   /** Right-aligned tabular numerals for money, quantities and measurements (`DS-08`). */
@@ -89,6 +96,7 @@ export interface TextInputProps
 
 export function TextInput({
   label,
+  labelHidden,
   hint,
   error,
   required,
@@ -97,7 +105,7 @@ export function TextInput({
   ...rest
 }: TextInputProps): React.JSX.Element {
   return (
-    <Field label={label} hint={hint} error={error} required={required}>
+    <Field label={label} labelHidden={labelHidden} hint={hint} error={error} required={required}>
       {(control) => (
         <input
           {...rest}
@@ -158,6 +166,7 @@ export interface SelectOption {
 export interface SelectProps
   extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'className' | 'children'> {
   label: string;
+  labelHidden?: boolean | undefined;
   hint?: string | undefined;
   error?: string | undefined;
   options: readonly SelectOption[];
@@ -166,6 +175,7 @@ export interface SelectProps
 
 export function Select({
   label,
+  labelHidden,
   hint,
   error,
   required,
@@ -175,7 +185,7 @@ export function Select({
   ...rest
 }: SelectProps): React.JSX.Element {
   return (
-    <Field label={label} hint={hint} error={error} required={required}>
+    <Field label={label} labelHidden={labelHidden} hint={hint} error={error} required={required}>
       {(control) => (
         <select
           {...rest}

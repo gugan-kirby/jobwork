@@ -169,6 +169,7 @@
   --field-border: var(--color-border);
   --field-border-invalid: var(--status-blocked-fg);
   --field-bg: var(--color-surface);
+  --field-fg: var(--color-text);
   --field-radius: var(--radius-sm);
   /* Narrowest a text field may get before a row wraps instead of squeezing. */
   --field-min-width: 240px;

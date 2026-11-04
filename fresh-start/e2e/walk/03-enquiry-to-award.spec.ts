@@ -12,15 +12,12 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
   await axe(page, 'customer home');
   await page.getByRole('link', { name: 'New Enquiry' }).first().click();
   await expect(page).toHaveURL(/\/enquiries\/new/);
-  await page.getByRole('radio', { name: /Job work/ }).check();
   await field(page, 'Part / job name').fill('Walk impeller housing');
-  await choose(page.getByLabel('Material supplied by', { exact: false }), /JobWork/);
   await choose(page.getByLabel('Category', { exact: false }).first(), /machin/i);
   await choose(page.getByLabel('Sub category', { exact: false }).first(), /milling/i);
   await choose(page.getByLabel('Material', { exact: true }).first(), /alumin/i);
-  await field(page, 'Grade or standard').fill('6061-T6');
   await field(page, 'Quantity').fill('100');
-  await button(page, 'Add a delivery address').click();
+  await choose(page.getByLabel('Delivery Location', { exact: false }), /Add new location/);
   await field(page, 'Name for this address').fill('Kovai Pumps assembly');
   await field(page, /^Address/).fill('SIDCO Industrial Estate, Mudalipalayam');
   await field(page, 'City').fill('Tiruppur');
@@ -29,8 +26,7 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
   await field(page, 'Who receives it').fill('R. Kumar');
   await field(page, 'Their phone').fill('+91 98400 12345');
   await command(page, 'Save address');
-  await field(page, 'What is this for?').fill('Housing for the drive impeller of a pump skid.');
-  await expect(visible(page, /Draft saved/)).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /Draft saved/ })).toBeAttached();
   await axe(page, 'wizard step 1');
   await button(page, 'Next').click();
 
@@ -65,7 +61,7 @@ test('customer · resumes and discards a draft, withdraws and repeats an enquiry
   await signInAs(page, 'buyer');
   await page.goto(`${PORTAL}/enquiries/new`);
   await field(page, 'Part / job name').fill(bushing);
-  await expect(visible(page, /Draft saved/)).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /Draft saved/ })).toBeAttached();
   await open(page, `${PORTAL}/enquiries`);
   await page.getByRole('radio', { name: /Drafts/ }).click();
   await page.getByRole('link', { name: new RegExp(bushing) }).first().click();

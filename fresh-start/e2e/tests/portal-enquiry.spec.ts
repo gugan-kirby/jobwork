@@ -21,8 +21,8 @@ test('raises an enquiry through the wizard, every stage accessible', async ({ pa
   await choose(page.getByLabel('Category', { exact: true }), /machin|mill/i);
   await choose(page.getByLabel('Sub category'), /mill/i);
   await choose(page.getByLabel('Material', { exact: true }), /alumin/i);
-  await page.getByLabel('Grade or standard').fill('6061-T6');
   await page.getByRole('spinbutton', { name: /^Quantity/ }).fill('250');
+  await choose(page.getByLabel('Delivery Location'), / — /);
   await expectAccessible(page, 'enquiry wizard: details');
   await page.getByRole('button', { name: 'Next' }).click();
 

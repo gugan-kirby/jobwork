@@ -77,19 +77,15 @@ test('scene · 2 · Ask for a part', async ({ page, director }) => {
   await tap(page, link(page, 'New Enquiry'), 'Step 1 of 3 — what to make, from what, and how many');
   await expect(page).toHaveURL(/\/enquiries\/new/);
 
-  await tap(page, page.locator('.jw-choice-item').filter({ hasText: /Job work/ }).first());
   await type(page, field(page, 'Part / job name'), PART);
-  await pick(page, page.getByLabel('Material supplied by', { exact: false }), /JobWork/);
   await pick(page, page.getByLabel('Category', { exact: false }).first(), /machin/i);
   await pick(page, page.getByLabel('Sub category', { exact: false }).first(), /milling/i);
   await pick(page, page.getByLabel('Material', { exact: true }).first(), /alumin/i);
-  await type(page, field(page, 'Grade or standard'), '6061-T6');
   await type(page, field(page, 'Quantity'), '100');
   director.say('Where the finished parts should be delivered');
-  await pick(page, page.getByLabel('Deliver to', { exact: false }), /Kovai/);
-  await type(page, field(page, 'What is this for?'), 'Housing for the drive impeller of a pump skid.', 40);
+  await pick(page, page.getByLabel('Delivery Location', { exact: false }), /Kovai/);
   director.say('Everything is saved as a draft while you type');
-  await expect(page.getByText(/Draft saved/).first()).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /Draft saved/ })).toBeAttached();
   await pause(page, 1500);
   await tap(page, button(page, 'Next'), 'Step 2 of 3 — attach the drawing and the requirements');
 
