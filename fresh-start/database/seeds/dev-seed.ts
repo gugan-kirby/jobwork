@@ -20,6 +20,10 @@ async function main(): Promise<void> {
   // to exercise admission end to end.
   const sourcingEmail = process.env['DEV_SEED_SOURCING_EMAIL'] ?? 'sourcing@jobwork.local';
   const sourcingPassword = process.env['DEV_SEED_SOURCING_PASSWORD'] ?? 'sourcing-dev-password-1';
+  // The supplier half of the portal needs an admitted workshop to sign in to, and one that
+  // matching will offer, or nobody can follow an RFQ past the operations console.
+  const vendorEmail = process.env['DEV_SEED_VENDOR_EMAIL'] ?? 'vendor@demo.local';
+  const vendorPassword = process.env['DEV_SEED_VENDOR_PASSWORD'] ?? 'demo-vendor-password-1';
 
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
@@ -119,9 +123,20 @@ async function main(): Promise<void> {
       roles: ['customer_requester'],
     });
 
+    const vendor = await seedMember(client, {
+      organizationType: 'supplier',
+      organizationName: 'Demo Workshop',
+      legalName: 'Demo Workshop Engineering',
+      email: vendorEmail,
+      password: vendorPassword,
+      displayName: 'Demo Vendor',
+      roles: ['org_admin', 'supplier_estimator', 'supplier_production', 'supplier_quality'],
+    });
+    await seedAdmittedSupplier(client, vendor, vendorEmail, sourcingEmail);
+
     await client.query('COMMIT');
     console.log(
-      `seed complete — sign in as ${adminEmail} (internal admin), ${sourcingEmail} (sourcing) or ${buyerEmail} (portal)`,
+      `seed complete — sign in as ${adminEmail} (internal admin), ${sourcingEmail} (sourcing), ${buyerEmail} (portal) or ${vendorEmail} (supplier portal)`,
     );
   } catch (err) {
     await client.query('ROLLBACK');
@@ -200,7 +215,7 @@ async function seedMember(
     displayName: string;
     roles: string[];
   },
-): Promise<void> {
+): Promise<{ organizationId: string; userId: string }> {
   const existingOrg = await client.query<{ id: string }>(
     `SELECT id FROM iam.organization WHERE display_name = $1`,
     [input.organizationName],
@@ -262,6 +277,88 @@ async function seedMember(
       [membershipId, roleKey],
     );
   }
+  return { organizationId: orgId, userId };
+}
+
+const DEMO_CAPABILITIES = [
+  'cnc_milling',
+  'cnc_turning',
+  'vmc_machining',
+  'fabrication_welding',
+  'material_aluminium',
+  'material_mild_steel',
+  'material_stainless_steel',
+];
+
+/**
+ * Takes the workshop through the same states a real admission does, because the transition
+ * triggers allow nothing else: sourcing verifies the mandatory items and decides the file,
+ * and the vendor may not review its own (doc 03 §5). No rating is created: those come only
+ * from a customer's delivered order.
+ */
+async function seedAdmittedSupplier(
+  client: Client,
+  vendor: { organizationId: string; userId: string },
+  vendorEmail: string,
+  reviewerEmail: string,
+): Promise<void> {
+  const existing = await client.query(`SELECT 1 FROM supplier.supplier_profile WHERE organization_id = $1`, [
+    vendor.organizationId,
+  ]);
+  if (existing.rowCount) return;
+
+  const reviewer = await client.query<{ id: string }>(`SELECT id FROM iam.user_account WHERE email = $1`, [
+    reviewerEmail,
+  ]);
+  const reviewerId = reviewer.rows[0]?.id;
+  if (!reviewerId) throw new Error(`failed to resolve reviewer ${reviewerEmail}`);
+
+  const profile = await client.query<{ id: string }>(
+    `INSERT INTO supplier.supplier_profile
+       (organization_id, region_class, summary, trade_name, primary_contact_name, primary_contact_email, created_by)
+     VALUES ($1, 'chennai_metro', 'Demo machining workshop for local development.', 'Demo Workshop', 'Demo Vendor', $2, $3)
+     RETURNING id`,
+    [vendor.organizationId, vendorEmail, vendor.userId],
+  );
+  const profileId = profile.rows[0]?.id;
+  if (!profileId) throw new Error('failed to create the demo supplier profile');
+
+  for (const kind of ['gst', 'pan', 'bank_account']) {
+    const item = await client.query<{ id: string }>(
+      `INSERT INTO supplier.verification_item (supplier_profile_id, kind, reference_value, created_by)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [profileId, kind, `DEMO-${kind.toUpperCase()}`, vendor.userId],
+    );
+    const itemId = item.rows[0]?.id;
+    await client.query(
+      `UPDATE supplier.verification_item SET status = 'submitted', submitted_by = $2, submitted_at = now() WHERE id = $1`,
+      [itemId, vendor.userId],
+    );
+    await client.query(`UPDATE supplier.verification_item SET status = 'under_review' WHERE id = $1`, [itemId]);
+    await client.query(
+      `UPDATE supplier.verification_item SET status = 'verified', reviewed_by = $2, reviewed_at = now() WHERE id = $1`,
+      [itemId, reviewerId],
+    );
+  }
+
+  await client.query(
+    `INSERT INTO supplier.supplier_capability (supplier_profile_id, capability_id, version_no, created_by)
+     SELECT $1, c.id, 1, $2 FROM supplier.capability c WHERE c.code = ANY($3) AND c.status = 'active'`,
+    [profileId, vendor.userId, DEMO_CAPABILITIES],
+  );
+
+  await client.query(
+    `UPDATE supplier.supplier_profile
+     SET status = 'submitted', submitted_for_approval_at = now(), submitted_by = $2 WHERE id = $1`,
+    [profileId, vendor.userId],
+  );
+  await client.query(
+    `UPDATE supplier.supplier_profile
+     SET status = 'active', decided_by = $2, decided_at = now(), decision_reason = 'Demo workshop for local development.'
+     WHERE id = $1`,
+    [profileId, reviewerId],
+  );
+  console.log('admitted the demo supplier');
 }
 
 main().catch((err) => {
