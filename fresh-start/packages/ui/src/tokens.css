@@ -138,6 +138,13 @@
   --chart-1: #3d53df;
   --chart-2: #16a34a;
   --chart-3: #a78bfa;
+  /* Operations control room (VF-19): a deep instrument panel with amber and red readouts. */
+  --ops-deck-bg: linear-gradient(120deg, #0b1140 0%, #101c66 58%, #1a2c8f 100%);
+  --ops-deck-line: rgb(255 255 255 / 0.06);
+  --ops-deck-muted: #b9c4f6;
+  --ops-late: #b91c1c;
+  --ops-due: #b45309;
+  --ops-fresh: #1d30b4;
   /* Illustration fills (the welcome workshop); decorative only, never carry meaning. */
   --illus-skin: #f1c6a3;
   --illus-hair: #1b2042;
