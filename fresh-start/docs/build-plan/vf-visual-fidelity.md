@@ -325,3 +325,4 @@ The portal header listed 13 flat links because each increment added its own scre
 
 Browser cookies are scoped by host, not port, so `localhost:3000` and `localhost:3001` share `jw_session` and signing in on one replaces the other. Production hosts differ, so this only bites locally: staff open `http://127.0.0.1:3001` in development, and the API's default origins allow it. The portal had no case for an internal session and fell through to the customer navigation, where every page refused it; it now says who is signed in and offers Sign out.
 
+The operations console header follows the same rule: Home, Queues, Approvals, Sales, Delivery, More, with Account as the profile icon. Finance, Support, Suppliers, Organizations, Held messages, Health and Audit sit under More, and its heading carries their badge total.
