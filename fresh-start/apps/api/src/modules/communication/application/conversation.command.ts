@@ -97,15 +97,29 @@ export class Conversations {
       if (context.type !== 'enquiry' && context.type !== 'sales_order') return null;
       if (context.customerOrganizationId !== organizationId) return null;
       if (!actor.roles.some((r) => CUSTOMER_ROLES.includes(r))) return null;
+      const vendor = context.suppliers.find((s) => s.organizationId === context.namedSupplierOrganizationId);
       return {
         party: 'customer',
         organizationId,
-        readable: ['customer'],
-        canPost: context.open ? [{ audience: 'customer', label: 'JobWork' }] : [],
+        readable: ['customer', 'customer_supplier'],
+        canPost: context.open
+          ? [{ audience: 'customer', label: 'JobWork' }, ...(vendor ? [{ audience: 'customer_supplier' as const, label: vendor.name }] : [])]
+          : [],
       };
     }
 
     if (actor.organizationType === 'supplier') {
+      // The shared thread on the order its quote named: that audience and nothing else.
+      if (context.type === 'sales_order') {
+        const named = context.namedSupplierOrganizationId === organizationId && context.suppliers.some((s) => s.organizationId === organizationId);
+        if (!named || !actor.roles.some((r) => SUPPLIER_ROLES.includes(r))) return null;
+        return {
+          party: 'supplier',
+          organizationId,
+          readable: ['customer_supplier'],
+          canPost: context.open ? [{ audience: 'customer_supplier', label: 'Customer' }] : [],
+        };
+      }
       if (context.type !== 'rfq' && context.type !== 'purchase_order') return null;
       const mine = context.suppliers.find((s) => s.organizationId === organizationId);
       if (!mine || !actor.roles.some((r) => SUPPLIER_ROLES.includes(r))) return null;
@@ -306,13 +320,20 @@ function isContextType(value: string): value is ConversationContextType {
   return value === 'enquiry' || value === 'rfq' || value === 'sales_order' || value === 'purchase_order';
 }
 
+/** Who another organization's message is from: on the shared thread the supplier is named, the customer is not. */
+function otherParty(m: MessageRecord): string {
+  if (m.audience === 'customer_supplier' && m.authorParty === 'customer') return 'Customer';
+  if (m.audience === 'customer_supplier' && m.authorParty === 'supplier') return m.authorOrganizationName;
+  return 'JobWork';
+}
+
 /** The external projection: staff are "JobWork", colleagues are named, nobody else exists. */
 function toExternal(m: MessageRecord, actor: Actor): ExternalMessage {
   const ownOrganization = m.authorOrganizationId === actor.organizationId;
   return {
     messageId: m.id,
     audience: m.audience as ExternalAudience,
-    authorLabel: ownOrganization ? m.authorName : 'JobWork',
+    authorLabel: ownOrganization ? m.authorName : otherParty(m),
     mine: m.authorUserId === actor.userId,
     body: m.body,
     postedAt: m.postedAt.toISOString(),

@@ -62,6 +62,14 @@ async function messageRule(event: OutboxEvent, { contexts }: RuleLookups): Promi
     }
     return [];
   }
+  // The shared thread (ADR-0007): the other party hears of it.
+  if (audience === 'customer_supplier') {
+    return str(event.data['authorParty']) === 'customer'
+      ? context.namedSupplierOrganizationId
+        ? [{ templateKey: 'supplier.message_received', audience: suppliers([context.namedSupplierOrganizationId]), variables, link: '/supplier/orders' }]
+        : []
+      : [{ templateKey: 'customer.message_received', audience: customer(context.customerOrganizationId), variables, link: context.links.external }];
+  }
   // A customer or supplier wrote to JobWork: the people who work that record hear of it.
   const roles = context.type === 'enquiry' || context.type === 'sales_order' ? ['jobwork_sourcing', 'jobwork_sales'] : ['jobwork_sourcing'];
   return [{ templateKey: 'internal.message_received', audience: internal(roles), variables, link: context.links.internal }];

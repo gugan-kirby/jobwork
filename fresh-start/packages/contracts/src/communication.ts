@@ -9,7 +9,7 @@ import { z } from 'zod';
  * author. They are separate types so a component cannot be handed the wrong one (`DS-11`).
  */
 
-export const messageAudienceSchema = z.enum(['internal', 'customer', 'supplier', 'shared_technical']);
+export const messageAudienceSchema = z.enum(['internal', 'customer', 'supplier', 'shared_technical', 'customer_supplier']);
 export type MessageAudience = z.infer<typeof messageAudienceSchema>;
 export type ExternalAudience = Exclude<MessageAudience, 'internal'>;
 

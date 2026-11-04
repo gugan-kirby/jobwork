@@ -69,6 +69,8 @@ Each stage checks its own fields before Next. The file is required at submit; a 
 
 ### Customer quotation
 
+ADR-0007: quotes, orders and tracking name the supplier on a public card, the customer chooses between offered suppliers, rates the supplier after completion, and can write to it on the order thread.
+
 - JobWork legal identity and quote revision/status/validity countdown.
 - Standard/Fast/Premium options only if each is a JobWork-created sell offer.
 - Scope/items, quantity/unit, unit and total price, tax/freight, delivery commitment.

@@ -18,7 +18,8 @@ export function decideAction(input: {
   findings: ReadonlyArray<LeakageFinding>;
 }): LeakageAction {
   if (input.findings.length === 0) return 'allow';
-  const reachesShieldedParty = input.authorParty === 'internal' || input.audience === 'shared_technical';
+  const reachesShieldedParty =
+    input.authorParty === 'internal' || input.audience === 'shared_technical' || input.audience === 'customer_supplier';
   const serious = input.findings.some((f) => f.kind === 'party_identity' || f.confidence === 'high');
   return reachesShieldedParty && serious ? 'quarantine' : 'warn';
 }

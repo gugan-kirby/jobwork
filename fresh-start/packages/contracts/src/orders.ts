@@ -477,6 +477,8 @@ export const orderVersionRequestSchema = z.object({
 
 export const supplierPurchaseOrderSchema = z.object({
   purchaseOrderId: z.uuid(),
+  /** Addresses the shared thread with the customer (ADR-0007); it names nobody. */
+  salesOrderId: z.uuid(),
   number: z.string(),
   status: purchaseOrderStatusSchema,
   baselineStatus: z.enum(['pending_baseline', 'baseline_released']),
