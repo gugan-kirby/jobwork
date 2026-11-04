@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DeliveryCommand } from '../src/modules/logistics/application/delivery.command';
 import { type Body, ok, Pilot, type SourcedDeal } from './pilot/driver';
+import { withoutSupplierCard } from './disclosed-supplier';
 
 /**
  * IN-17 F-17.4: what the customer sees of its order's last mile (doc 06 §13; doc 03 §3 and §7). The
@@ -111,7 +112,7 @@ describe('customer delivery projection and documents (F-17.4)', () => {
   it('keeps the supplier out of everything the customer reads about delivery', async () => {
     const instruments = (await p.rows<{ asset_tag: string }>(`SELECT asset_tag FROM quality.instrument`)).map((r) => r.asset_tag);
     const shielded = ['Anand', 'Balaji', 'LOT-A', 'LOT-B', deal.purchaseOrders[0]!['number'] as string, deal.purchaseOrderId, p.orgs.supplierA, 'Coimbatore', 'contact@example.test', '+91 90000 00000', 'Bore gauge', ...instruments];
-    const texts: string[] = [JSON.stringify(await order()), JSON.stringify(ok(await p.as.buyer.get(`/api/v1/orders/${deal.orderId}/deliveries`), 200, 'deliveries')), JSON.stringify(ok(await p.as.buyer.get(`/api/v1/orders/${deal.orderId}/documents`), 200, 'documents'))];
+    const texts: string[] = [JSON.stringify(withoutSupplierCard(await order())), JSON.stringify(ok(await p.as.buyer.get(`/api/v1/orders/${deal.orderId}/deliveries`), 200, 'deliveries')), JSON.stringify(ok(await p.as.buyer.get(`/api/v1/orders/${deal.orderId}/documents`), 200, 'documents'))];
     for (const path of ['delivery-note', 'pod', 'conformity']) texts.push(ok(await p.as.buyer.get(`/api/v1/deliveries/${s['shipmentId']}/${path}`), 200, path)['html'] as string);
     for (const text of texts) for (const x of shielded) expect(text.toLowerCase(), `${x} leaked`).not.toContain(x.toLowerCase());
   });

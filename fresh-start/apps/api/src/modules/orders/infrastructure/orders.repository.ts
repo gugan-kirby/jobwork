@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
+import type { DisclosedSupplier } from '@jobwork/contracts';
+import { disclosedSupplier } from '../../supplier/infrastructure/disclosed-supplier.query';
 import type { PurchaseOrderStatus, SalesOrderStatus } from '@jobwork/contracts';
 import { DatabaseService } from '../../../platform/database/database.service';
 import { parallelReads } from '../../../platform/database/parallel-reads';
@@ -141,6 +143,16 @@ const NUMBER_TABLES = {
 @Injectable()
 export class OrdersRepository {
   constructor(private readonly db: DatabaseService) {}
+
+  /** The supplier a customer's order names (ADR-0007): the one its accepted quote named. */
+  async supplierOf(customerQuoteId: string): Promise<DisclosedSupplier | null> {
+    const res = await this.db.pool.query<{ id: string | null }>(
+      `SELECT supplier_organization_id AS id FROM commercial.customer_quote WHERE id = $1`,
+      [customerQuoteId],
+    );
+    const id = res.rows[0]?.id;
+    return id ? disclosedSupplier(this.db.pool, id) : null;
+  }
 
   private q(tx?: Queryable): Queryable {
     return tx ?? this.db.pool;

@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
+import { disclosedSupplier } from '../../supplier/infrastructure/disclosed-supplier.query';
 import type {
   ApprovalKind,
   ApprovalRequestStatus,
   AwardStatus,
   CostComponent,
   CostSheetStatus,
+  DisclosedSupplier,
   EvaluationComponents,
   EvaluationLine,
   EvaluationScenario,
@@ -200,6 +202,8 @@ export interface QuoteRecord {
   optionLabel: QuoteOptionLabel;
   reference: string | null;
   costSheetVersionId: string | null;
+  supplierOrganizationId: string | null;
+  supplier: DisclosedSupplier | null;
   status: QuoteStatus;
   currentVersionNo: number;
   decisionReason: string | null;
@@ -738,15 +742,16 @@ export class CommercialRepository {
       customerOrganizationId: string;
       optionLabel: QuoteOptionLabel;
       costSheetVersionId: string | null;
+      supplierOrganizationId: string | null;
       createdBy: string;
     },
     tx: Queryable,
   ): Promise<string> {
     const res = await tx.query<{ id: string }>(
       `INSERT INTO commercial.customer_quote
-         (offer_set_id, enquiry_id, rfq_id, customer_organization_id, option_label, cost_sheet_version_id, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [input.offerSetId, input.enquiryId, input.rfqId, input.customerOrganizationId, input.optionLabel, input.costSheetVersionId, input.createdBy],
+         (offer_set_id, enquiry_id, rfq_id, customer_organization_id, option_label, cost_sheet_version_id, supplier_organization_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [input.offerSetId, input.enquiryId, input.rfqId, input.customerOrganizationId, input.optionLabel, input.costSheetVersionId, input.supplierOrganizationId, input.createdBy],
     );
     return res.rows[0]!.id;
   }
@@ -851,7 +856,8 @@ export class CommercialRepository {
       `SELECT q.id, q.offer_set_id AS "offerSetId", q.enquiry_id AS "enquiryId", e.reference AS "enquiryReference",
               e.title AS "enquiryTitle", q.rfq_id AS "rfqId", q.customer_organization_id AS "customerOrganizationId",
               o.display_name AS "customerDisplayName", q.option_label AS "optionLabel", q.reference,
-              q.cost_sheet_version_id AS "costSheetVersionId", q.status, q.current_version_no AS "currentVersionNo",
+              q.cost_sheet_version_id AS "costSheetVersionId", q.supplier_organization_id AS "supplierOrganizationId",
+              q.status, q.current_version_no AS "currentVersionNo",
               q.decision_reason AS "decisionReason", q.accepted_version_id AS "acceptedVersionId",
               q.aggregate_version AS "aggregateVersion", q.created_at AS "createdAt"
          FROM commercial.customer_quote q
@@ -860,9 +866,10 @@ export class CommercialRepository {
         WHERE q.id = $1 ${forUpdate ? 'FOR UPDATE OF q' : ''}`,
       [id],
     );
-    const head = res.rows[0] as Omit<QuoteRecord, 'versions'> | undefined;
+    const head = res.rows[0] as Omit<QuoteRecord, 'versions' | 'supplier'> | undefined;
     if (!head) return null;
-    return { ...head, versions: await this.listQuoteVersions(id, tx) };
+    const supplier = head.supplierOrganizationId ? await disclosedSupplier(this.q(tx), head.supplierOrganizationId) : null;
+    return { ...head, supplier, versions: await this.listQuoteVersions(id, tx) };
   }
 
   async listQuoteVersions(quoteId: string, tx?: Queryable): Promise<QuoteVersionRecord[]> {

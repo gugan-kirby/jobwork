@@ -8,6 +8,7 @@ import { SCAN_WORKER_PRINCIPAL, SERVICE_TOKEN_HEADER, mintServiceToken } from '@
 import { hashPassword } from '../src/modules/iam/domain/password';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
+import { withoutSupplierCard } from './disclosed-supplier';
 
 const PASSWORD = 'orders-password-1';
 const WEBHOOK_SECRET = 'test-payment-webhook-secret';
@@ -403,9 +404,10 @@ describe('Acceptance, orders, purchase orders and payments (IN-08)', () => {
     expect(installments.map((i) => i['amountMinor'] as number).reduce((a, b) => a + b, 0)).toBe(standard!.totalMinor);
 
     // The customer's order carries nothing of the buy side.
-    const leaked = [...keysOf(first.body)].filter((k) => BUY_SIDE.test(k));
+    const shielded = withoutSupplierCard(first.body);
+    const leaked = [...keysOf(shielded)].filter((k) => BUY_SIDE.test(k));
     expect(leaked).toEqual([]);
-    expect(JSON.stringify(first.body)).not.toMatch(/Anand|Balaji/);
+    expect(JSON.stringify(shielded)).not.toMatch(/Anand|Balaji/);
 
     // A second acceptance with a new key is refused.
     const again = await postWithKey(approver, `/api/v1/quotations/${standard!.quoteId}/accept`, acceptBody(standard!, { expectedVersion: 3 }), `accept-${randomUUID()}`);
@@ -667,6 +669,6 @@ describe('Acceptance, orders, purchase orders and payments (IN-08)', () => {
     expect(keys).toContain('orders_awaiting_release');
     const orders = await approver.get('/api/v1/orders');
     expect((orders.body['orders'] as unknown[]).length).toBeGreaterThanOrEqual(4);
-    expect([...keysOf(orders.body)].filter((k) => BUY_SIDE.test(k))).toEqual([]);
+    expect([...keysOf(withoutSupplierCard(orders.body))].filter((k) => BUY_SIDE.test(k))).toEqual([]);
   });
 });

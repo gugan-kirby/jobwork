@@ -4,12 +4,26 @@ import { z } from 'zod';
  * The customer's view of a JobWork quotation (IN-07 `F-07.6`, doc 14 §4, doc 06 §13).
  *
  * This is the leak barrier (`ES-11`, `BR-COM-05`): a *different* type, built by
- * construction, with no field that could carry a supplier name, a bid, a cost or a
- * margin. The projection reads the internal quote and writes this; nothing is filtered
- * out at runtime because nothing is there to filter. The snapshot test in
- * `commercial.api.spec.ts` walks the serialized payload and refuses any key that smells
- * of the buy side.
+ * construction, with no field that could carry a bid, a cost or a margin. The projection
+ * reads the internal quote and writes this; nothing is filtered out at runtime because
+ * nothing is there to filter. The snapshot test in `commercial.api.spec.ts` walks the
+ * serialized payload and refuses any key that smells of the buy side.
+ *
+ * ADR-0007: the one thing about the supplier a customer does see is `disclosedSupplierSchema`.
  */
+
+/** Who will make the part: public facts only, and a rating customers earned for it. */
+export const disclosedSupplierSchema = z.object({
+  name: z.string(),
+  city: z.string().nullable(),
+  state: z.string().nullable(),
+  verified: z.boolean(),
+  /** One decimal; null until a customer has rated this supplier. Never seeded. */
+  ratingAverage: z.number().nullable(),
+  ratingCount: z.number().int().nonnegative(),
+});
+
+export type DisclosedSupplier = z.infer<typeof disclosedSupplierSchema>;
 
 export const customerQuoteStatusSchema = z.enum([
   'quotation_ready',
@@ -47,6 +61,7 @@ export const customerQuoteSchema = z.object({
   versionNo: z.number().int().positive(),
   enquiry: z.object({ enquiryId: z.uuid(), reference: z.string().nullable(), title: z.string() }),
   issuedBy: z.literal('JobWork'),
+  supplier: disclosedSupplierSchema.nullable(),
   currency: z.string(),
   lines: z.array(customerQuoteLineSchema),
   subtotalMinor: z.number().int().nonnegative(),
@@ -95,8 +110,14 @@ export const customerQuoteListItemSchema = z.object({
   statusLabel: z.string(),
   enquiryTitle: z.string(),
   enquiryReference: z.string().nullable(),
+  enquiryId: z.uuid(),
+  supplier: disclosedSupplierSchema.nullable(),
   currency: z.string(),
   totalMinor: z.number().int().nonnegative(),
+  deliveryLeadDays: z.number().int().positive(),
+  /** The first line's quantity and unit: the card's "Min. Qty". */
+  quantity: z.number().positive().nullable(),
+  unit: z.string().nullable(),
   validityUntil: z.string(),
   daysToExpiry: z.number().int(),
   sentAt: z.string().nullable(),

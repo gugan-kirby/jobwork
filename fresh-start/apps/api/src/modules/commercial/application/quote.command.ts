@@ -107,6 +107,10 @@ export class QuoteCommand {
     });
     const totals = computeQuoteTotals(content);
     const contentHash = hashQuoteContent({ currency: found.version.currency, content, totals, termsVersionId: terms.id });
+    // ADR-0007: the quote names the supplier its award chose; a split award names nobody.
+    const award = await this.repo.findAward(sheet.awardId);
+    const awarded = new Set(award?.lines.map((line) => line.supplierOrganizationId));
+    const supplierOrganizationId = awarded.size === 1 ? ([...awarded][0] ?? null) : null;
 
     let quoteId: string;
     try {
@@ -126,6 +130,7 @@ export class QuoteCommand {
                 customerOrganizationId: sheet.customerOrganizationId,
                 optionLabel: input.optionLabel,
                 costSheetVersionId: found.version.id,
+                supplierOrganizationId,
                 createdBy: actor.userId,
               },
               tx,

@@ -16,7 +16,7 @@ Today the customer never chooses. JobWork evaluates bids, awards before quoting,
 2. **The customer sees a JobWork price, never a bid.** Supplier cost, bid amounts, margin and settlement stay hidden (`BR-COM-05` keeps these). Only identity moves: display name, city, verified state and rating.
 3. **The customer's choice replaces the award.** JobWork may cost and quote several bids on one RFQ; each becomes one quote in the offer set, carrying `supplier_organization_id` directly. Bids stay live until acceptance. Accepting a quote awards its supplier, rejects the other bids, withdraws sibling quotes and issues the PO. Approval of cost and quote stays as it is. A split award cannot be quoted this way.
 4. **Ratings are earned, never seeded.** A new customer rating, one per delivered order, feeds an average and a count. A supplier with none reads "New". No figure is invented or imported.
-5. **Disclosure is the supplier's to accept.** Admission terms gain consent to being named; a supplier without it is not quotable to customers.
+5. **Disclosure belongs in the supplier's terms.** Admission terms must say a supplier is named to customers; that wording is a legal item, not a switch in the product.
 6. **Customer identity stays masked from suppliers** (`BR-COM-06`, `D-05` unchanged). Quote and order threads gain a shared audience in which the customer appears as "Customer", the supplier by name, JobWork can read, and the leakage gate keeps stripping contact details.
 7. **Supplier revenue is its own money.** The supplier home's Total Revenue is the taxable value of its own paid bills this month, from `finance.supplier_bill` and `finance.settlement`.
 8. **No wallet.** Reference screen 14 shows Total Paid and Pending Payment, already built; nothing stores customer money.
@@ -25,7 +25,7 @@ Today the customer never chooses. JobWork evaluates bids, awards before quoting,
 
 | Phase | Scope |
 |---|---|
-| P1 | Migration: `customer_quote.supplier_organization_id`; offer set unique on supplier + option; several cost sheets per RFQ; disclosure consent |
+| P1 | Migration: `customer_quote.supplier_organization_id`, `supplier.rating`; offer set unique on supplier + option; several cost sheets per RFQ |
 | P2 | Quote several bids; award on acceptance; split awards refused for disclosed quotes |
 | P3 | Customer projections and screens 09–12 with supplier name, city, verified state |
 | P4 | Ratings: capture after delivery, aggregate, show on 09–10 |

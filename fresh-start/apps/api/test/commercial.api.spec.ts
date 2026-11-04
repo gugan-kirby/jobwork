@@ -8,6 +8,7 @@ import { hashPassword } from '../src/modules/iam/domain/password';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
 import { stageSupplierCopy } from './helpers/supplier-copy';
+import { withoutSupplierCard } from './disclosed-supplier';
 
 const PASSWORD = 'commercial-password-1';
 
@@ -525,11 +526,12 @@ describe('Evaluation, award, cost sheet, customer quote (IN-07)', () => {
     expect(detail.body['issuedBy']).toBe('JobWork');
     expect(detail.body['totalMinor']).toBe(sent.body['versions'] && (sent.body['versions'] as Array<Record<string, unknown>>)[0]!['totalMinor']);
     expect((detail.body['actions'] as Record<string, boolean>)['canAccept']).toBe(true);
-    const keys = [...keysOf(detail.body)].map((k) => k.toLowerCase());
+    const shielded = withoutSupplierCard(detail.body);
+    const keys = [...keysOf(shielded)].map((k) => k.toLowerCase());
     for (const forbidden of ['supplier', 'bid', 'cost', 'margin', 'landed', 'award', 'evaluation', 'buy']) {
       expect(keys.filter((k) => k.includes(forbidden)), `leaked key containing "${forbidden}"`).toEqual([]);
     }
-    const serialized = JSON.stringify(detail.body);
+    const serialized = JSON.stringify(shielded);
     expect(serialized).not.toContain('Anand');
     expect(serialized).not.toContain('Balaji');
     expect(serialized).not.toContain(bidA);

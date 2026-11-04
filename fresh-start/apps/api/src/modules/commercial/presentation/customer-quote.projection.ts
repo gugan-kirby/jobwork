@@ -5,8 +5,8 @@ import type { QuoteRecord, QuoteVersionRecord } from '../infrastructure/commerci
 /**
  * The customer projection of a quotation (doc 06 §13, `BR-COM-05`, `ES-11`). Built by
  * construction from the internal record into a different type: there is no field on
- * `CustomerQuote` for a supplier, a bid, a cost or a margin, so nothing has to be
- * stripped and nothing can be forgotten.
+ * `CustomerQuote` for a bid, a cost or a margin, so nothing has to be stripped and nothing
+ * can be forgotten. The supplier appears only as its public card (ADR-0007).
  *
  * Only versions the customer was sent are visible. A replacement in progress is reported
  * as a revision on its way, with the last sent version still readable exactly as sent.
@@ -82,6 +82,7 @@ export function projectCustomerQuote(
     versionNo: version.versionNo,
     enquiry: { enquiryId: quote.enquiryId, reference: quote.enquiryReference, title: quote.enquiryTitle },
     issuedBy: 'JobWork',
+    supplier: quote.supplier,
     currency: version.currency,
     lines: version.lines.map((l) => ({
       lineNo: l.lineNo,
@@ -138,8 +139,13 @@ export function projectCustomerQuoteListItem(quote: QuoteRecord, now: Date = new
     statusLabel: STATUS_LABELS[status],
     enquiryTitle: quote.enquiryTitle,
     enquiryReference: quote.enquiryReference,
+    enquiryId: quote.enquiryId,
+    supplier: quote.supplier,
     currency: version.currency,
     totalMinor: version.totalMinor,
+    deliveryLeadDays: version.deliveryLeadDays,
+    quantity: version.lines[0]?.quantity ?? null,
+    unit: version.lines[0]?.unit ?? null,
     validityUntil: version.validityUntil,
     daysToExpiry: daysToExpiry(version.validityUntil, now),
     sentAt: version.sentAt ? version.sentAt.toISOString() : null,

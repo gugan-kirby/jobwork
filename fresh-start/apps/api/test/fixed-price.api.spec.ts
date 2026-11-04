@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { stageJobWorkFile, stageSupplierCopy } from './helpers/supplier-copy';
 import { type Body, ok, Pilot } from './pilot/driver';
+import { withoutSupplierCard } from './disclosed-supplier';
 
 /**
  * F-FP: the fixed-price path. The customer names the price it hopes to pay (FR-308); JobWork offers
@@ -158,7 +159,7 @@ describe('fixed-price path (F-FP)', () => {
       const quoteId = await p.sentQuote(approved['costSheetVersionId'] as string);
       const quotation = ok(await p.as.approver.get(`/api/v1/quotations/${quoteId}`), 200, 'customer quotation');
       expect((quotation['lines'] as Body[])[0]).toMatchObject({ unitPriceMinor: 14_000, quantity: 100 });
-      p.expectNothingOf(quotation, ['11000', '110.00', 'Anand', '300000'], 'customer quotation');
+      p.expectNothingOf(withoutSupplierCard(quotation), ['11000', '110.00', 'Anand', '300000'], 'customer quotation');
 
       const accept = ok(await p.accept(quoteId, `accept-${quoteId}`, await p.acceptanceBody(quoteId)), 201, 'accept quote');
       const pos = await p.issuePurchaseOrders(accept['orderId'] as string);
