@@ -3,6 +3,7 @@ import { SourcingModule } from '../sourcing';
 import { CommercialModule } from '../commercial';
 import { IamModule } from '../iam';
 import { AcceptQuoteCommand } from './application/accept-quote.command';
+import { RateSupplierCommand } from './application/rate-supplier.command';
 import { DispatchFinance } from './application/dispatch-finance';
 import { CustomerRemedy } from './application/customer-remedy';
 import { OrderClosure } from './application/order-closure';
@@ -70,6 +71,7 @@ import {
     JobMarginView,
     OrdersView,
     AcceptQuoteCommand,
+    RateSupplierCommand,
     OrderCommand,
     PaymentCommand,
     ProductionRepository,

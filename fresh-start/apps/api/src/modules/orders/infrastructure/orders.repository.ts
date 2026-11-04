@@ -146,12 +146,36 @@ export class OrdersRepository {
 
   /** The supplier a customer's order names (ADR-0007): the one its accepted quote named. */
   async supplierOf(customerQuoteId: string): Promise<DisclosedSupplier | null> {
-    const res = await this.db.pool.query<{ id: string | null }>(
+    const id = await this.supplierIdOf(customerQuoteId, this.db.pool);
+    return id ? disclosedSupplier(this.db.pool, id) : null;
+  }
+
+  async supplierIdOf(customerQuoteId: string, tx: Queryable): Promise<string | null> {
+    const res = await tx.query<{ id: string | null }>(
       `SELECT supplier_organization_id AS id FROM commercial.customer_quote WHERE id = $1`,
       [customerQuoteId],
     );
-    const id = res.rows[0]?.id;
-    return id ? disclosedSupplier(this.db.pool, id) : null;
+    return res.rows[0]?.id ?? null;
+  }
+
+  async findRating(orderId: string, tx?: Queryable): Promise<{ score: number; note: string } | null> {
+    const res = await this.q(tx).query<{ score: number; note: string }>(
+      `SELECT score, note FROM supplier.rating WHERE sales_order_id = $1`,
+      [orderId],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  async insertRating(
+    input: { orderId: string; supplierOrganizationId: string; customerOrganizationId: string; score: number; note: string; createdBy: string },
+    tx: Queryable,
+  ): Promise<string> {
+    const res = await tx.query<{ id: string }>(
+      `INSERT INTO supplier.rating (supplier_organization_id, customer_organization_id, sales_order_id, score, note, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+      [input.supplierOrganizationId, input.customerOrganizationId, input.orderId, input.score, input.note, input.createdBy],
+    );
+    return res.rows[0]!.id;
   }
 
   private q(tx?: Queryable): Queryable {
