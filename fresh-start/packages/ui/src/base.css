@@ -2085,6 +2085,15 @@ html:has(.jw-flat) {
   text-align: center;
 }
 
+/* A card body has no gap of its own: whatever follows an upload box keeps clear of it. */
+.jw-card-body > .jw-dropzone + * {
+  margin-top: var(--space-3);
+}
+
+.jw-card-body > .jw-dropzone + * + p {
+  margin-top: var(--space-2);
+}
+
 .jw-dropzone-over {
   border-color: var(--brand-strong);
   background: var(--blue-50);
