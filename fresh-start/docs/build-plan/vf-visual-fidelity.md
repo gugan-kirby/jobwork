@@ -270,3 +270,11 @@ Decisions: initials stand in for the photo (no profile image is stored; the badg
 | `apps/portal-web/app/profile/page.tsx` | edit | Title and subtitle, identity card link, rich rows for customer and supplier, About/Terms, Log Out |
 | `packages/ui/src/base.css` | edit | `.jw-identity*`, `.jw-menu-rich`, `.jw-menu-title/-detail`, `.jw-logout` |
 | `e2e/walk/11-accounts.spec.ts`, `e2e/demo/customer.spec.ts` | edit | "Log Out" |
+
+## VF-17 The enquiry form exactly as the references (owner decisions 2026-11-03)
+
+The owner reviewed VF-05–07 and asked for each image's exact UI and function: "Remove them completely" for every field the references do not show. This supersedes the "Kept" lists in VF-05–VF-07. `FR-307`, `FR-308`, doc 14, `D-15` and doc 18 are updated with it.
+
+| Step | Change |
+|---|---|
+| **Backend** | Save accepts only `job_work` (400 otherwise); the correction fields leave the request and `RELATED_ENQUIRY_NOT_USABLE` goes; a copy is job work; a required-by date is optional at submit. Earlier records keep their type, and the columns stay. |

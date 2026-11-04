@@ -110,14 +110,10 @@ export const saveDraftRequestSchema = z.object({
   title: z.string().trim().max(200).default(''),
   applicationNote: z.string().trim().max(4000).default(''),
   confidentiality: confidentialitySchema.default('confidential'),
-  jobType: jobTypeSchema.default('job_work'),
+  /** VF-17 (owner decision 2026-11-03): every new enquiry is job work; earlier records keep their type. */
+  jobType: z.literal('job_work').default('job_work'),
   /** Absent means "the default for the job type"; resolved by the command, never by the UI. */
   materialSupply: materialSupplySchema.optional(),
-  /** Correction/ECN only: the customer's change reference (ECN number) and what changed. */
-  changeReference: z.string().trim().max(80).default(''),
-  changeDescription: z.string().trim().max(4000).default(''),
-  /** Correction/ECN only: the enquiry being corrected; must be the customer's own. */
-  relatedEnquiryId: z.uuid().optional(),
   assistedIntake: z.boolean().default(false),
   deliverySiteId: z.uuid().optional(),
   requiredByDate: z.iso.date().optional(),

@@ -80,12 +80,12 @@ export class CopyEnquiryCommand {
               title: cmd.title ?? (source.title ? `${source.title} (copy)` : ''),
               applicationNote: source.applicationNote,
               confidentiality: source.confidentiality,
-              jobType: source.jobType,
+              // VF-17: a new enquiry is job work, whatever the source was raised as.
+              jobType: 'job_work',
               materialSupply: source.materialSupply,
               changeReference: '',
               changeDescription: '',
-              relatedEnquiryId:
-                source.jobType === 'correction_ecn' && source.reference ? sourceEnquiryId : undefined,
+              relatedEnquiryId: undefined,
               assistedIntake: source.assistedIntake,
               deliverySiteId: source.deliverySiteId ?? undefined,
               // Dates are the one thing a reorder must not inherit: last year's

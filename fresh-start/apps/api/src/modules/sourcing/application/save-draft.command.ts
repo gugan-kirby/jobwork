@@ -14,23 +14,6 @@ class DocumentNotUsable extends DomainError {
   }
 }
 
-/**
- * `FR-307`: a correction refers to the customer's own enquiry or to nothing. Naming
- * another organization's enquiry is refused with the same wording whether that enquiry
- * exists or not.
- */
-class RelatedEnquiryNotUsable extends DomainError {
-  constructor() {
-    super(
-      'RELATED_ENQUIRY_NOT_USABLE',
-      422,
-      'That is not one of your enquiries',
-      'Choose the enquiry being corrected from your own list, or leave it blank and quote the reference in the change description.',
-      [{ path: 'relatedEnquiryId', message: 'Choose one of your own enquiries' }],
-    );
-  }
-}
-
 /** `FR-301`: an enquiry ships to an address its own organization keeps. */
 class DeliverySiteNotUsable extends DomainError {
   constructor() {
@@ -83,13 +66,6 @@ export class SaveDraftCommand {
       if (!site) throw new DeliverySiteNotUsable();
     }
 
-    if (input.relatedEnquiryId) {
-      const own =
-        input.relatedEnquiryId !== enquiryId &&
-        (await this.repo.enquiryBelongsTo(input.relatedEnquiryId, organizationId));
-      if (!own) throw new RelatedEnquiryNotUsable();
-    }
-
     const ctx = contextFromActor({ userId: actor.userId, organizationId });
     return this.executor.execute(
       {
@@ -122,9 +98,9 @@ export class SaveDraftCommand {
               materialSupply: cmd.materialSupply ?? defaultMaterialSupply(cmd.jobType),
               // The correction fields only mean something on a correction; on any other
               // job type they are dropped rather than stored as stray text.
-              changeReference: cmd.jobType === 'correction_ecn' ? cmd.changeReference : '',
-              changeDescription: cmd.jobType === 'correction_ecn' ? cmd.changeDescription : '',
-              relatedEnquiryId: cmd.jobType === 'correction_ecn' ? cmd.relatedEnquiryId : undefined,
+              changeReference: '',
+              changeDescription: '',
+              relatedEnquiryId: undefined,
               assistedIntake: cmd.assistedIntake,
               deliverySiteId: cmd.deliverySiteId,
               requiredByDate: cmd.requiredByDate,
@@ -165,4 +141,4 @@ export class SaveDraftCommand {
   }
 }
 
-export { DocumentNotUsable, RelatedEnquiryNotUsable };
+export { DocumentNotUsable };

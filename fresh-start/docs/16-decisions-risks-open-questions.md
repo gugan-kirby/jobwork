@@ -29,7 +29,7 @@ Do not bury open decisions in code defaults.
 | `D-12` | Are multiple customer quote options allowed? | Yes only as JobWork-created Standard/Fast/Premium offers with separate approved cost lineage |
 | `D-13` | May goods direct-ship supplier to customer? | Exception only, approved identity/tax/quality route; default two-leg custody |
 | `D-14` | Does JobWork physically inspect every job? | Category/risk-based; release policy explicitly states remote evidence vs JobWork incoming inspection |
-| `D-15` | Are customer-owned materials/tooling supported initially? | **Resolved 2026-09-30 by the `job_work` job type (`FR-307`):** supported at intake (material supply recorded, reviewer advisory); custody, receiving and challan accounting arrive with IN-16. Tooling remains deferred. |
+| `D-15` | Are customer-owned materials/tooling supported initially? | **Resolved 2026-09-30 by the `job_work` job type (`FR-307`):** supported at intake (material supply recorded, reviewer advisory); custody, receiving and challan accounting arrive with IN-16. Tooling remains deferred. **2026-11-03 (VF-17):** the wizard no longer asks who supplies the material; new enquiries default to JobWork sourcing it. |
 | `D-16` | Can awards split across suppliers/operations in MVP? | Data model supports it; UI/operations may initially limit to simple approved routes |
 | `D-17` | Is guest browsing allowed? | Public category education only; no sensitive supplier details or transactional actions |
 | `D-18` | Which communication channels are authoritative? | In-app thread authoritative; email/SMS/WhatsApp notification/inbound capture only |

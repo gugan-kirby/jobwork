@@ -76,8 +76,8 @@ Requirement identifiers are stable references for design and testing.
 - `FR-304`: An approved enquiry can create multiple sourcing rounds with requirement snapshots.
 - `FR-305`: RFQ release grants only intended suppliers access to sanitized document versions: a JobWork-prepared supplier copy of each governing drawing, confirmed by a second person, under a neutral filename. A supplier never receives the customer's own file or its original filename. (Made concrete 2026-10-10, F-FP.)
 - `FR-306`: Supplier feasibility, decline reason, assumptions, exclusions, price, lead time, and validity are structured.
-- `FR-307`: Every enquiry declares a job type — `job_work` (process on customer-owned goods, CGST Act s.2(68)), `new_model` (new part, material sourced) or `correction_ecn` (change to a part already enquired/ordered) — and who supplies the material. A correction must carry its change reference and description; a related enquiry, if named, is the customer's own. The job type is part of the frozen requirement revision. (Added 2026-09-30.)
-- `FR-308`: A customer may state a target price per piece for each item. It is part of the frozen requirement revision, visible to the customer and JobWork staff, and never to a supplier. (Added 2026-10-10.)
+- `FR-307`: Every new enquiry is `job_work`; the API refuses any other job type on save. Enquiries already raised as `new_model` or `correction_ecn` stay readable under their own type, and a copy of one is job work. Who supplies the material is recorded (the wizard sends `to_be_sourced`, a saved value is kept). A required-by date is optional. (Changed 2026-11-03 by owner decision, VF-17; the three-type rule of 2026-09-30 is retired.)
+- `FR-308`: A customer may state a target price per piece for each item. It is part of the frozen requirement revision, visible to the customer and JobWork staff, and never to a supplier. (Added 2026-10-10.) The enquiry wizard no longer asks for it (VF-17, 2026-11-03); the API field remains and an existing value stays in force.
 
 ### FR-400 Bid, award, and customer quote
 
