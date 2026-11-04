@@ -92,7 +92,8 @@ test('customer · reads both options, downloads one and asks for a revision of t
   await open(page, `${PORTAL}/quotations`);
   await axe(page, 'customer quotations');
   await open(page, `${PORTAL}/quotations/${recall('quoteStandard')}`);
-  await expect(page.locator('body')).not.toContainText(/Anand|Balaji/);
+  // ADR-0007: the supplier is named to the customer; cost, bids and internal records are not.
+  await expect(page.locator('body')).not.toContainText(/margin|landed cost|PO-\d{4}/i);
   const download = page.waitForEvent('download').catch(() => null);
   const popup = page.waitForEvent('popup').catch(() => null);
   await button(page, 'Download Quote').click();
