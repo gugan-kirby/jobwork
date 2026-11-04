@@ -1976,51 +1976,50 @@ code,
   outline-offset: 2px;
 }
 
-/* VF-05 portal phone theme: the reference's 52 px rounded controls, saturated blue and
-   back-titled inner pages, for the customer and supplier portal (the apps with a tab bar)
-   below md. Operations keeps its dense desktop look. */
+/* VF-05 portal theme: the reference's 52 px rounded controls, saturated blue and pills,
+   for the customer and supplier portal (the apps with a tab bar) at every width.
+   Operations keeps its dense desktop look. */
+.jw-has-tabbar {
+  --control-height: 52px;
+  --field-radius: 12px;
+  --button-radius: 12px;
+  --field-border: var(--neutral-200);
+  --color-action: var(--brand-strong);
+  --color-action-hover: var(--brand-strong-hover);
+  --color-focus-ring: var(--brand-strong);
+  --button-primary-bg: var(--brand-strong);
+  --button-primary-bg-hover: var(--brand-strong-hover);
+  --button-secondary-fg: var(--brand-strong);
+  --button-border-width: 2px;
+  --button-secondary-border: var(--brand-strong);
+  --button-font: 600 18px/24px var(--font-sans);
+  --chip-pad: 4px 12px;
+  --chip-radius: 999px;
+  --chip-font: 600 14px/20px var(--font-sans);
+}
+
+.jw-has-tabbar input:not([type='checkbox']):not([type='radio']),
+.jw-has-tabbar select,
+.jw-has-tabbar textarea {
+  font-size: 17px;
+  border-width: 1.5px;
+}
+
+.jw-has-tabbar select {
+  appearance: none;
+  padding-right: var(--space-7);
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right var(--space-4) center;
+  background-size: 18px;
+}
+
+.jw-has-tabbar label {
+  color: var(--color-ink);
+}
+
+/* Below md an inner page is headed by its back row alone; the app bar returns on tab roots. */
 @media (max-width: 767px) {
-  .jw-has-tabbar {
-    --control-height: 52px;
-    --field-radius: 12px;
-    --button-radius: 12px;
-    --field-border: var(--neutral-200);
-    --color-action: var(--brand-strong);
-    --color-action-hover: var(--brand-strong-hover);
-    --color-focus-ring: var(--brand-strong);
-    --button-primary-bg: var(--brand-strong);
-    --button-primary-bg-hover: var(--brand-strong-hover);
-    --button-secondary-fg: var(--brand-strong);
-    --button-border-width: 2px;
-    --button-secondary-border: var(--brand-strong);
-    --button-font: 600 18px/24px var(--font-sans);
-    --chip-pad: 4px 12px;
-    --chip-radius: 999px;
-    --chip-font: 600 14px/20px var(--font-sans);
-  }
-
-  .jw-has-tabbar input:not([type='checkbox']):not([type='radio']),
-  .jw-has-tabbar select,
-  .jw-has-tabbar textarea {
-    font-size: 17px;
-    border-width: 1.5px;
-  }
-
-  .jw-has-tabbar select {
-    appearance: none;
-    padding-right: var(--space-7);
-    background-image: var(--select-chevron);
-    background-repeat: no-repeat;
-    background-position: right var(--space-4) center;
-    background-size: 18px;
-  }
-
-  .jw-has-tabbar label {
-    color: var(--color-ink);
-  }
-
-  /* An inner page (it has a back chevron) is headed by that row alone, as in the
-     references; the app bar returns on the tab-root pages. */
   .jw-has-tabbar:has(.jw-page-back) .jw-shell-header {
     display: none;
   }
@@ -2054,26 +2053,24 @@ code,
 
 /* VF-05 flat region: a form laid straight on white, as the reference wizard is. Cards
    inside become plain sections separated by space. */
-@media (max-width: 767px) {
-  html:has(.jw-flat) {
-    background: var(--color-surface);
-  }
+html:has(.jw-flat) {
+  background: var(--color-surface);
+}
 
-  .jw-flat .jw-card {
-    border: 0;
-    box-shadow: none;
-    border-radius: 0;
-    overflow: visible;
-  }
+.jw-flat .jw-card {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
 
-  .jw-flat .jw-card-head {
-    padding: 0 0 var(--space-3);
-    border-bottom: 0;
-  }
+.jw-flat .jw-card-head {
+  padding: 0 0 var(--space-3);
+  border-bottom: 0;
+}
 
-  .jw-flat .jw-card-body {
-    padding: 0;
-  }
+.jw-flat .jw-card-body {
+  padding: 0;
 }
 
 .jw-step button { font-size: 15px; }
@@ -2186,16 +2183,14 @@ code,
   --text-heading-2: 700 20px/26px var(--font-sans);
 }
 
-@media (max-width: 767px) {
-  .jw-flat .jw-card-head {
-    padding-bottom: var(--space-3);
-    margin-bottom: var(--space-2);
-    border-bottom: 1px solid var(--neutral-200);
-  }
+.jw-flat .jw-card-head {
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--neutral-200);
+}
 
-  .jw-flat .jw-card-head h2 {
-    color: var(--color-ink);
-  }
+.jw-flat .jw-card-head h2 {
+  color: var(--color-ink);
 }
 
 .jw-action-pair {
@@ -2284,52 +2279,52 @@ code,
   color: var(--neutral-600);
 }
 
-/* VF-08 phone theme: filter chips read as the reference's tab strip, counts in brackets;
-   tab-root pages get the large left-aligned title. */
+/* VF-08 filter chips read as the reference's tab strip, counts in brackets; tab-root
+   pages get the large left-aligned title. */
+.jw-has-tabbar .jw-chips {
+  gap: 0;
+  padding: 0;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.jw-has-tabbar .jw-chip {
+  min-height: 50px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font: 500 16px/20px var(--font-sans);
+  gap: var(--space-1);
+}
+
+.jw-has-tabbar .jw-chip-on {
+  background: var(--blue-50);
+  color: var(--brand-strong);
+  border-bottom-color: var(--brand-strong);
+  border-radius: 10px 10px 0 0;
+  font-weight: 600;
+}
+
+.jw-has-tabbar .jw-chip-count {
+  font: inherit;
+  opacity: 1;
+}
+
+.jw-has-tabbar .jw-chip-count::before { content: '('; }
+.jw-has-tabbar .jw-chip-count::after { content: ')'; }
+
+.jw-has-tabbar .jw-page-head:not(.jw-page-head-back) {
+  --text-display: 700 30px/36px var(--font-sans);
+}
+
+.jw-has-tabbar .jw-page-head:not(.jw-page-head-back) .jw-page-title {
+  color: var(--color-ink);
+}
+
 @media (max-width: 767px) {
-  .jw-has-tabbar .jw-chips {
-    gap: 0;
-    padding: 0;
-    border: 1.5px solid var(--neutral-200);
-    border-radius: 12px;
-    background: var(--color-surface);
-  }
-
-  .jw-has-tabbar .jw-chip {
-    min-height: 50px;
-    border: 0;
-    border-bottom: 3px solid transparent;
-    border-radius: 0;
-    background: transparent;
-    color: var(--color-ink-muted);
-    font: 500 16px/20px var(--font-sans);
-    gap: var(--space-1);
-  }
-
-  .jw-has-tabbar .jw-chip-on {
-    background: var(--blue-50);
-    color: var(--brand-strong);
-    border-bottom-color: var(--brand-strong);
-    border-radius: 10px 10px 0 0;
-    font-weight: 600;
-  }
-
-  .jw-has-tabbar .jw-chip-count {
-    font: inherit;
-    opacity: 1;
-  }
-
-  .jw-has-tabbar .jw-chip-count::before { content: '('; }
-  .jw-has-tabbar .jw-chip-count::after { content: ')'; }
-
-  .jw-has-tabbar .jw-page-head:not(.jw-page-head-back) {
-    --text-display: 700 30px/36px var(--font-sans);
-  }
-
-  .jw-has-tabbar .jw-page-head:not(.jw-page-head-back) .jw-page-title {
-    color: var(--color-ink);
-  }
-
   .jw-desktop-only {
     display: none;
   }
@@ -3246,4 +3241,68 @@ code,
 .jw-logout:disabled {
   opacity: 0.6;
   cursor: progress;
+}
+
+/* VF-17 wizard: full screen on white, the reference's gutters, no tab bar, no required
+   marks, grey placeholder selects, the quantity and unit on one row. */
+.jw-flat {
+  padding: 0 10px;
+}
+
+.jw-flat .jw-required-mark {
+  display: none;
+}
+
+.jw-flat select:has(option[value='']:checked) {
+  --field-fg: var(--neutral-600);
+}
+
+.jw-quantity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+/* The unit's label is hidden, so it clears the height of the Quantity label itself. */
+.jw-quantity-row > :last-child {
+  padding-top: 22px;
+}
+
+@media (max-width: 767px) {
+  .jw-has-tabbar:has(.jw-flat) .jw-tabbar {
+    display: none;
+  }
+
+  .jw-has-tabbar:has(.jw-flat) main {
+    padding-bottom: 0;
+  }
+
+  .jw-has-tabbar .jw-page-head-back .jw-page-back {
+    color: var(--color-ink);
+  }
+
+  .jw-has-tabbar .jw-page-head-back .jw-page-back svg {
+    stroke-width: 2.6;
+  }
+}
+
+.jw-review-file {
+  padding-top: var(--space-3);
+}
+
+.jw-review-file-label {
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink-muted);
+}
+
+.jw-review-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 48px;
+  font: 400 17px/24px var(--font-sans);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
 }

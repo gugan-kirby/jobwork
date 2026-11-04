@@ -39,7 +39,6 @@ export interface RequirementsStageProps {
   api: DraftApi;
   documents: DocumentSummary[];
   reloadDocuments: () => Promise<DocumentSummary[]>;
-  libraryHref: string;
   issueFor: (prefix: string) => string | undefined;
 }
 
@@ -47,7 +46,6 @@ export function RequirementsStage({
   api: draftApi,
   documents,
   reloadDocuments,
-  libraryHref,
   issueFor,
 }: RequirementsStageProps): React.JSX.Element {
   const { draft, edit, editItem, update } = draftApi;
@@ -155,7 +153,7 @@ export function RequirementsStage({
           </ul>
         ) : null}
         <p style={{ font: 'var(--text-caption)', marginTop: 'var(--space-2)' }}>
-          Older versions and downloads live in your <Link href={libraryHref}>document library</Link>.
+          Older versions and downloads live in your <Link href="/documents">document library</Link>.
           If you attach both a 3D model and a 2D drawing, mark which one governs.
         </p>
         {issueFor('documents') ? (
