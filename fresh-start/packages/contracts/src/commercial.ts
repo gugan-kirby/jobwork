@@ -130,6 +130,8 @@ export const awardStatusSchema = z.enum(['proposed', 'approved', 'rejected', 'wi
 
 export const proposeAwardRequestSchema = z.object({
   rfqId: z.uuid(),
+  /** ADR-0007: one supplier offered to the customer; other bids stay live until they choose. */
+  customerChoice: z.boolean().default(false),
   evaluationId: z.uuid().optional(),
   items: z
     .array(
@@ -182,6 +184,7 @@ export const awardSchema = z.object({
   enquiryId: z.uuid(),
   evaluationId: z.uuid().nullable(),
   status: awardStatusSchema,
+  customerChoice: z.boolean(),
   singleSource: z.boolean(),
   rationale: z.string(),
   fallbackNote: z.string(),

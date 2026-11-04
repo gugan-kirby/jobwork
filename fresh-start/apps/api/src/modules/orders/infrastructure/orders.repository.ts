@@ -390,9 +390,9 @@ export class OrdersRepository {
   // ----------------------------------------------------------------- awards → purchase orders
 
   /** The approved award a quotation was priced from: quote → cost sheet version → cost sheet → award. */
-  async awardForQuote(customerQuoteId: string, tx: Queryable): Promise<{ awardId: string; rfqId: string; rfqReference: string | null } | null> {
-    const res = await tx.query<{ awardId: string; rfqId: string; rfqReference: string | null }>(
-      `SELECT a.id AS "awardId", a.rfq_id AS "rfqId", r.reference AS "rfqReference"
+  async awardForQuote(customerQuoteId: string, tx: Queryable): Promise<{ awardId: string; rfqId: string; rfqReference: string | null; customerChoice: boolean } | null> {
+    const res = await tx.query<{ awardId: string; rfqId: string; rfqReference: string | null; customerChoice: boolean }>(
+      `SELECT a.id AS "awardId", a.rfq_id AS "rfqId", r.reference AS "rfqReference", a.customer_choice AS "customerChoice"
          FROM commercial.customer_quote q
          JOIN commercial.cost_sheet_version csv ON csv.id = q.cost_sheet_version_id
          JOIN commercial.cost_sheet cs ON cs.id = csv.cost_sheet_id

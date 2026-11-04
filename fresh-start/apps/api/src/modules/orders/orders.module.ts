@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SourcingModule } from '../sourcing';
 import { CommercialModule } from '../commercial';
 import { IamModule } from '../iam';
 import { AcceptQuoteCommand } from './application/accept-quote.command';
@@ -40,7 +41,7 @@ import {
  * registry at start-up).
  */
 @Module({
-  imports: [IamModule, CommercialModule],
+  imports: [IamModule, CommercialModule, SourcingModule],
   controllers: [
     AcceptQuoteController,
     CustomerOrdersController,
