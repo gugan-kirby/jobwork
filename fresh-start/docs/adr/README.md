@@ -10,5 +10,6 @@ ADRs capture durable architecture choices and their consequences. All current re
 | [0004](0004-postgresql-object-storage-outbox.md) | Proposed | PostgreSQL + private object storage + transactional outbox |
 | [0005](0005-web-pwa-first.md) | Proposed | Responsive web/PWA before native mobile |
 | [0006](0006-hybrid-authorization.md) | Proposed | RBAC plus relationship/attribute authorization |
+| [0007](0007-disclosed-suppliers-on-customer-quotes.md) | Proposed | Name the supplier on JobWork quotes and let the customer choose |
 
 ADR states: Proposed, Accepted, Rejected, Deprecated, Superseded.
