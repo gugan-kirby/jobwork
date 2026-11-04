@@ -317,4 +317,4 @@ Before an order exists there is no thread, so Chat on Quote Details still opens 
 
 ## VF-19 Operations home
 
-Owner asked for a better admin home. The page is now a control room: a status band (waiting, oldest, stages clear), the work laid out along the line it moves on (intake, network, sourcing, orders, quality, delivery, finance and control), and a worklist ordered by age. Picking a stage narrows the worklist; queues stay role-filtered by the server. Long status chips now wrap, which stopped the supplier-copy upload overflowing its card.
+No reference screen covers the operations console, so the owner's "make like the given image" takes the vendor dashboard (`Modern JobWork Vendor Dashboard.png`) as its pattern: welcome banner, four tiles, a list with one action per row, an overview ring, and the customer home's quick actions. The first version, a dark control room with a line of stages, was rejected by the owner and removed. The revenue card has no equivalent: the operations summary carries no money, and no figure is invented. Long status chips now wrap, which stopped the supplier-copy upload overflowing its card.
