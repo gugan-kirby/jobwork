@@ -145,7 +145,8 @@ describe('PortalShell identity', () => {
 
     await act(async () => answer({ organizationType: 'supplier' }));
     expect(link('RFQs')).not.toBeNull();
-    expect(link('Enquiries')).toBeNull();
+    // The vendor's Enquiries tab (reference 15) is its own requests, never the customer's list.
+    expect(link('Enquiries')?.getAttribute('href')).toBe('/rfqs');
     expect(calls('/portal/summary')).toBe(0);
   });
 });

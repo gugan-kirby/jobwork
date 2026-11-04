@@ -19,7 +19,7 @@ Do not bury open decisions in code defaults.
 | `D-07` | Acceptance authority | Organization memberships with amount/scope limits for quote, change, deviation, shipment, delivery; no email-only approval | Defines approval data, segregation and contract evidence. **Identity/workflow gate.** |
 | `D-08` | Supplier subcontracting | Prohibited unless declared and approved per operation; downstream identity/capability/evidence tracked | Undeclared subcontracting breaks quality, IP, capacity and traceability. |
 | `D-09` | Data retention and legal hold | Class-based schedule for CAD, bid, contract, tax, quality, communication, audit and personal data | Determines storage, deletion, privacy, backups, exports, cost. Professional review needed. |
-| `D-10` | Brand promise/liability | Market JobWork only to the level supported by reseller contracts, inspection and warranty SOP | “Guaranteed quality/on-time” changes liability, reserves, customer remedies and operations. |
+| `D-10` | Brand promise/liability | Market JobWork only to the level supported by reseller contracts, inspection and warranty SOP | “Guaranteed quality/on-time” changes liability, reserves, customer remedies and operations. **2026-11-04 (VF-18):** the owner adopted the reference copy on the entry screens (“Find Trusted Machines. Get Quality Work Done.”, “Secure · Reliable · Fast”, “Precision Work. On Time, Every Time.”); legal review of those lines stays open. |
 
 ## 3. Additional product decisions
 

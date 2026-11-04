@@ -18,10 +18,8 @@ import { api, ApiError } from '../../lib/api';
  * Register (prototype tile 3). Two tabs, two different outcomes, and the page says so:
  *
  *  - **Customer** creates an account that works once the email is confirmed (doc 20 §2).
- *  - **Supplier** sends an *application*. Admission to the network is JobWork's decision
+ *  - **Vendor** sends an *application*. Admission to the network is JobWork's decision
  *    (F-SO); the form promises a review, not a login.
- *
- * The prototype's "Vendor" wording is corrected to "Supplier" throughout (doc 14 §2).
  *
  * VF-03 layout (reference screen 03): back header, two-way switch, glyph fields with
  * the label as placeholder (still a real label), inline terms link, a 54 px action.
@@ -148,7 +146,7 @@ export default function RegisterPage() {
             aria-pressed={audience === option}
             onClick={() => setAudience(option)}
           >
-            {option === 'customer' ? 'Customer' : 'Supplier'}
+            {option === 'customer' ? 'Customer' : 'Vendor'}
           </button>
         ))}
       </div>
@@ -172,7 +170,6 @@ function CustomerForm(): React.JSX.Element {
     email: '',
     password: '',
     confirm: '',
-    organizationName: '',
     acceptTerms: false,
   });
   const [error, setError] = useState<ApiError | null>(null);
@@ -186,8 +183,6 @@ function CustomerForm(): React.JSX.Element {
     fullName: required(form.fullName, 'Enter your full name'),
     mobile: mobileError(form.mobile),
     email: emailError(form.email),
-    organizationName:
-      form.organizationName && form.organizationName.trim().length < 2 ? 'Enter at least 2 characters' : undefined,
     password:
       form.password.length >= MIN_PASSWORD ? undefined : `Use at least ${MIN_PASSWORD} characters`,
     confirm: mismatch ? 'The two passwords do not match' : form.confirm ? undefined : 'Enter the password again',
@@ -209,7 +204,6 @@ function CustomerForm(): React.JSX.Element {
           mobile: form.mobile.trim(),
           email: form.email.trim(),
           password: form.password,
-          organizationName: form.organizationName.trim(),
           acceptTerms: form.acceptTerms,
         },
       });
@@ -273,21 +267,11 @@ function CustomerForm(): React.JSX.Element {
         onChange={(e) => set({ email: e.target.value })}
       />
       <IconTextInput
-        icon="factory"
-        label="Company (optional)"
-        autoComplete="organization"
-        value={form.organizationName}
-        error={show('organizationName')}
-        onBlur={touch('organizationName')}
-        onChange={(e) => set({ organizationName: e.target.value })}
-      />
-      <IconTextInput
         icon="lock"
         label="Password"
         type="password"
         autoComplete="new-password"
         required
-        hint={`At least ${MIN_PASSWORD} characters.`}
         value={form.password}
         error={show('password')}
         onBlur={touch('password')}

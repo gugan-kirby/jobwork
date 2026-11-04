@@ -329,6 +329,9 @@ export const customerEnquirySchema = z.object({
     })
     .nullable(),
   itemCount: z.number().int().nonnegative(),
+  /** The first part's process and material, for the card's "category • material" line (VF-18). */
+  processCapabilityId: z.uuid().nullable(),
+  materialCapabilityId: z.uuid().nullable(),
   /**
    * The concurrency token, not an internal fact: a customer command that changes this
    * enquiry — withdrawing it — has to say which version it was looking at. Without it the

@@ -17,7 +17,6 @@ import {
   Stack,
   Select,
   StatusChip,
-  formatMoney,
   type RecordTint,
   type Tone,
 } from '@jobwork/ui';
@@ -45,11 +44,10 @@ const TONE: Record<CustomerOrderListItem['status'], Tone> = {
   cancelled: 'neutral',
 };
 
-type Filter = 'all' | 'needs_you' | 'in_progress' | 'completed' | 'cancelled';
+type Filter = 'all' | 'in_progress' | 'completed' | 'cancelled';
 
 const FILTERS: Array<{ value: Filter; label: string }> = [
   { value: 'all', label: 'All' },
-  { value: 'needs_you', label: 'Needs you' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
@@ -58,15 +56,19 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
 function bucket(order: CustomerOrderListItem): Exclude<Filter, 'all'> {
   if (order.status === 'cancelled') return 'cancelled';
   if (order.status === 'completed') return 'completed';
-  if (order.actionNeeded || order.status === 'payment_needed' || order.status === 'delivery_confirmation_needed') return 'needs_you';
   return 'in_progress';
 }
 
 const TILE: Record<Exclude<Filter, 'all'>, RecordTint> = {
-  needs_you: 'orange',
   in_progress: 'blue',
   completed: 'green',
   cancelled: 'neutral',
+};
+
+const SHORT_STATUS: Record<Exclude<Filter, 'all'>, string> = {
+  in_progress: 'In Progress',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
 type Sort = 'newest' | 'oldest' | 'name';
@@ -121,7 +123,7 @@ export default function OrdersPage() {
         <div className="jw-search-row">
           <IconTextInput
             icon="search"
-            label="Search orders…"
+            label="Search orders..."
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -178,12 +180,11 @@ export default function OrdersPage() {
                 href={`/orders/${o.orderId}`}
                 reference={`Order #${o.number}`}
                 title={o.title}
-                caption={o.actionNeeded ? o.actionNeeded.label : o.expectedDeliveryAt ? `Expected by ${o.expectedDeliveryAt}` : undefined}
-                figure={formatMoney({ amountMinor: o.totalMinor, currency: o.currency })}
-                status={<StatusChip tone={TONE[o.status]}>{o.statusLabel}</StatusChip>}
+                caption={o.actionNeeded ? o.actionNeeded.label : undefined}
+                status={<StatusChip tone={TONE[o.status]}>{SHORT_STATUS[bucket(o)]}</StatusChip>}
                 icon={{ name: 'factory', tint: TILE[bucket(o)] }}
                 date={when(o.acceptedAt)}
-                {...(bucket(o) === 'in_progress' || bucket(o) === 'needs_you' ? { progress: ORDER_PROGRESS[o.status] } : {})}
+                {...(bucket(o) === 'in_progress' ? { progress: ORDER_PROGRESS[o.status] } : {})}
               />
             ))}
           </RecordList>

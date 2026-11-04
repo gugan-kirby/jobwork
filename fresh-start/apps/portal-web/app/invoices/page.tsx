@@ -15,7 +15,6 @@ import {
   Page,
   Select,
   Stack,
-  formatMoney,
 } from '@jobwork/ui';
 import { api, ApiError } from '../../lib/api';
 import { isOpen } from '../../lib/invoice-due';
@@ -71,8 +70,6 @@ export default function InvoicesPage() {
     .sort((a, b) =>
       sort === 'amount' ? b.totalMinor - a.totalMinor : sort === 'oldest' ? a.issuedAt.localeCompare(b.issuedAt) : b.issuedAt.localeCompare(a.issuedAt),
     );
-  const outstanding = open.reduce((sum, i) => sum + i.openMinor, 0);
-  const currency = all[0]?.currency ?? 'INR';
 
   async function pay(invoiceId: string): Promise<void> {
     const intent = await api<CustomerPaymentIntent>(`/invoices/${invoiceId}/pay`, { method: 'POST', idempotencyKey: `pay-${invoiceId}-${Date.now()}` });
@@ -82,16 +79,12 @@ export default function InvoicesPage() {
   return (
     <Page
       title="Invoices"
-      description={
-        open.length > 0
-          ? `View and manage your invoices and payments · ${formatMoney({ amountMinor: outstanding, currency })} outstanding`
-          : 'View and manage your invoices and payments'
-      }
+      description="View and manage your invoices and payments"
     >
       <Stack gap={4}>
         {error ? <ErrorState message={error.problem.detail ?? error.problem.title} code={error.problem.code} /> : null}
         <div className="jw-search-row">
-          <IconTextInput icon="search" label="Search invoices…" type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <IconTextInput icon="search" label="Search invoices..." type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
           <button
             type="button"
             className="jw-square-button"

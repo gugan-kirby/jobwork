@@ -4,10 +4,8 @@ import Link from 'next/link';
 import { BrandGlyph, Hero } from '@jobwork/ui';
 
 /**
- * The splash (VF-01, reference screen 01). One message, one action. The reference line
- * "Find trusted machines. Get quality work done." is replaced: it promises trust and
- * quality JobWork cannot yet stand behind (`D-10`) and sells machines, not a managed
- * counterpart. The two-line rhythm is kept.
+ * The splash (VF-01, VF-18, reference screen 01), word for word. Owner decision
+ * 2026-11-04: the reference copy stands (`D-10` amended).
  */
 export default function WelcomePage() {
   return (
@@ -17,9 +15,9 @@ export default function WelcomePage() {
       headline="JobWork"
       subline={
         <>
-          Custom parts, made to your drawing.
+          Find Trusted Machines.
           <br />
-          One partner from enquiry to delivery.
+          Get Quality Work Done.
         </>
       }
       actions={

@@ -3363,3 +3363,35 @@ html:has(.jw-flat) {
 .jw-tinted-card .jw-record-caption {
   color: var(--color-ink-muted);
 }
+
+/* VF-18 phone chrome: the bell's count is a small dot (the number stays in its name), and
+   the current tab's glyph is filled. */
+@media (max-width: 767px) {
+  .jw-shell-header .jw-icon-button-badge {
+    top: 10px;
+    right: 10px;
+    min-width: 10px;
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+  }
+}
+
+.jw-tab-current .jw-tab-icon svg {
+  fill: currentColor;
+  fill-opacity: 0.18;
+}
+
+.jw-tab-current[href='/'] .jw-tab-icon svg,
+.jw-tab-current[href='/profile'] .jw-tab-icon svg,
+.jw-tab-current[href='/supplier'] .jw-tab-icon svg {
+  fill-opacity: 1;
+}
+
+.jw-app-version {
+  text-align: center;
+  font: 400 15px/20px var(--font-sans);
+  color: var(--color-ink-muted);
+}

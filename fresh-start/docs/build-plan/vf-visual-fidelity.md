@@ -284,3 +284,18 @@ The owner reviewed VF-05–07 and asked for each image's exact UI and function: 
 | **File names** | `DocumentSummary.currentVersionFilename` carries the owner's own file name, so Review reads "drawing.pdf" with its type badge. |
 
 Tests: `@jobwork/ui` (206), `@jobwork/portal-web` (29), `apps/api` (556), `database` (110); the form driven in a browser from empty through a real submit.
+
+## VF-18 Every screen exactly as its image (owner instruction 2026-11-04: "make all screen match")
+
+This supersedes the corrections and "Kept" notes in VF-01–VF-16 wherever they differ from an image. `D-10` is amended. Terminology on screens follows the images ("Vendor"); docs keep "supplier".
+
+| Screen | Now as the image |
+|---|---|
+| 01, 02 | Reference copy, including "Find Trusted Machines. Get Quality Work Done." and Secure · Reliable · Fast |
+| 03 | Customer / Vendor; the five fields only: no Company field, no password hint (the length check stays) |
+| 04 | Banner, Quick Actions with "RFQ / Quotes", four categories (CNC Machining, VMC, Turning, Welding); no count badges, no waiting list |
+| Tab bar | No count badges; bell is a dot on phones; the last slot reads Invoices or Payments on those pages; vendors get Dashboard · Enquiries · Quotes · Orders · Profile and no raised action |
+| 08 | All · In Progress · Quoted · Closed; cards read "category • material"; withdrawn enquiries sit under Closed; no callouts. A card keeps "Information needed" when the customer must answer |
+| 11 | All · In Progress · Completed · Cancelled; short status pills; no amount |
+| 13 | No outstanding total; the card shows the order number only |
+| 16 | Company Details, Account Settings, Payment Methods (opens Payments: no card is stored), Notifications, Privacy & Security, Help & Support, Log Out, App Version 1.0.0. Addresses, Documents, Team, About and Terms move to the header menu |
