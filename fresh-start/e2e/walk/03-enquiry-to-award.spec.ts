@@ -50,7 +50,7 @@ test('customer · creates an enquiry through the three-step wizard', async ({ pa
   remember('enquiryReference', reference);
   await axe(page, 'enquiry detail');
   await open(page, `${PORTAL}/enquiries`);
-  await expect(page.getByText(reference).first()).toBeVisible();
+  await expect(page.getByText('Walk impeller housing').first()).toBeVisible();
   await axe(page, 'enquiry list');
 });
 

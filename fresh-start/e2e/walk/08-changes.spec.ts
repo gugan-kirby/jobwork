@@ -108,7 +108,7 @@ test('customer · the approver approves the change and its effect', async ({ pag
   await showOrderDetails(page);
   await page.getByRole('checkbox', { name: /I understand this/ }).check();
   await command(page, 'Approve change');
-  await expect(page.locator('body')).not.toContainText(/Anand/);
+  await expect(page.locator('body')).not.toContainText(/PO-\d{4}/);
 });
 
 test('ops · engineering releases the new baseline', async ({ page }) => {

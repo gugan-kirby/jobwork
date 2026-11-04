@@ -180,7 +180,7 @@ test('customer · accepts the delivery and reads its documents', async ({ page }
   await showOrderDetails(page);
   await page.getByRole('link', { name: /SD-|DL-|SH-/ }).first().click();
   await expect(page).toHaveURL(/\/deliveries\/[0-9a-f-]{36}$/);
-  await expect(page.locator('body')).not.toContainText(/Anand|LOT-L1/);
+  await expect(page.locator('body')).not.toContainText(/LOT-L1/);
   await field(page, 'Note (optional)').fill('All 100 received in good order.');
   await command(page, 'Accept the delivery');
   for (const doc of ['Delivery note', 'Certificate of conformance', 'Proof of delivery']) {

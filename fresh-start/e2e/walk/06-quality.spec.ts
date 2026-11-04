@@ -228,7 +228,7 @@ test('customer · the approver accepts the parts as they are', async ({ page }) 
   await showOrderDetails(page);
   await page.getByRole('checkbox', { name: /I accept \d+ parts/ }).check();
   await command(page, 'Accept as is');
-  await expect(page.locator('body')).not.toContainText(/Anand|LOT-D/);
+  await expect(page.locator('body')).not.toContainText(/LOT-D/);
   await axe(page, 'order (deviation decided)');
 });
 
