@@ -26,6 +26,16 @@ setup('build the journey world', async () => {
     secrets[email] = secret;
   }
 
+  // The wizard requires a delivery location, and the fixture customer starts without one.
+  const sites = ok(await buyer.get('/organizations/me/sites'), 200, 'sites')['sites'] as Body[];
+  if (sites.length === 0) {
+    ok(
+      await buyer.post('/organizations/me/sites', { kind: 'delivery', label: 'Kovai Pumps plant', addressLine1: 'SIDCO Industrial Estate, Mudalipalayam', city: 'Tiruppur', state: 'Tamil Nadu', postalCode: '641606', contactName: 'R. Kumar', contactPhone: '+91 98400 12345' }),
+      201,
+      'customer site',
+    );
+  }
+
   const taxonomy = ok(await buyer.get('/suppliers/me/taxonomy'), 200, 'taxonomy')['capabilities'] as Body[];
   const capability = (code: string): string => taxonomy.find((c) => c['code'] === code)!['capabilityId'] as string;
   const documents = ok(await buyer.get('/documents'), 200, 'documents')['documents'] as Body[];
