@@ -6,6 +6,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   DATABASE_URL: z.string().default('postgres://localhost:5432/jobwork_dev'),
+  /** Session poolers cap clients per database and role, so API and worker must share that cap. */
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   SESSION_COOKIE_NAME: z.string().default('jw_session'),
   SESSION_SECRET: z.string().min(8),
   SERVICE_TOKEN_SECRET: z.string().min(8).default('dev-service-token-secret'),
