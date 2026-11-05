@@ -12,6 +12,7 @@
     "tests",
     "support",
     "walk",
+    "demo",
     "scripts/*.ts",
     "playwright.config.ts",
     "playwright.walk.config.ts"
