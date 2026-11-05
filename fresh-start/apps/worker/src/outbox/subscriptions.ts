@@ -41,6 +41,7 @@ export const ACKNOWLEDGED_EVENT_TYPES = [
   'orders.purchase_order_acknowledged.v1',
   'orders.sales_order_created.v1',
   'orders.sales_order_released.v1',
+  'orders.supplier_rated.v1',
   'orders.work_package_completed.v1',
   'orders.work_package_released.v1',
   'sourcing.enquiry_approved_for_sourcing',

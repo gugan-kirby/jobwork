@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { PASSWORD, PORTAL } from '../../support/api';
 

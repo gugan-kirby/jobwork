@@ -29,7 +29,8 @@ async function sweep(page: Page, who: Who, base: string, screens: Screen[]): Pro
   }
 }
 
-const SUPPLIERS = /Anand|Balaji|Walk Precision/;
+// ADR-0007: a customer may see the supplier's name, never its cost or JobWork's own records.
+const INTERNAL = /\bPO-\d{4}-\d{4}\b|\bLOT-[A-Z0-9]+|landed cost|supplier cost/i;
 const CUSTOMER = /Kovai/;
 
 test('public · every public screen', async ({ page }) => {
@@ -37,7 +38,7 @@ test('public · every public screen', async ({ page }) => {
 });
 
 test('customer · every customer screen', async ({ page }) => {
-  const c = (path: string): Screen => ({ path, shield: SUPPLIERS });
+  const c = (path: string): Screen => ({ path, shield: INTERNAL });
   await sweep(page, 'buyer', PORTAL, [
     c('/'),
     c('/enquiries'),
