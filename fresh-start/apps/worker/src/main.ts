@@ -41,6 +41,7 @@ if (process.env['NODE_ENV'] !== 'production') {
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.string().default('postgres://localhost:5432/jobwork_dev'),
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(5),
   PORTAL_URL: z.string().default('http://localhost:3000'),
   API_URL: z.string().default('http://localhost:4000'),
   SERVICE_TOKEN_SECRET: z.string().min(8).default('dev-service-token-secret'),
@@ -90,7 +91,7 @@ async function main(): Promise<void> {
   if (problems.length > 0) throw new Error(`refusing to start in production: ${problems.join('; ')}`);
   const env = parsed.data;
   const logger = createLogger({ service: 'worker' });
-  const pool = new Pool({ connectionString: env.DATABASE_URL, max: 5 });
+  const pool = new Pool({ connectionString: env.DATABASE_URL, max: env.DATABASE_POOL_MAX });
   // An idle connection ended by the server must not kill the worker (see the API's
   // DatabaseService): the pool drops it and reconnects on the next query.
   pool.on('error', (err) => logger.warn({ code: (err as { code?: string }).code }, 'db.idle_client_error'));

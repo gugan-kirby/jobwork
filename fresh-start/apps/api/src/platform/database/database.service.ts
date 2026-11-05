@@ -15,7 +15,7 @@ export class DatabaseService implements OnModuleDestroy {
   constructor(config: ConfigService) {
     this.pool = new Pool({
       connectionString: config.env.DATABASE_URL,
-      max: 10,
+      max: config.env.DATABASE_POOL_MAX,
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
     });
