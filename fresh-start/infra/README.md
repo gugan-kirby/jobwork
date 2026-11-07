@@ -23,6 +23,11 @@ All credentials above are development-only values (DO-15).
 Note: this machine has an unrelated process listening on port 3000. If the portal fails with
 `EADDRINUSE`, run it on another port: `pnpm --filter @jobwork/portal-web exec next dev -p 3002`.
 
+## Deployed staging
+
+`infra/deploy/` holds the free single-VM staging stack and its step-by-step guide
+([ADR-0008](../docs/adr/0008-free-single-vm-staging.md)).
+
 ## Observability (F-11.3)
 
 `pnpm stack:observability` starts Prometheus (127.0.0.1:9090) and Grafana (127.0.0.1:3030,
