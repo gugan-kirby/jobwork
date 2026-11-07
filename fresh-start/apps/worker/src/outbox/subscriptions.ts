@@ -15,6 +15,7 @@
 export const HANDLED_EVENT_TYPES = ['iam.invitation.issued.v1', 'iam.email_verification.issued.v1', 'dms.file_finalized'] as const;
 
 export const ACKNOWLEDGED_EVENT_TYPES = [
+  'iam.platform_admin.bootstrapped.v1',
   'commercial.approval_decided.v1',
   'commercial.award_proposed.v1',
   'commercial.quote_expired.v1',

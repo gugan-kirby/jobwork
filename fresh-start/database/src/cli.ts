@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { adminBootstrapFromEnv, bootstrapAdmin } from './bootstrap-admin';
 import { ensureDatabase, migrationStatus, runMigrations } from './migrate';
 
 const MIGRATIONS_DIR = join(__dirname, '..', 'migrations');
@@ -24,7 +25,12 @@ async function main(): Promise<void> {
     }
     return;
   }
-  console.error(`unknown command: ${command} (use up|status)`);
+  if (command === 'bootstrap-admin') {
+    const { userId } = await bootstrapAdmin(databaseUrl, adminBootstrapFromEnv(process.env));
+    console.log(`created first admin ${userId}`);
+    return;
+  }
+  console.error(`unknown command: ${command} (use up|status|bootstrap-admin)`);
   process.exitCode = 2;
 }
 
