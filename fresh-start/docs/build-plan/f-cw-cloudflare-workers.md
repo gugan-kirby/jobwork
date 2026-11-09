@@ -15,7 +15,7 @@ Branch: `feat/cloudflare-workers-deploy`, cut from `feat/free-staging-deploy` (n
 | ID | Functionality | Status |
 |---|---|---|
 | F-CW.0 | Spike: measure size, CPU and connectivity on the free plans | in progress |
-| F-CW.1 | Platform seams: runtime-neutral config, database, password hasher, rate-limit store | planned |
+| F-CW.1 | Platform seams: runtime-neutral config, database, password hasher, rate-limit store | **done** 2026-11-09 (1,006 tests green) |
 | F-CW.2 | HTTP layer on Hono: request pipeline, cross-cutting middleware | planned |
 | F-CW.3 | Module routes: the 44 controllers as Hono routes, composition root | planned |
 | F-CW.4 | Worker on a Cron Trigger: bounded outbox batch and scans per run | planned |
@@ -70,3 +70,36 @@ Results are recorded below and ADR-0009 is revised if a pass line fails.
 | `/db`, `/hash`, `/storage` on the deployed spike | waiting on owner steps | |
 
 Finding: OpenNext 1.20.16 builds Next 16's `proxy.ts` as Node.js middleware and warns that this is experimental on Cloudflare. F-CW.6 checks the CSP nonce and HSTS headers on the deployed Workers; if they are missing, `proxy.ts` moves to edge `middleware.ts`.
+
+## F-CW.1 Platform seams
+
+Everything the Workers runtime cannot hold moves behind a seam chosen by setting; Node keeps today's behaviour by default. NestJS stays until F-CW.3. On Workers `process.env` carries vars and secrets (`nodejs_compat`, compatibility date after 2025-04-01), so `ConfigService` keeps reading it.
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/api/src/modules/iam/domain/password.ts` | edit | Policy only (lengths, `passwordPolicyIssue`); the hash versions `ARGON2ID_PARAMS_VERSION = 1`, `BCRYPT_PARAMS_VERSION = 2`. No `argon2` import, so a Workers bundle can take it |
+| `apps/api/src/modules/iam/infrastructure/password-hasher.ts` | new | `PasswordHasher` port (`paramsVersion`, `hash`, `verify`, `burn`) and the `PASSWORD_HASHER` token |
+| `apps/api/src/modules/iam/infrastructure/argon2-hasher.ts` | new | Today's argon2id code; the timing-equaliser hash is made on first use, not at import |
+| `apps/api/src/modules/iam/infrastructure/pgcrypto-hasher.ts` | new | `crypt($1, gen_salt('bf', 10))` and `crypt($1, $2) = $2` through `DatabaseService`; `burn` verifies against a fixed bcrypt hash. Unqualified names: pgcrypto sits in `public` locally (0001) and in `extensions` on Supabase, which is on its search path |
+| `apps/api/src/modules/iam/iam.module.ts` | edit | `PASSWORD_HASHER` by `PASSWORD_HASHER` setting |
+| `apps/api/src/modules/iam/application/{auth,invitation,registration}.service.ts` | edit | Hash, verify and burn through the port; store `hasher.paramsVersion` |
+| `apps/api/src/platform/config/config.service.ts` | edit | `PASSWORD_HASHER: argon2id \| pgcrypto-bcrypt` (default `argon2id`); `RATE_LIMIT_STORE: redis \| postgres` (default `redis`) |
+| `database/src/bootstrap-admin.ts` | edit | `PASSWORD_HASHER=pgcrypto-bcrypt` hashes inside the bootstrap transaction with `crypt`, version 2 |
+| `database/migrations/0035_rate_limit_counter.sql` | new | `UNLOGGED` `platform.rate_limit_counter (key, window_index, count, expires_at)`, primary key `(key, window_index)`, index on `expires_at` |
+| `apps/api/src/platform/http/rate-limit/postgres-store.ts` | new | `PostgresRateLimitStore`: one upsert that counts the current window and reads the previous one. Its own file, so a Workers bundle need not load `ioredis` from `store.ts` |
+| `apps/api/src/platform/http/rate-limit/rate-limit.interceptor.ts` | edit | `RATE_LIMIT_STORE=postgres` uses it, no Redis connection; expired rows are swept by the F-CW.4 cron |
+| `apps/api/src/platform/database/database.service.ts` | edit | `pool` becomes a getter over a `PoolSource`: one shared pool on Node; on Workers a pool per request held in `AsyncLocalStorage` (a Worker cannot reuse a socket across requests; Hyperdrive does the pooling) |
+| `apps/api/src/platform/database/pool-source.ts` | new | `SharedPoolSource`, `RequestPoolSource.run(fn)` |
+| `apps/api/test/**/*.ts` | edit | Fixtures import `hashPassword` from `argon2-hasher` |
+
+The pgcrypto hasher queries through `db.pool` even inside an open transaction (invitation acceptance), so a Workers pool needs `DATABASE_POOL_MAX` ≥ 2; F-CW.3 sets it.
+
+Tests:
+
+| Test | Proves |
+|---|---|
+| `apps/api/test/password-hasher.db.spec.ts` (new) | pgcrypto hash starts `$2a$10$`, verifies, refuses a wrong password, `burn` resolves; neither hasher accepts the other's hash; argon2 unchanged. Postgres counters: windows, 20 simultaneous hits all counted, expiry stamp |
+| `apps/api/test/workers-seams.api.spec.ts` (new) | Boots with `PASSWORD_HASHER=pgcrypto-bcrypt`, `RATE_LIMIT_STORE=postgres` and an unreachable Redis: register, verify, sign in; unknown account and wrong password both 401; the fourth attempt on one account 429. Replaces the planned edits to `iam-auth` and `rate-limit` specs: one boot covers both settings |
+| `apps/api/test/pool-source.spec.ts` (new) | Each `run` gets its own pool and ends it; `pool` outside a run throws a named error |
+| `database/tests/bootstrap-admin.db.spec.ts` (edit) | The bcrypt path stores version 2 and the hash verifies with `crypt` |
+| Full suite | Unchanged behaviour on the defaults |

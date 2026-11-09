@@ -43,7 +43,7 @@ The `F-CW.0` spike measures CPU, bundle size and connectivity before the port. I
 - The NestJS decorators leave the codebase; module boundaries, command guards, audit and outbox writes (doc 04, doc 22) are unchanged.
 - Outbox latency rises from ~2 s to up to 1 min.
 - Deviations from doc 23 for this environment only: `DO-01` (one personal account per platform), `DO-04`/`DO-05` (no IaC beyond `wrangler` configs), `DO-15` (secrets set with `wrangler secret put`, not a secret store).
-- Deviation from doc 20 §4: bcrypt instead of Argon2id while on the free plan.
+- Deviation from doc 20 §4: bcrypt instead of Argon2id while on the free plan. bcrypt reads only the first 72 bytes of a password, so two passwords that share those bytes are the same password here.
 - Payment, carrier and malware scanning stay on their development adapters (`T-03`, `T-05`, `T-06`).
 
 ## Rejected alternatives
