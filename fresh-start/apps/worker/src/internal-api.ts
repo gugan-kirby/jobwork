@@ -2,6 +2,7 @@ import type {
   BeginScanResponse,
   DispatchNotificationsResponse,
   RecordDeliveryRequest,
+  RecordMailRequest,
   RecordScanResultRequest,
   ScanResultResponse,
   SlaSweepResult,
@@ -24,6 +25,8 @@ export interface InternalApiOptions {
   tokenSecret: string;
   principalName: string;
   timeoutMs?: number;
+  /** A Worker reaches the API through its service binding, not the network (F-CW.4). */
+  fetch?: (input: string, init: RequestInit) => Promise<Response>;
 }
 
 /**
@@ -112,6 +115,11 @@ export class InternalApiClient {
     return this.post<{ outcome: string }>(`/api/v1/internal/notifications/deliveries/${deliveryId}/result`, body, ctx);
   }
 
+  /** F-CW.5: hand a rendered mail to the API instead of sending it; idempotent per delivery. */
+  recordMail(mail: RecordMailRequest, ctx: { correlationId: string; idempotencyKey: string }): Promise<{ outcome: string }> {
+    return this.post<{ outcome: string }>('/api/v1/internal/mail', mail, ctx);
+  }
+
   private async post<T>(
     path: string,
     body: unknown,
@@ -127,7 +135,7 @@ export class InternalApiClient {
 
     let response: Response;
     try {
-      response = await fetch(`${this.opts.baseUrl}${path}`, {
+      response = await (this.opts.fetch ?? fetch)(`${this.opts.baseUrl}${path}`, {
         method: 'POST',
         headers,
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
