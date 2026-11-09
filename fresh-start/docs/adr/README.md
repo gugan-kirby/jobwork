@@ -12,5 +12,6 @@ ADRs capture durable architecture choices and their consequences. All current re
 | [0006](0006-hybrid-authorization.md) | Proposed | RBAC plus relationship/attribute authorization |
 | [0007](0007-disclosed-suppliers-on-customer-quotes.md) | Proposed | Name the supplier on JobWork quotes and let the customer choose |
 | [0008](0008-free-single-vm-staging.md) | Proposed | Free single-VM staging until the hosting decision `T-01` |
+| [0009](0009-cloudflare-workers-supabase-demo.md) | Proposed | Cloudflare Workers and Supabase for the free demo environment (supersedes 0008 once it runs) |
 
 ADR states: Proposed, Accepted, Rejected, Deprecated, Superseded.
