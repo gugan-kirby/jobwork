@@ -1,12 +1,11 @@
 import { Injectable, type OnApplicationBootstrap, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { HttpAdapterHost } from '@nestjs/core';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { RuntimeAdapterHost, type RuntimeRequest } from '../../runtime/http';
 import type { Server } from 'node:http';
 import { Counter, createLogger, createRegistry, Gauge, Histogram, type Registry, safeLabel, startMetricsServer } from '@jobwork/observability';
 import { ConfigService } from '../config/config.service';
 import { DatabaseService } from '../database/database.service';
 
-type InstrumentedRequest = FastifyRequest & {
+type InstrumentedRequest = RuntimeRequest & {
   actor?: { organizationType?: string | null };
   servicePrincipal?: { name: string };
 };
@@ -27,7 +26,7 @@ export class MetricsService implements OnModuleInit, OnApplicationBootstrap, OnM
 
   constructor(
     private readonly config: ConfigService,
-    private readonly adapterHost: HttpAdapterHost,
+    private readonly adapterHost: RuntimeAdapterHost,
     db: DatabaseService,
   ) {
     this.registry = createRegistry({ service: 'api', version: config.buildVersion });
@@ -64,9 +63,7 @@ export class MetricsService implements OnModuleInit, OnApplicationBootstrap, OnM
   }
 
   onModuleInit(): void {
-    const fastify = this.adapterHost.httpAdapter?.getInstance<FastifyInstance>();
-    if (!fastify) return;
-    fastify.addHook('onResponse', (request: InstrumentedRequest, reply: FastifyReply, done: () => void) => {
+    this.adapterHost.onResponse((request: InstrumentedRequest, reply) => {
       const caller = request.servicePrincipal ? 'service' : request.actor?.organizationType ?? 'anonymous';
       this.httpDuration.observe(
         {
@@ -77,7 +74,6 @@ export class MetricsService implements OnModuleInit, OnApplicationBootstrap, OnM
         },
         reply.elapsedTime / 1000,
       );
-      done();
     });
   }
 

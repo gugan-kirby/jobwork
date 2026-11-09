@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { type CallHandler, type ExecutionContext, Injectable, type NestInterceptor, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { Reflector } from '../../../runtime/reflector';
 import type { FastifyRequest } from 'fastify';
 import { from, type Observable, switchMap } from 'rxjs';
 import { createLogger, Gauge, type Logger } from '@jobwork/observability';

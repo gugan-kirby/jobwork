@@ -1,5 +1,5 @@
 import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { Reflector } from '../../../runtime/reflector';
 import type { FastifyRequest } from 'fastify';
 import type { Actor } from '../application/actor';
 import { MfaChallengeRequired, NotAuthenticated } from '../domain/errors';

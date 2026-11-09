@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD } from '../../runtime/container';
 import { AccountService } from './application/account.service';
 import { AuthService } from './application/auth.service';
 import { InvitationService } from './application/invitation.service';
