@@ -16,8 +16,8 @@ Branch: `feat/cloudflare-workers-deploy`, cut from `feat/free-staging-deploy` (n
 |---|---|---|
 | F-CW.0 | Spike: measure size, CPU and connectivity on the free plans | in progress |
 | F-CW.1 | Platform seams: runtime-neutral config, database, password hasher, rate-limit store | **done** 2026-11-09 (1,006 tests green) |
-| F-CW.2 | HTTP layer on Hono: request pipeline, cross-cutting middleware | planned |
-| F-CW.3 | Module routes: the 44 controllers as Hono routes, composition root | planned |
+| F-CW.2 | Metadata runtime in place of NestJS core and Fastify (see the deviation below) | **done** 2026-11-09 (1,014 tests green) |
+| F-CW.3 | API Worker entry: per-request pool, client address from the edge, bundle and size check | planned |
 | F-CW.4 | Worker on a Cron Trigger: bounded outbox batch and scans per run | planned |
 | F-CW.5 | Mail outbox page instead of SMTP | planned |
 | F-CW.6 | Web apps on OpenNext with service bindings | planned |
@@ -103,3 +103,22 @@ Tests:
 | `apps/api/test/pool-source.spec.ts` (new) | Each `run` gets its own pool and ends it; `pool` outside a run throws a named error |
 | `database/tests/bootstrap-admin.db.spec.ts` (edit) | The bcrypt path stores version 2 and the hash verifies with `crypt` |
 | Full suite | Unchanged behaviour on the defaults |
+
+## F-CW.2 Metadata runtime in place of NestJS
+
+Deviation from the table above and from ADR-0009's first row, recorded 2026-11-09: the 44 controllers are **not** rewritten. Controllers, guards, the interceptor, the filter and every provider already carry their routing and wiring as `@nestjs/common` decorator metadata, and `tsc` emits constructor types (`design:paramtypes`). A small runtime reads that metadata, builds the object graph synchronously without NestJS's bootstrap, and calls the unchanged handlers. Routing uses `find-my-way`, Fastify's own router, so path matching, parameter decoding and static-before-parameter precedence stay identical. Reason: the same goal (no NestJS core, no Fastify, fits a Worker) with ~47,000 lines untouched and the existing suite as the oracle; F-CW.3 then shrinks to two entry points instead of 44 rewrites.
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/api/src/runtime/container.ts` | new | Walks `@Module` imports from `AppModule`; class, `useClass`, `useExisting`, `useFactory`, `useValue` providers; `@Inject` tokens and `@Optional`; singletons; `APP_GUARD` and `APP_INTERCEPTOR` in declaration order; `onModuleInit`, `onApplicationBootstrap`, `onModuleDestroy`; `get(token)`; values supplied by the entry point (pool source, adapter host) |
+| `apps/api/src/runtime/http.ts` | new | `fetch`-style handler: correlation id, body parsing (JSON and text, raw bytes kept for webhook signatures), `find-my-way` routing under `api/v1`, Fastify-shaped request and reply facades, global guards, the interceptor chain, handler arguments from `__routeArguments__`, default status (201 for POST, `@HttpCode` otherwise), JSON results, `ProblemFilter` for every throw including an unmatched route (`Cannot GET /…`), the `onResponse` hook the metrics service registers |
+| `apps/api/src/runtime/client-address.ts` | new | `X-Forwarded-For` walked with `proxy-addr` against `TRUST_PROXY`, as Fastify did |
+| `apps/api/src/app.ts` | new | `createApplication(values)`: container plus HTTP handler, shared by Node and the Worker |
+| `apps/api/src/main.ts` | edit | Serves the handler with `@hono/node-server`; graceful shutdown; NestJS and Fastify imports gone |
+| `apps/api/test/helpers/boot.ts` | edit | `createTestApp()` returns `{ app: { close, get }, baseUrl }` from the runtime |
+| `apps/api/test/**/*.ts` | edit | `NestFastifyApplication` type → `TestApp` |
+| `apps/api/package.json` | edit | `find-my-way`, `fast-querystring`, `proxy-addr`, `cookie`, `@hono/node-server`, `hono`; `@nestjs/core`, `@nestjs/platform-fastify`, `fastify`, `@fastify/cookie` leave when nothing imports them |
+
+Tests: the full API suite (75 files) unchanged in substance is the acceptance test, plus `apps/api/test/runtime.spec.ts` (new): provider kinds and tokens, a missing dependency names its class and path, guard order, route precedence, 404 through the filter, POST default 201, `@HttpCode`, malformed and empty JSON, passthrough cookies.
+
+Built as planned, plus: `src/runtime/reflector.ts` and the runtime's own `APP_GUARD`/`APP_INTERCEPTOR` names replace the three `@nestjs/core` imports, and `MetricsService` registers its request timer through `RuntimeAdapterHost.onResponse`, so nothing loads `@nestjs/core`; `fastify` and `@fastify/cookie` stay as dev dependencies for types only. Route paths given as arrays (`InstrumentController`) register every path. `test/pilot/driver.ts` `expectNothingOf` now ignores uuids and timestamps: pilot 1 failed once in five runs when a random uuid contained a price's digits.
