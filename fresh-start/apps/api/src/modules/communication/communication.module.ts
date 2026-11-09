@@ -4,12 +4,15 @@ import { Conversations } from './application/conversation.command';
 import { IdentityScreen } from './application/identity-screen';
 import { LeakageGate } from './application/leakage-gate';
 import { LeakageReviews } from './application/leakage-review.command';
+import { MailboxService } from './application/mailbox';
 import { Notifications } from './application/notification.command';
 import { CommunicationRepository } from './infrastructure/communication.repository';
 import { ContextResolver } from './infrastructure/context.resolver';
+import { MailRepository } from './infrastructure/mail.repository';
 import { NotificationRepository } from './infrastructure/notification.repository';
 import { ConversationsController } from './presentation/conversations.controller';
 import { LeakageReviewsController } from './presentation/leakage-reviews.controller';
+import { InternalMailController, MailboxController } from './presentation/mail.controller';
 import { InternalNotificationsController, NotificationsController } from './presentation/notifications.controller';
 
 /**
@@ -19,7 +22,14 @@ import { InternalNotificationsController, NotificationsController } from './pres
  */
 @Module({
   imports: [IamModule],
-  controllers: [ConversationsController, LeakageReviewsController, NotificationsController, InternalNotificationsController],
+  controllers: [
+    ConversationsController,
+    LeakageReviewsController,
+    NotificationsController,
+    InternalNotificationsController,
+    InternalMailController,
+    MailboxController,
+  ],
   providers: [
     CommunicationRepository,
     ContextResolver,
@@ -29,6 +39,8 @@ import { InternalNotificationsController, NotificationsController } from './pres
     NotificationRepository,
     Notifications,
     IdentityScreen,
+    MailRepository,
+    MailboxService,
   ],
   exports: [CommunicationRepository, IdentityScreen],
 })

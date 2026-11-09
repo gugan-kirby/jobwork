@@ -1,7 +1,6 @@
 import 'reflect-metadata';
 import { createApplication, type Application } from './app';
-import type { ConfigService } from './platform/config/config.service';
-import { ConfigService as ConfigToken } from './platform/config/config.service';
+import { ConfigService } from './platform/config/config.service';
 import { createPool } from './platform/database/database.service';
 import { RequestPoolSource } from './platform/database/pool-source';
 
@@ -27,10 +26,11 @@ let ready: Promise<{ app: Application; pools: RequestPoolSource }> | undefined;
 async function build(env: WorkerEnv): Promise<{ app: Application; pools: RequestPoolSource }> {
   // Hyperdrive's address for this isolate; the pool behind it is Hyperdrive's, not ours.
   process.env['DATABASE_URL'] = env.HYPERDRIVE.connectionString;
-  let config: ConfigService | undefined;
-  const pools = new RequestPoolSource(() => createPool(config!));
+  // Pools are made per request, after the graph (and its config) exists.
+  const settings: { config?: ConfigService } = {};
+  const pools = new RequestPoolSource(() => createPool(settings.config!));
   const app = await createApplication({ poolSource: pools });
-  config = app.get(ConfigToken);
+  settings.config = app.get(ConfigService);
   return { app, pools };
 }
 

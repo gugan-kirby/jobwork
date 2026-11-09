@@ -279,3 +279,28 @@ export const NOTIFIED_EVENT_TYPES = [
   'support.case_updated.v1',
 ] as const;
 export type NotifiedEventType = (typeof NOTIFIED_EVENT_TYPES)[number];
+
+/**
+ * F-CW.5 (ADR-0009): a rendered mail the worker hands to the API instead of sending it,
+ * where `MAIL_TRANSPORT=api`. Platform admins read them on the operations Mail page.
+ */
+export const recordMailRequestSchema = z.object({
+  deliveryId: z.string().trim().min(1).max(200),
+  to: z.string().trim().min(3).max(320),
+  subject: z.string().max(500),
+  text: z.string().max(100_000),
+});
+export type RecordMailRequest = z.infer<typeof recordMailRequestSchema>;
+
+export interface MailMessage {
+  id: string;
+  deliveryId: string;
+  to: string;
+  subject: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface Mailbox {
+  messages: MailMessage[];
+}
