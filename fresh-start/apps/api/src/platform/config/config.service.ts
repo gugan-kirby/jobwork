@@ -30,8 +30,15 @@ const envSchema = z.object({
   CARRIER_PROVIDER: z.enum(['dev']).default('dev'),
   CARRIER_WEBHOOK_SECRET: z.string().min(8).default('dev-carrier-webhook-secret'),
   PAYMENT_INTENT_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
+  /**
+   * doc 20 §4: `argon2id` in process, or bcrypt computed by Postgres where native modules
+   * cannot run (Workers, ADR-0009). Hashes record which made them; each verifies its own.
+   */
+  PASSWORD_HASHER: z.enum(['argon2id', 'pgcrypto-bcrypt']).default('argon2id'),
   /** F-11.2: rate-limit counters. Empty keeps them in this process only. */
   REDIS_URL: z.string().default('redis://localhost:6379'),
+  /** Where the counters live: Redis, or `platform.rate_limit_counter` where there is none (ADR-0009). */
+  RATE_LIMIT_STORE: z.enum(['redis', 'postgres']).default('redis'),
   RATE_LIMIT_MODE: z.enum(['enforce', 'observe', 'off']).default('enforce'),
   /** JSON document replacing the budgets of named operation classes (`policies.ts`). */
   RATE_LIMIT_POLICIES: z.string().optional(),
