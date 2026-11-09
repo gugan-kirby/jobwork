@@ -3,7 +3,7 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { hashPassword } from '../src/modules/iam/domain/password';
+import { hashPassword } from '../src/modules/iam/infrastructure/argon2-hasher';
 import { ConfigService } from '../src/platform/config/config.service';
 import { ObjectStore } from '../src/modules/dms/infrastructure/object-store';
 import { signRequest } from '@jobwork/object-store';

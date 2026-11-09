@@ -7,7 +7,7 @@ import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import * as OTPAuth from 'otpauth';
 import { Client } from 'pg';
 import { expect } from 'vitest';
-import { hashPassword } from '../../src/modules/iam/domain/password';
+import { hashPassword } from '../../src/modules/iam/infrastructure/argon2-hasher';
 import { createTestApp } from '../helpers/boot';
 import { TestClient } from '../helpers/http';
 import { stageSupplierCopy } from '../helpers/supplier-copy';

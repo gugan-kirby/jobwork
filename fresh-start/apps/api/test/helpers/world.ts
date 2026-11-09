@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import * as OTPAuth from 'otpauth';
 import type { Client } from 'pg';
-import { hashPassword } from '../../src/modules/iam/domain/password';
+import { hashPassword } from '../../src/modules/iam/infrastructure/argon2-hasher';
 import { TestClient } from './http';
 
 export const WORLD_PASSWORD = 'world-password-123';

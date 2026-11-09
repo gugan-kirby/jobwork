@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { RegisterCustomerRequest } from '@jobwork/contracts';
 import { createLogger, getCorrelationId, type Logger } from '@jobwork/observability';
 import { EmailAlreadyRegistered, VerificationInvalid } from '../domain/errors';
-import { PASSWORD_PARAMS_VERSION, hashPassword, passwordPolicyIssue } from '../domain/password';
+import { passwordPolicyIssue } from '../domain/password';
 import { generateToken, hashToken } from '../domain/tokens';
 import { IamRepository } from '../infrastructure/iam.repository';
+import { PASSWORD_HASHER, type PasswordHasher } from '../infrastructure/password-hasher';
 import { AuditWriter } from '../../../platform/commands/audit.writer';
 import type { CommandContext } from '../../../platform/commands/command';
 import { OutboxWriter } from '../../../platform/commands/outbox.writer';
@@ -38,6 +39,7 @@ export class RegistrationService {
     private readonly config: ConfigService,
     private readonly audit: AuditWriter,
     private readonly outbox: OutboxWriter,
+    @Inject(PASSWORD_HASHER) private readonly passwords: PasswordHasher,
   ) {}
 
   async registerCustomer(
@@ -48,7 +50,7 @@ export class RegistrationService {
 
     // Hash first, then look: the cost is paid whether or not the email is taken, so the
     // response time does not say which (AUTH-11).
-    const passwordHash = await hashPassword(input.password);
+    const passwordHash = await this.passwords.hash(input.password);
     const existing = await this.repo.findUserByEmail(input.email);
     if (existing) throw new EmailAlreadyRegistered();
 
@@ -62,7 +64,7 @@ export class RegistrationService {
           {
             email: input.email,
             passwordHash,
-            passwordParamsVersion: PASSWORD_PARAMS_VERSION,
+            passwordParamsVersion: this.passwords.paramsVersion,
             displayName: input.fullName.trim(),
             phone: input.mobile?.trim() ?? '',
           },

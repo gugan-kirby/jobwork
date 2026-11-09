@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { createLogger, type Logger } from '@jobwork/observability';
 import type { Actor } from './actor';
 import {
@@ -7,16 +7,11 @@ import {
   InvalidMfaCode,
   NotAuthenticated,
 } from '../domain/errors';
-import {
-  burnVerification,
-  PASSWORD_PARAMS_VERSION,
-  hashPassword,
-  verifyPassword,
-} from '../domain/password';
 import { LOCKOUT_MS, LOCKOUT_THRESHOLD, sessionLifetimes } from '../domain/session-policy';
 import { generateToken, hashToken } from '../domain/tokens';
 import { verifyTotp } from '../domain/totp';
 import { IamRepository, type UserRow } from '../infrastructure/iam.repository';
+import { PASSWORD_HASHER, type PasswordHasher } from '../infrastructure/password-hasher';
 import { MetricsService } from '../../../platform/metrics/metrics.service';
 
 export interface IssuedSession {
@@ -38,13 +33,14 @@ export class AuthService {
   constructor(
     private readonly repo: IamRepository,
     private readonly metrics: MetricsService,
+    @Inject(PASSWORD_HASHER) private readonly passwords: PasswordHasher,
   ) {}
 
   async login(email: string, password: string, meta: RequestMeta): Promise<IssuedSession> {
     const user = await this.repo.findUserByEmail(email);
 
     if (!user || !user.passwordHash || user.status !== 'active') {
-      await burnVerification(); // uniform timing for unknown/inactive accounts (AUTH-11)
+      await this.passwords.burn(); // uniform timing for unknown/inactive accounts (AUTH-11)
       this.log.info({ outcome: 'failed' }, 'auth.login_failed');
       this.metrics.authEvents.inc({ event: 'login_failed' });
       throw new InvalidCredentials();
@@ -55,7 +51,7 @@ export class AuthService {
       throw new AccountLocked();
     }
 
-    const ok = await verifyPassword(user.passwordHash, password);
+    const ok = await this.passwords.verify(user.passwordHash, password);
     if (!ok) {
       const failures = user.failedLoginCount + 1;
       const lockoutUntil =
@@ -162,7 +158,7 @@ export class AuthService {
 
   /** Used by seeds/tests; password change flows arrive with the account surface. */
   async setPassword(userId: string, password: string): Promise<void> {
-    const hash = await hashPassword(password);
-    await this.repo.updatePassword(userId, hash, PASSWORD_PARAMS_VERSION);
+    const hash = await this.passwords.hash(password);
+    await this.repo.updatePassword(userId, hash, this.passwords.paramsVersion);
   }
 }
