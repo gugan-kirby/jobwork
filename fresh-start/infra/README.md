@@ -25,8 +25,10 @@ Note: this machine has an unrelated process listening on port 3000. If the porta
 
 ## Deployed staging
 
-`infra/deploy/` holds the free single-VM staging stack and its step-by-step guide
-([ADR-0008](../docs/adr/0008-free-single-vm-staging.md)).
+`infra/cloudflare/` deploys the free demo on Cloudflare Workers and Supabase: `deploy.sh`,
+`secrets.sh` and the step-by-step guide ([ADR-0009](../docs/adr/0009-cloudflare-workers-supabase-demo.md)).
+`infra/deploy/` holds the earlier free single-VM stack ([ADR-0008](../docs/adr/0008-free-single-vm-staging.md)),
+kept until the Workers deployment has run end to end.
 
 ## Observability (F-11.3)
 
