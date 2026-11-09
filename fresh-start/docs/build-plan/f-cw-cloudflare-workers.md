@@ -18,8 +18,8 @@ Branch: `feat/cloudflare-workers-deploy`, cut from `feat/free-staging-deploy` (n
 | F-CW.1 | Platform seams: runtime-neutral config, database, password hasher, rate-limit store | **done** 2026-11-09 (1,006 tests green) |
 | F-CW.2 | Metadata runtime in place of NestJS core and Fastify (see the deviation below) | **done** 2026-11-09 (1,014 tests green) |
 | F-CW.3 | API Worker entry: per-request pool, client address from the edge, bundle and size check | **built** 2026-11-09; runs in `workerd` unverified |
-| F-CW.4 | Worker on a Cron Trigger: bounded outbox batch and scans per run | planned |
-| F-CW.5 | Mail outbox page instead of SMTP | planned |
+| F-CW.4 | Worker on a Cron Trigger: bounded outbox batch and scans per run | **built** 2026-11-09 |
+| F-CW.5 | Mail outbox page instead of SMTP | **built** 2026-11-09 |
 | F-CW.6 | Web apps on OpenNext with service bindings | planned |
 | F-CW.7 | Deploy: Supabase project, Hyperdrive, secrets, migrations, first admin, walk | planned |
 
@@ -137,3 +137,34 @@ Built as planned, plus: `src/runtime/reflector.ts` and the runtime's own `APP_GU
 Measured 2026-11-09 (Node 22, M-series Mac): building the graph 52 ms CPU once; a request through guards and the filter 0.15 ms CPU. Bundle: 4,970 KiB raw, **774 KiB gzip**.
 
 Not yet verified: the bundle running inside `workerd` (pino, prom-client and pg under `nodejs_compat`). Needs either `wrangler dev` locally or the deploy in F-CW.7.
+
+## F-CW.4 Worker on a Cron Trigger
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/worker/src/config.ts` | new | The settings schema, moved out of `main.ts`; `MAIL_TRANSPORT: smtp \| api`; production refuses `SMTP_URL=log://` only with `smtp` |
+| `apps/worker/src/wiring.ts` | new | `createWorker(config, { pool, logger, apiFetch })`: handlers, poller, the six sweeps (`everyMs`, `atStart`), heartbeat. Node and the Worker share it |
+| `apps/worker/src/main.ts` | edit | The long-lived Node process on the shared wiring; behaviour unchanged |
+| `apps/worker/src/cron.ts` | new | `scheduled`: one pool per run over Hyperdrive; up to `MAX_BATCHES_PER_RUN = 3` outbox batches (30 events); the sweeps `due` this minute; the heartbeat |
+| `apps/worker/src/internal-api.ts` | edit | Optional `fetch`, so the Worker calls the API through its service binding |
+| `apps/worker/wrangler.jsonc`, `apps/worker/worker-stub.mjs` | new | `jobwork-worker`, `* * * * *`, `workers_dev: false`, `API` service binding, Hyperdrive, `SCAN_MAX_INSPECT_BYTES=8 MiB`; `nodemailer` stubbed |
+| `packages/observability/src/metrics.ts` | edit | `onWorkers()`; Node process metrics are not collected inside a Worker |
+
+New sweep on both runtimes: `rate_limit_counters` deletes expired `platform.rate_limit_counter` rows every 15 minutes (housekeeping, not business state, doc 20 §9).
+
+Tests: `apps/worker/test/cron.db.spec.ts` (new): `due` per interval; a quarter-hour run hands the invitation to the API, strips the token, calls all five API sweeps and clears spent counters; an off-quarter run calls only the SLA sweep and stops at 30 events. Bundle: 2,538 KiB raw, **383 KiB gzip**.
+
+Decision taken on the owner's behalf: files above 8 MiB are refused by the scan on Workers (fail-closed, as any file above the limit is today). Hashing and scanning more inside 10 ms of CPU is not possible; revisit with the spike's numbers and Supabase's checksum behaviour (`/storage` probe).
+
+## F-CW.5 Mail page instead of SMTP
+
+| File | Action | Contents |
+|---|---|---|
+| `database/migrations/0036_mail_message.sql` | new | `communication.mail_message`, one row per `delivery_id` |
+| `packages/contracts/src/communication.ts` | edit | `recordMailRequestSchema`, `MailMessage`, `Mailbox` |
+| `apps/api/src/modules/communication/{infrastructure/mail.repository.ts,application/mailbox.ts,presentation/mail.controller.ts}` | new | `POST internal/mail` (worker principal only, idempotent per delivery); `GET mailbox` (internal, `platform_admin`: the links are credentials), newest 200 |
+| `apps/worker/src/api-mailer.ts` | new | `MAIL_TRANSPORT=api`: `Mailer` that hands each message to the API |
+| `apps/operations-web/app/mail/page.tsx` | new | The messages, newest first, links clickable |
+| `apps/operations-web/app/ops-health/page.tsx` | edit | A "Mail" card linking to it, for platform admins. The home tiles stay as the reference images show them |
+
+Tests: `apps/api/test/mailbox.api.spec.ts` (new): one copy per delivery; only the worker hands over, only well-formed; admin reads newest first; other staff 403, customers and suppliers refused, anonymous 401.
