@@ -52,7 +52,7 @@ step "4/6 Phase 1 load bursts (F-12.4)"
 run "load bursts" env TZ=Asia/Kolkata pnpm --filter @jobwork/api perf
 
 step "5/6 launch journeys with axe and keyboard paths (F-12.4)"
-# The journeys start their own API and web apps on the standard ports, against jobwork_e2e.
+# The journeys start their own API, worker and web apps on the standard ports, against jobwork_e2e.
 run "journeys" pnpm --filter @jobwork/e2e e2e
 
 step "6/6 dependency audit (high and critical)"
