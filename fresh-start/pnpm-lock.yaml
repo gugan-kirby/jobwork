@@ -120,7 +120,7 @@ importers:
         specifier: ^4.10.2
         version: 4.10.2
       fastify:
-        specifier: ^5.12.8
+        specifier: ^5.12.5
         version: 5.12.8
       tsc-watch:
         specifier: ^6.2.0
