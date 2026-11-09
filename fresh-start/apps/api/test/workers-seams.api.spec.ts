@@ -1,4 +1,4 @@
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,7 +14,7 @@ const PASSWORD = 'a-long-enough-password-1';
 describe('Workers settings: pgcrypto passwords and Postgres rate limits (F-CW.1)', () => {
   let db: TestDatabase;
   let pg: Client;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
 
   const login = (email: string, password: string, ip: string): Promise<Response> =>

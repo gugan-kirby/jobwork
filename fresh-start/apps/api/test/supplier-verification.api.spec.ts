@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import {
   mintServiceToken,
   SCAN_WORKER_PRINCIPAL,
@@ -20,7 +20,7 @@ const SESSION_COOKIE = 'jw_session';
 
 describe('Supplier verification lifecycle (F-04.2, doc 06 §14)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
 

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -121,7 +121,7 @@ const COMMANDS: Array<{ name: string; path: (w: World) => string; body: (w: Worl
 
 describe('Cross-tenant authorization matrix (F-11.5)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
   let world: World;

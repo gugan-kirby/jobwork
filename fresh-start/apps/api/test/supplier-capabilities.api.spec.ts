@@ -1,4 +1,4 @@
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import {
   mintServiceToken,
   SCAN_WORKER_PRINCIPAL,
@@ -17,7 +17,7 @@ const SERVICE_SECRET = 'test-service-token-secret';
 
 describe('Supplier capabilities and eligibility (F-04.3, F-04.4)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
 

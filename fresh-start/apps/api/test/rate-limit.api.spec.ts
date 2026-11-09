@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { mintServiceToken, SCAN_WORKER_PRINCIPAL, SERVICE_TOKEN_HEADER } from '@jobwork/service-auth';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import Redis from 'ioredis';
@@ -35,9 +35,9 @@ interface Reply {
 describe('Rate limits and abuse controls (F-11.2)', () => {
   let db: TestDatabase;
   let pg: Client;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
-  let degradedApp: NestFastifyApplication;
+  let degradedApp: TestApp;
   let degradedUrl: string;
   const prefix = `rltest${randomBytes(4).toString('hex')}`;
   let redis: Redis;

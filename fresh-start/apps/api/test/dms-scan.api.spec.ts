@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { ObjectStoreClient, signRequest } from '@jobwork/object-store';
 import {
   mintServiceToken,
@@ -26,7 +26,7 @@ interface Grant {
 
 describe('Scan pipeline internal commands (F-03.3)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
   let store: ObjectStoreClient;

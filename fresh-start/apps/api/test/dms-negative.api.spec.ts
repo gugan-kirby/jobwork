@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { signRequest } from '@jobwork/object-store';
 import {
   mintServiceToken,
@@ -38,7 +38,7 @@ interface UploadedVersion {
  */
 describe('Audience release and download refusals (F-03.4)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
   let config: ConfigService;

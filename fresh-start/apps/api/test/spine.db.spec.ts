@@ -11,7 +11,7 @@ import { OutboxWriter } from '../src/platform/commands/outbox.writer';
 import type { ConfigService } from '../src/platform/config/config.service';
 import { DatabaseService } from '../src/platform/database/database.service';
 import { MetricsService } from '../src/platform/metrics/metrics.service';
-import type { HttpAdapterHost } from '@nestjs/core';
+import { RuntimeAdapterHost } from '../src/runtime/http';
 
 const CTX: CommandContext = {
   actor: { type: 'user', id: '00000000-0000-7000-8000-000000000001', organizationId: null },
@@ -30,7 +30,7 @@ describe('command execution spine (BR-SYS-01..04, doc 02 §8)', () => {
     dbService = new DatabaseService({ env: { DATABASE_URL: db.url } } as unknown as ConfigService);
     metrics = new MetricsService(
       { env: { METRICS_PORT: 0, METRICS_HOST: '127.0.0.1' }, buildVersion: 'test' } as unknown as ConfigService,
-      {} as HttpAdapterHost,
+      new RuntimeAdapterHost(),
       dbService,
     );
     executor = new CommandExecutor(dbService, new AuditWriter(), new OutboxWriter(), metrics);

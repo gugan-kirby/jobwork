@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { signRequest } from '@jobwork/object-store';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from '../helpers/boot';
 import { NOTIFIED_EVENT_TYPES } from '@jobwork/contracts';
 import { mintServiceToken, SCAN_WORKER_PRINCIPAL, SERVICE_TOKEN_HEADER } from '@jobwork/service-auth';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
@@ -82,7 +82,7 @@ export const daysFromNow = (days: number): string => new Date(Date.now() + days 
 
 export class Pilot {
   db!: TestDatabase;
-  app!: NestFastifyApplication;
+  app!: TestApp;
   baseUrl!: string;
   pg!: Client;
   as = {} as Record<Actor, TestClient>;
@@ -531,9 +531,15 @@ export class Pilot {
     return this.rows(`SELECT template_key, title, body FROM communication.notification WHERE recipient_user_id = $1 ORDER BY created_at`, [this.users[actor]]);
   }
 
-  /** Asserts none of the given strings appear anywhere in a response or notice. */
+  /**
+   * Asserts none of the given strings appear anywhere in a response or notice. Identifiers
+   * and timestamps are random and say nothing, so they are removed first: a uuid that
+   * happens to contain a price's digits is not a leak.
+   */
   expectNothingOf(subject: unknown, forbidden: string[], where: string): void {
-    const text = JSON.stringify(subject);
+    const text = JSON.stringify(subject)
+      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<id>')
+      .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})/g, '<time>');
     for (const word of forbidden) {
       if (text.includes(word)) throw new Error(`${where} leaks "${word}"`);
     }

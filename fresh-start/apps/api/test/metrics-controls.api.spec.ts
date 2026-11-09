@@ -1,4 +1,4 @@
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { idShapedLabelValues } from '@jobwork/observability';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import * as OTPAuth from 'otpauth';
@@ -32,7 +32,7 @@ function series(text: string, name: string, labels: Record<string, string>): num
  */
 describe('Metrics, controls panel and separation of duties (F-11.3)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
   let internalOrg: string;

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import * as OTPAuth from 'otpauth';
 import { Client } from 'pg';
@@ -20,7 +20,7 @@ const PASSWORD = 'commercial-password-1';
  */
 describe('Evaluation, award, cost sheet, customer quote (IN-07)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
 
