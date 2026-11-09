@@ -13,12 +13,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "argon2": "^0.41.1",
     "pg": "^8.16.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/pg": "^8.15.0",
-    "argon2": "^0.41.0",
     "fast-check": "^4.10.2",
     "tsx": "^4.19.0",
     "typescript": "^5.9.2",

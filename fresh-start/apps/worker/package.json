@@ -16,13 +16,17 @@
     "@jobwork/observability": "workspace:*",
     "@jobwork/service-auth": "workspace:*",
     "dotenv": "^16.4.0",
+    "nodemailer": "^10.3.1",
     "pg": "^8.16.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@jobwork/test-kit": "workspace:*",
     "@types/node": "^22.10.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.15.0",
+    "@types/smtp-server": "^3.5.13",
+    "smtp-server": "^3.21.3",
     "tsx": "^4.19.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.0"

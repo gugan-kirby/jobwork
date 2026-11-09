@@ -5,6 +5,8 @@ import { NOTIFIED_EVENT_TYPES } from '@jobwork/contracts';
 import { ACKNOWLEDGED_EVENT_TYPES, HANDLED_EVENT_TYPES } from '../src/outbox/subscriptions';
 
 const API_SRC = join(__dirname, '..', '..', 'api', 'src');
+/** The one command that runs outside the API: it creates the admin the API needs. */
+const BOOTSTRAP_COMMAND = join(__dirname, '..', '..', '..', 'database', 'src', 'bootstrap-admin.ts');
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -24,7 +26,7 @@ function emittedEventTypes(): Map<string, string> {
   const found = new Map<string, string>();
   // Outbox specs are built by commands (`application/`); adapters elsewhere speak their
   // providers' vocabularies (a payment gateway's `payment.captured` is not ours).
-  for (const file of sources(API_SRC).filter((f) => f.includes('/application/'))) {
+  for (const file of [...sources(API_SRC).filter((f) => f.includes('/application/')), BOOTSTRAP_COMMAND]) {
     const text = readFileSync(file, 'utf8');
     // `eventType:` up to the end of its expression, so a conditional over two types counts both.
     for (const m of text.matchAll(/eventType:([\s\S]*?),\n/g)) {

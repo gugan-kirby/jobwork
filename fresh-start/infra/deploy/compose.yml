@@ -1,0 +1,197 @@
+# Free single-VM staging stack (ADR-0008). Only Caddy publishes ports.
+# Start: docker compose up -d --build
+name: jobwork
+
+x-service: &service
+  restart: unless-stopped
+  networks: [jobwork]
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: '3' }
+
+x-app: &app
+  <<: *service
+  image: jobwork:staging
+  build:
+    context: ../..
+    dockerfile: infra/deploy/Dockerfile
+    args:
+      API_URL: http://api:4000
+
+x-env: &env
+  NODE_ENV: production
+  LOG_LEVEL: info
+  BUILD_SHA: ${BUILD_SHA:-staging}
+  DATABASE_URL: postgres://jobwork:${POSTGRES_PASSWORD}@postgres:5432/jobwork
+  PORTAL_URL: https://${PORTAL_HOST}
+  SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET}
+  # The address browsers upload to, so the API, worker and browsers sign and read the same
+  # host. Caddy answers to this name inside the network too (see its alias below).
+  OBJECT_STORE_ENDPOINT: https://${FILES_HOST}
+  OBJECT_STORE_REGION: us-east-1
+  OBJECT_STORE_ACCESS_KEY: ${FILES_ACCESS_KEY}
+  OBJECT_STORE_SECRET_KEY: ${FILES_SECRET_KEY}
+  OBJECT_STORE_BUCKET_QUARANTINE: jobwork-quarantine
+  OBJECT_STORE_BUCKET_CLEAN: jobwork-clean
+
+services:
+  postgres:
+    <<: *service
+    image: postgres:16
+    environment:
+      POSTGRES_USER: jobwork
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: jobwork
+    volumes: [postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U jobwork']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    <<: *service
+    image: redis:7
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  files:
+    <<: *service
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z@sha256:635197cb9f36d01bee221d34d1c7d7960f6a95c48b0b6c01d99cd13bdae51a46
+    command: silo server /data
+    environment:
+      MINIO_ROOT_USER: ${FILES_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${FILES_SECRET_KEY}
+    volumes: [files:/data]
+
+  files-init:
+    image: amazon/aws-cli:2.27.50
+    networks: [jobwork]
+    depends_on: [files]
+    environment:
+      AWS_ACCESS_KEY_ID: ${FILES_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${FILES_SECRET_KEY}
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: >
+      /bin/sh -c "
+      until aws --endpoint-url http://files:9000 s3 ls >/dev/null 2>&1; do sleep 1; done;
+      aws --endpoint-url http://files:9000 s3 mb s3://jobwork-quarantine || true;
+      aws --endpoint-url http://files:9000 s3 mb s3://jobwork-clean || true;
+      exit 0"
+
+  # DO-09: migrations are their own step, finished before the API starts.
+  migrate:
+    <<: *app
+    restart: 'no'
+    command: node database/dist/cli.js up
+    environment:
+      DATABASE_URL: postgres://jobwork:${POSTGRES_PASSWORD}@postgres:5432/jobwork
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  # Run through create-admin.sh; never part of `up`.
+  admin:
+    <<: *app
+    restart: 'no'
+    profiles: [tools]
+    command: node database/dist/cli.js bootstrap-admin
+    environment:
+      DATABASE_URL: postgres://jobwork:${POSTGRES_PASSWORD}@postgres:5432/jobwork
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_NAME: ${ADMIN_NAME:-}
+      HUB_ADDRESS: ${HUB_ADDRESS:-}
+      HUB_CITY: ${HUB_CITY:-}
+      HUB_STATE: ${HUB_STATE:-}
+      HUB_POSTAL_CODE: ${HUB_POSTAL_CODE:-}
+      HUB_CONTACT_NAME: ${HUB_CONTACT_NAME:-}
+      HUB_CONTACT_PHONE: ${HUB_CONTACT_PHONE:-}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  api:
+    <<: *app
+    command: node apps/api/dist/main.js
+    environment:
+      <<: *env
+      API_PORT: '4000'
+      REDIS_URL: redis://redis:6379
+      OPERATIONS_URL: https://${OPERATIONS_HOST}
+      ALLOWED_ORIGINS: https://${PORTAL_HOST},https://${OPERATIONS_HOST}
+      # The web containers and Caddy are the only proxies, all on this network.
+      TRUST_PROXY: 172.30.0.0/24
+      SESSION_SECRET: ${SESSION_SECRET}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET}
+      CARRIER_WEBHOOK_SECRET: ${CARRIER_WEBHOOK_SECRET}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      files-init: { condition: service_completed_successfully }
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/api/v1/health').then((r)=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  worker:
+    <<: *app
+    command: node apps/worker/dist/main.js
+    environment:
+      <<: *env
+      API_URL: http://api:4000
+      SMTP_URL: ${SMTP_URL}
+      SMTP_FROM: ${SMTP_FROM}
+    depends_on:
+      api: { condition: service_healthy }
+
+  portal:
+    <<: *app
+    working_dir: /app/apps/portal-web
+    command: node_modules/.bin/next start -p 3000
+    environment:
+      OBJECT_STORE_ENDPOINT: https://${FILES_HOST}
+    depends_on:
+      api: { condition: service_healthy }
+
+  operations:
+    <<: *app
+    working_dir: /app/apps/operations-web
+    command: node_modules/.bin/next start -p 3001
+    environment:
+      OBJECT_STORE_ENDPOINT: https://${FILES_HOST}
+    depends_on:
+      api: { condition: service_healthy }
+
+  caddy:
+    <<: *service
+    image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
+    ports: ['80:80', '443:443']
+    environment:
+      PORTAL_HOST: ${PORTAL_HOST}
+      OPERATIONS_HOST: ${OPERATIONS_HOST}
+      FILES_HOST: ${FILES_HOST}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      jobwork:
+        aliases: ['${FILES_HOST}']
+    depends_on: [portal, operations, files]
+
+networks:
+  jobwork:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  postgres:
+  files:
+  caddy-data:
+  caddy-config:

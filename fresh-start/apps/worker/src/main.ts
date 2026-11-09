@@ -7,7 +7,7 @@ import { createLogger, startMetricsServer } from '@jobwork/observability';
 import { ObjectStoreClient } from '@jobwork/object-store';
 import { productionConfigProblems, SCAN_WORKER_PRINCIPAL } from '@jobwork/service-auth';
 import { InternalApiClient } from './internal-api';
-import { FileMailer, type Mailer } from './mailer';
+import { buildMailer } from './mailer';
 import { acknowledgeHandler } from './outbox/handlers/acknowledge';
 import { fileFinalizedHandler } from './outbox/handlers/file-finalized';
 import { emailVerificationHandler } from './outbox/handlers/email-verification';
@@ -54,6 +54,8 @@ const envSchema = z.object({
   SCAN_MAX_INSPECT_BYTES: z.coerce.number().int().min(1024).default(256 * 1024 * 1024),
   SCAN_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30_000),
   SMTP_URL: z.string().default('log://'),
+  /** The From header, e.g. `JobWork <jobwork.staging@gmail.com>`. Required with SMTP. */
+  SMTP_FROM: z.string().default(''),
   WORKER_HEARTBEAT_MS: z.coerce.number().int().min(1000).default(60_000),
   VERIFICATION_SWEEP_MS: z.coerce.number().int().min(1000).default(15 * 60_000),
   OUTBOX_POLL_MS: z.coerce.number().int().min(200).default(2_000),
@@ -66,12 +68,6 @@ const envSchema = z.object({
   METRICS_HOST: z.string().default('127.0.0.1'),
 });
 
-
-function buildMailer(smtpUrl: string): Mailer {
-  if (smtpUrl.startsWith('log://')) return new FileMailer();
-  // SMTP transport slot: wired when a real provider is selected (T-0x); fail fast until then.
-  throw new Error(`unsupported SMTP_URL scheme: ${smtpUrl}`);
-}
 
 async function main(): Promise<void> {
   const parsed = envSchema.safeParse(process.env);
@@ -86,7 +82,8 @@ async function main(): Promise<void> {
   const problems = productionConfigProblems(parsed.data, {
     secrets: ['SERVICE_TOKEN_SECRET'],
     credentials: ['OBJECT_STORE_ACCESS_KEY', 'OBJECT_STORE_SECRET_KEY'],
-    replaced: { DATABASE_URL: 'postgres://localhost:5432/jobwork_dev' },
+    // log:// writes mail to a local file, and production shows nobody the links in it.
+    replaced: { DATABASE_URL: 'postgres://localhost:5432/jobwork_dev', SMTP_URL: 'log://' },
   });
   if (problems.length > 0) throw new Error(`refusing to start in production: ${problems.join('; ')}`);
   const env = parsed.data;
@@ -115,7 +112,7 @@ async function main(): Promise<void> {
     principalName: SCAN_WORKER_PRINCIPAL.name,
   });
 
-  const mailer = buildMailer(env.SMTP_URL);
+  const mailer = buildMailer({ smtpUrl: env.SMTP_URL, smtpFrom: env.SMTP_FROM });
   const registry = new HandlerRegistry()
     .register('iam.invitation.issued.v1', invitationIssuedHandler(mailer, env.PORTAL_URL))
     .register('iam.email_verification.issued.v1', emailVerificationHandler(mailer, env.PORTAL_URL))
