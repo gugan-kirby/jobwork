@@ -20,7 +20,7 @@ Branch: `feat/cloudflare-workers-deploy`, cut from `feat/free-staging-deploy` (n
 | F-CW.3 | API Worker entry: per-request pool, client address from the edge, bundle and size check | **built** 2026-11-09; runs in `workerd` unverified |
 | F-CW.4 | Worker on a Cron Trigger: bounded outbox batch and scans per run | **built** 2026-11-09 |
 | F-CW.5 | Mail outbox page instead of SMTP | **built** 2026-11-09 |
-| F-CW.6 | Web apps on OpenNext with service bindings | planned |
+| F-CW.6 | Web apps on OpenNext with service bindings | **built** 2026-11-09 |
 | F-CW.7 | Deploy: Supabase project, Hyperdrive, secrets, migrations, first admin, walk | planned |
 
 F-CW.1–F-CW.7 get their file manifests from the F-CW.0 measurements and the code inventory; each is detailed here before it starts.
@@ -168,3 +168,16 @@ Decision taken on the owner's behalf: files above 8 MiB are refused by the scan 
 | `apps/operations-web/app/ops-health/page.tsx` | edit | A "Mail" card linking to it, for platform admins. The home tiles stay as the reference images show them |
 
 Tests: `apps/api/test/mailbox.api.spec.ts` (new): one copy per delivery; only the worker hands over, only well-formed; admin reads newest first; other staff 403, customers and suppliers refused, anonymous 401.
+
+## F-CW.6 Web apps on Workers
+
+| File | Action | Contents |
+|---|---|---|
+| `packages/web-kit/src/edge.ts` (export `./edge`) | new | `isApiRequest`, `forwardToApi`: `/api/*` to the API Worker's service binding with method, headers, cookies and body intact; `X-Forwarded-For` from the edge's `CF-Connecting-IP`, any browser-sent value dropped |
+| `apps/{portal,operations}-web/worker.mjs` | new | The Worker entry: `/api/*` forwarded, everything else to OpenNext's `.open-next/worker.js` |
+| `apps/{portal,operations}-web/wrangler.jsonc` | edit | `main: worker.mjs`, `workers_dev: true` (the public `*.workers.dev` address), `API` and `WORKER_SELF_REFERENCE` service bindings, static assets |
+| `packages/web-kit/test/edge.spec.ts` | new | API paths only; request and reply pass through unchanged; the browser named from the edge, never from its own header |
+
+The Next.js `/api` rewrite stays for Node; on a Worker the entry answers `/api/*` before Next sees it. Bundles: portal 7,889 KiB raw / **1,455 KiB gzip**, operations 7,785 KiB / **1,437 KiB gzip**.
+
+F-CW.7 sets per account: the API's `ALLOWED_ORIGINS`, `PORTAL_URL` and `OPERATIONS_URL` to the two `workers.dev` addresses, and the web apps' `OBJECT_STORE_ENDPOINT` (the upload CSP). Not yet seen in a browser: the CSP nonce and HSTS from `proxy.ts`, which OpenNext runs as experimental Node middleware (F-CW.0 finding).
