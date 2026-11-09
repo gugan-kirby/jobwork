@@ -15,10 +15,16 @@ export interface AdminBootstrap {
     contactName: string;
     contactPhone: string;
   };
+  /**
+   * The API's `PASSWORD_HASHER`. A Workers API (ADR-0009) can only check bcrypt, so its
+   * first admin must be hashed the same way.
+   */
+  passwordHasher?: 'argon2id' | 'pgcrypto-bcrypt';
 }
 
-/** Same values as `apps/api/src/modules/iam/domain/password.ts`, version 1. */
-const PASSWORD_PARAMS_VERSION = 1;
+/** Same values as `apps/api/src/modules/iam/domain/password.ts` and its hashers. */
+const ARGON2ID_PARAMS_VERSION = 1;
+const BCRYPT_PARAMS_VERSION = 2;
 const PASSWORD_MIN_LENGTH = 12;
 const ARGON2_OPTIONS = { type: argon2.argon2id, memoryCost: 19_456, timeCost: 2, parallelism: 1 };
 
@@ -57,7 +63,8 @@ export async function bootstrapAdmin(
 ): Promise<{ userId: string; organizationId: string }> {
   const problem = problemWith(input);
   if (problem) throw new Error(problem);
-  const passwordHash = await argon2.hash(input.password, ARGON2_OPTIONS);
+  const bcrypt = input.passwordHasher === 'pgcrypto-bcrypt';
+  const argon2Hash = bcrypt ? null : await argon2.hash(input.password, ARGON2_OPTIONS);
 
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
@@ -87,12 +94,16 @@ export async function bootstrapAdmin(
         )
       ).rows[0]!;
 
+    const passwordHash =
+      argon2Hash ??
+      (await client.query<{ hash: string }>(`SELECT crypt($1, gen_salt('bf', 10)) AS hash`, [input.password]))
+        .rows[0]!.hash;
     const user = (
       await client.query<{ id: string }>(
         `INSERT INTO iam.user_account
            (email, password_hash, password_params_version, display_name, status, email_verified_at)
          VALUES ($1, $2, $3, $4, 'active', now()) RETURNING id`,
-        [input.email, passwordHash, PASSWORD_PARAMS_VERSION, input.displayName],
+        [input.email, passwordHash, bcrypt ? BCRYPT_PARAMS_VERSION : ARGON2ID_PARAMS_VERSION, input.displayName],
       )
     ).rows[0]!;
 
@@ -154,6 +165,7 @@ export function adminBootstrapFromEnv(env: NodeJS.ProcessEnv): AdminBootstrap {
     email: env['ADMIN_EMAIL'] ?? '',
     password: env['ADMIN_PASSWORD'] ?? '',
     displayName: env['ADMIN_NAME'] ?? 'Platform Admin',
+    passwordHasher: env['PASSWORD_HASHER'] === 'pgcrypto-bcrypt' ? 'pgcrypto-bcrypt' : 'argon2id',
     hub: {
       addressLine1: env['HUB_ADDRESS'] ?? '',
       city: env['HUB_CITY'] ?? '',
