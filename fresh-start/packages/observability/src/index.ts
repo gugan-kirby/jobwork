@@ -7,6 +7,7 @@ export {
   Histogram,
   idShapedLabelValues,
   isSafeLabelValue,
+  onWorkers,
   Registry,
   safeLabel,
   startMetricsServer,

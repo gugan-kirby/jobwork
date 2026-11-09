@@ -32,10 +32,17 @@ export function safeLabel(value: string | null | undefined, fallback = 'other'):
 }
 
 /** The registry for one process, with process metrics and the build it is running. */
+/** True inside Cloudflare's runtime, which names itself in `navigator.userAgent`. */
+export function onWorkers(): boolean {
+  return (globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent === 'Cloudflare-Workers';
+}
+
 export function createRegistry(opts: { service: string; version: string }): Registry {
   const registry = new Registry();
   registry.setDefaultLabels({ service: opts.service });
-  collectDefaultMetrics({ register: registry });
+  // Process metrics (event-loop delay, GC, heap) watch a Node process; a Worker isolate
+  // has none of those hooks and is never scraped (ADR-0009).
+  if (!onWorkers()) collectDefaultMetrics({ register: registry });
   const build = new Gauge({
     name: 'jobwork_build_info',
     help: 'The build this process runs; always 1 (doc 23 §3 deploy-version dashboards).',
