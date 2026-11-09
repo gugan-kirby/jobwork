@@ -17,7 +17,7 @@ Branch: `feat/cloudflare-workers-deploy`, cut from `feat/free-staging-deploy` (n
 | F-CW.0 | Spike: measure size, CPU and connectivity on the free plans | in progress |
 | F-CW.1 | Platform seams: runtime-neutral config, database, password hasher, rate-limit store | **done** 2026-11-09 (1,006 tests green) |
 | F-CW.2 | Metadata runtime in place of NestJS core and Fastify (see the deviation below) | **done** 2026-11-09 (1,014 tests green) |
-| F-CW.3 | API Worker entry: per-request pool, client address from the edge, bundle and size check | planned |
+| F-CW.3 | API Worker entry: per-request pool, client address from the edge, bundle and size check | **built** 2026-11-09; runs in `workerd` unverified |
 | F-CW.4 | Worker on a Cron Trigger: bounded outbox batch and scans per run | planned |
 | F-CW.5 | Mail outbox page instead of SMTP | planned |
 | F-CW.6 | Web apps on OpenNext with service bindings | planned |
@@ -122,3 +122,18 @@ Deviation from the table above and from ADR-0009's first row, recorded 2026-11-0
 Tests: the full API suite (75 files) unchanged in substance is the acceptance test, plus `apps/api/test/runtime.spec.ts` (new): provider kinds and tokens, a missing dependency names its class and path, guard order, route precedence, 404 through the filter, POST default 201, `@HttpCode`, malformed and empty JSON, passthrough cookies.
 
 Built as planned, plus: `src/runtime/reflector.ts` and the runtime's own `APP_GUARD`/`APP_INTERCEPTOR` names replace the three `@nestjs/core` imports, and `MetricsService` registers its request timer through `RuntimeAdapterHost.onResponse`, so nothing loads `@nestjs/core`; `fastify` and `@fastify/cookie` stay as dev dependencies for types only. Route paths given as arrays (`InstrumentController`) register every path. `test/pilot/driver.ts` `expectNothingOf` now ignores uuids and timestamps: pilot 1 failed once in five runs when a random uuid contained a price's digits.
+
+## F-CW.3 API Worker entry
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/api/src/worker.ts` | new | `start(env)` builds the application once per isolate with a `RequestPoolSource` over Hyperdrive; `fetch` runs each request in its own pool and hands the pool's end to `waitUntil`. The peer is the service binding (loopback), so `TRUST_PROXY=loopback` takes the browser from the caller's `X-Forwarded-For` |
+| `apps/api/worker/entry.mjs` | new | wrangler's entry: imports the tsc build (`dist/worker.js`, which carries the constructor types esbuild cannot emit) and calls `start` at startup with `cloudflare:workers` `env`, so the ~50 ms graph build is charged to startup, not to a request |
+| `apps/api/worker/stubs/native.mjs` | new | Stands in for `argon2`, `ioredis`, `pg-native`, `class-validator`, `class-transformer`: imported, never called on a Worker; a call throws naming ADR-0009 |
+| `apps/api/wrangler.jsonc` | new | `jobwork-api`, `nodejs_compat`, `workers_dev: false` (service bindings only), Hyperdrive binding, the Workers settings (`PASSWORD_HASHER`, `RATE_LIMIT_STORE`, `DATABASE_POOL_MAX=4`, `METRICS_PORT=0`) |
+| `apps/api/package.json` | edit | `wrangler` (dev) |
+| `apps/api/test/worker-entry.spec.ts` | new | On Node: health through a request pool whose end goes to `waitUntil`; per-browser rate limits from `X-Forwarded-For` behind the binding |
+
+Measured 2026-11-09 (Node 22, M-series Mac): building the graph 52 ms CPU once; a request through guards and the filter 0.15 ms CPU. Bundle: 4,970 KiB raw, **774 KiB gzip**.
+
+Not yet verified: the bundle running inside `workerd` (pino, prom-client and pg under `nodejs_compat`). Needs either `wrangler dev` locally or the deploy in F-CW.7.
