@@ -21,7 +21,7 @@ Branch: `feat/cloudflare-workers-deploy`, cut from `feat/free-staging-deploy` (n
 | F-CW.4 | Worker on a Cron Trigger: bounded outbox batch and scans per run | **built** 2026-11-09 |
 | F-CW.5 | Mail outbox page instead of SMTP | **built** 2026-11-09 |
 | F-CW.6 | Web apps on OpenNext with service bindings | **built** 2026-11-09 |
-| F-CW.7 | Deploy: Supabase project, Hyperdrive, secrets, migrations, first admin, walk | planned |
+| F-CW.7 | Deploy: Supabase project, Hyperdrive, secrets, migrations, first admin, walk | scripts ready 2026-11-09; **waiting on the owner's run** |
 
 F-CW.1–F-CW.7 get their file manifests from the F-CW.0 measurements and the code inventory; each is detailed here before it starts.
 
@@ -181,3 +181,16 @@ Tests: `apps/api/test/mailbox.api.spec.ts` (new): one copy per delivery; only th
 The Next.js `/api` rewrite stays for Node; on a Worker the entry answers `/api/*` before Next sees it. Bundles: portal 7,889 KiB raw / **1,455 KiB gzip**, operations 7,785 KiB / **1,437 KiB gzip**.
 
 F-CW.7 sets per account: the API's `ALLOWED_ORIGINS`, `PORTAL_URL` and `OPERATIONS_URL` to the two `workers.dev` addresses, and the web apps' `OBJECT_STORE_ENDPOINT` (the upload CSP). Not yet seen in a browser: the CSP nonce and HSTS from `proxy.ts`, which OpenNext runs as experimental Node middleware (F-CW.0 finding).
+
+## F-CW.7 Deploy
+
+Prepared without the owner's accounts; the run itself is the owner's.
+
+| File | Action | Contents |
+|---|---|---|
+| `infra/cloudflare/README.md` | new | Owner steps: buckets, S3 keys, pooler URI; migrations; `wrangler login`; Hyperdrive; deploy; secrets; first admin with `PASSWORD_HASHER=pgcrypto-bcrypt`; try it; disconnect the old `jobwork` Workers Builds project |
+| `infra/cloudflare/deploy.sh` | new | Refuses a placeholder Hyperdrive id; builds; deploys `jobwork-api`, `jobwork-worker`, `jobwork-portal`, `jobwork-operations` in that order with the per-account vars (`PORTAL_URL`, `OPERATIONS_URL`, `ALLOWED_ORIGINS`, `OBJECT_STORE_ENDPOINT`, `OBJECT_STORE_REGION`, `BUILD_SHA`) |
+| `infra/cloudflare/secrets.sh` | new | Asks for the Supabase S3 keys, generates the rest with `openssl rand`, pipes them to `wrangler secret bulk` for the API and the worker (shared `SERVICE_TOKEN_SECRET`); nothing written to disk |
+| `infra/README.md` | edit | Points to it |
+
+Exit (with the owner): the four Workers deployed; registration, the verification mail on the Mail page, sign-in, an enquiry with an uploaded drawing scanned clean; CPU per request read from Workers Logs and recorded under F-CW.0 Results; the CSP nonce and HSTS present on both web apps. Then the spike Worker and, with the owner's agreement, `infra/deploy/` (ADR-0008) are removed.
