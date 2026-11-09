@@ -8,3 +8,6 @@ coverage/
 !.env.example
 .DS_Store
 var/
+.open-next/
+.wrangler/
+.dev.vars*

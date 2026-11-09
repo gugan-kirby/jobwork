@@ -5,6 +5,9 @@ export default tseslint.config(
     ignores: [
       '**/dist/**',
       '**/.next/**',
+      // OpenNext and wrangler build output (F-CW).
+      '**/.open-next/**',
+      '**/.wrangler/**',
       '**/node_modules/**',
       '**/coverage/**',
       '**/*.config.{js,mjs,ts}',

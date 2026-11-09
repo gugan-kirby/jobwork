@@ -3,3 +3,4 @@ packages:
   - packages/*
   - database
   - e2e
+  - infra/cloudflare/*

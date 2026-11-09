@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jobwork-spike",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Replace with the id `wrangler hyperdrive create` prints (README step 4).
+  "hyperdrive": [{ "binding": "DB", "id": "00000000000000000000000000000000" }],
+  "vars": {
+    "OBJECT_STORE_REGION": "ap-south-1",
+    "OBJECT_STORE_BUCKET_QUARANTINE": "jobwork-quarantine",
+    "OBJECT_STORE_BUCKET_CLEAN": "jobwork-clean"
+  }
+}
