@@ -1,10 +1,10 @@
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { idShapedLabelValues } from '@jobwork/observability';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import * as OTPAuth from 'otpauth';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { hashPassword } from '../src/modules/iam/domain/password';
+import { hashPassword } from '../src/modules/iam/infrastructure/argon2-hasher';
 import { ControlsRepository } from '../src/modules/operations/infrastructure/controls.repository';
 import { MetricsService } from '../src/platform/metrics/metrics.service';
 import { createTestApp } from './helpers/boot';
@@ -32,7 +32,7 @@ function series(text: string, name: string, labels: Record<string, string>): num
  */
 describe('Metrics, controls panel and separation of duties (F-11.3)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
   let internalOrg: string;

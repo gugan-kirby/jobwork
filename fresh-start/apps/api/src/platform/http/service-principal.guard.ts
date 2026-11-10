@@ -4,7 +4,7 @@ import {
   Injectable,
   SetMetadata,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { Reflector } from '../../runtime/reflector';
 import type { FastifyRequest } from 'fastify';
 import { ConfigService } from '../config/config.service';
 import { DomainError } from './domain-error';

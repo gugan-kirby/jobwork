@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { signRequest } from '@jobwork/object-store';
 import {
   mintServiceToken,
@@ -10,7 +10,7 @@ import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import * as OTPAuth from 'otpauth';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { hashPassword } from '../src/modules/iam/domain/password';
+import { hashPassword } from '../src/modules/iam/infrastructure/argon2-hasher';
 import { ConfigService } from '../src/platform/config/config.service';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
@@ -38,7 +38,7 @@ interface UploadedVersion {
  */
 describe('Audience release and download refusals (F-03.4)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
   let config: ConfigService;

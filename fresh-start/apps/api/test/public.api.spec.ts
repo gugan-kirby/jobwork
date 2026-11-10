@@ -1,4 +1,4 @@
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from './helpers/boot';
@@ -11,7 +11,7 @@ import { TestClient } from './helpers/http';
  */
 describe('Public categories (F-MX.3)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let guest: TestClient;
 
   beforeAll(async () => {

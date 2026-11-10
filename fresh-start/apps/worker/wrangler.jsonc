@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jobwork-worker",
+  "main": "src/cron.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // No HTTP address: it only runs on its schedule (F-CW.4).
+  "workers_dev": false,
+  "triggers": { "crons": ["* * * * *"] },
+  "observability": { "enabled": true },
+  "alias": {
+    // Imported by the SMTP mailer; this Worker keeps mail through the API instead.
+    "nodemailer": "./worker-stub.mjs"
+  },
+  "services": [{ "binding": "API", "service": "jobwork-api" }],
+  // Replace with the id `wrangler hyperdrive create` prints (F-CW.7).
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }],
+  "vars": {
+    "NODE_ENV": "production",
+    "LOG_LEVEL": "info",
+    // The binding ignores the host; the path is what the API routes on.
+    "API_URL": "https://jobwork-api.internal",
+    "MAIL_TRANSPORT": "api",
+    "DATABASE_POOL_MAX": "2",
+    // A Worker has 128 MB and 10 ms of CPU; a file above this is refused by the scan (ADR-0009).
+    "SCAN_MAX_INSPECT_BYTES": "8388608",
+    "SCAN_TIMEOUT_MS": "20000",
+    "OBJECT_STORE_REGION": "ap-south-1",
+    "OBJECT_STORE_BUCKET_QUARANTINE": "jobwork-quarantine",
+    "OBJECT_STORE_BUCKET_CLEAN": "jobwork-clean"
+  }
+}

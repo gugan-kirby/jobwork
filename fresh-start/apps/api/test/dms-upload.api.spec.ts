@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { hashPassword } from '../src/modules/iam/domain/password';
+import { hashPassword } from '../src/modules/iam/infrastructure/argon2-hasher';
 import { ConfigService } from '../src/platform/config/config.service';
 import { ObjectStore } from '../src/modules/dms/infrastructure/object-store';
 import { signRequest } from '@jobwork/object-store';
@@ -44,7 +44,7 @@ async function ensureBucket(config: ConfigService, bucket: string): Promise<void
 
 describe('Document upload protocol (doc 08 §7, F-03.2)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
   let config: ConfigService;

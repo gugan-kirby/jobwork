@@ -1,14 +1,10 @@
-import argon2 from 'argon2';
-
-/** Bump when tuning parameters; verify() reports needsRehash for older versions (doc 20 §4). */
-export const PASSWORD_PARAMS_VERSION = 1;
-
-const ARGON2_OPTIONS: argon2.Options = {
-  type: argon2.argon2id,
-  memoryCost: 19_456,
-  timeCost: 2,
-  parallelism: 1,
-};
+/**
+ * Stored beside each hash (`iam.user_account.password_params_version`) so a login can
+ * tell which algorithm and parameters made it (doc 20 §4). Bump on any tuning.
+ */
+export const ARGON2ID_PARAMS_VERSION = 1;
+/** bcrypt cost 10 through pgcrypto: Workers deployments (ADR-0009). */
+export const BCRYPT_PARAMS_VERSION = 2;
 
 export const PASSWORD_MIN_LENGTH = 12;
 export const PASSWORD_MAX_LENGTH = 128;
@@ -20,24 +16,9 @@ export function passwordPolicyIssue(password: string): string | null {
   if (password.length > PASSWORD_MAX_LENGTH) {
     return `Password must be at most ${PASSWORD_MAX_LENGTH} characters`;
   }
-  return null;
-}
-
-export async function hashPassword(password: string): Promise<string> {
-  return argon2.hash(password, ARGON2_OPTIONS);
-}
-
-export async function verifyPassword(hash: string, password: string): Promise<boolean> {
-  try {
-    return await argon2.verify(hash, password, ARGON2_OPTIONS);
-  } catch {
-    return false;
+  // Postgres text cannot hold NUL, so a hash computed there would fail on it.
+  if (password.includes('\u0000')) {
+    return 'Password must not contain a null character';
   }
-}
-
-/** Constant-cost work for unknown accounts so login timing does not reveal existence (AUTH-11). */
-const DUMMY_HASH_PROMISE = hashPassword('jobwork-timing-equalizer');
-export async function burnVerification(): Promise<void> {
-  const dummy = await DUMMY_HASH_PROMISE;
-  await verifyPassword(dummy, 'definitely-not-the-password');
+  return null;
 }

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import {
   mintServiceToken,
   SCAN_WORKER_PRINCIPAL,
@@ -9,7 +9,7 @@ import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import * as OTPAuth from 'otpauth';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { hashPassword } from '../src/modules/iam/domain/password';
+import { hashPassword } from '../src/modules/iam/infrastructure/argon2-hasher';
 import { computeExclusions } from '../src/modules/supplier';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
@@ -20,7 +20,7 @@ const SESSION_COOKIE = 'jw_session';
 
 describe('Supplier verification lifecycle (F-04.2, doc 06 §14)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
 

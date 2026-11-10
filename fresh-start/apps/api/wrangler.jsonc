@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jobwork-api",
+  // Built by `pnpm build` (tsc) first; see worker/entry.mjs.
+  "main": "worker/entry.mjs",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // No public address: reached through service bindings only (F-CW.3).
+  "workers_dev": false,
+  "observability": { "enabled": true },
+  "alias": {
+    "argon2": "./worker/stubs/native.mjs",
+    "ioredis": "./worker/stubs/native.mjs",
+    "pg-native": "./worker/stubs/native.mjs",
+    // Optional @nestjs/common peers (ValidationPipe, ClassSerializer), never used here.
+    "class-validator": "./worker/stubs/native.mjs",
+    "class-transformer": "./worker/stubs/native.mjs"
+  },
+  // Replace with the id `wrangler hyperdrive create` prints (F-CW.7).
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }],
+  "vars": {
+    "NODE_ENV": "production",
+    "LOG_LEVEL": "info",
+    "PASSWORD_HASHER": "pgcrypto-bcrypt",
+    "RATE_LIMIT_STORE": "postgres",
+    "TRUST_PROXY": "loopback",
+    // pgcrypto hashes on the pool while an invitation's transaction holds a connection.
+    "DATABASE_POOL_MAX": "4",
+    "METRICS_PORT": "0",
+    "OBJECT_STORE_REGION": "ap-south-1",
+    "OBJECT_STORE_BUCKET_QUARANTINE": "jobwork-quarantine",
+    "OBJECT_STORE_BUCKET_CLEAN": "jobwork-clean"
+  }
+}

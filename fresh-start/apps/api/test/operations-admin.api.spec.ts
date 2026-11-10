@@ -1,9 +1,9 @@
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import * as OTPAuth from 'otpauth';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { hashPassword } from '../src/modules/iam/domain/password';
+import { hashPassword } from '../src/modules/iam/infrastructure/argon2-hasher';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
 
@@ -17,7 +17,7 @@ const SESSION_COOKIE = 'jw_session';
  */
 describe('Operations console administration (F-OPS)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
 

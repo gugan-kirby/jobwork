@@ -106,6 +106,36 @@ describe('first admin bootstrap', () => {
     expect(outbox.rows[0]!.correlation_id).toBe(audit.rows[0]!.correlation_id);
   });
 
+  it('hashes with bcrypt in Postgres for a Workers API (ADR-0009)', async () => {
+    const other = `${TEST_DB}_bcrypt`;
+    const otherUrl = new URL(url());
+    otherUrl.pathname = `/${other}`;
+    await ensureDatabase(otherUrl.toString());
+    try {
+      await runMigrations(otherUrl.toString(), join(__dirname, '..', 'migrations'));
+      const { userId } = await bootstrapAdmin(otherUrl.toString(), { ...INPUT, passwordHasher: 'pgcrypto-bcrypt' });
+      const check = new Client({ connectionString: otherUrl.toString() });
+      await check.connect();
+      try {
+        const row = await check.query<{ version: number; prefix: string; ok: boolean; wrong: boolean }>(
+          `SELECT password_params_version AS version, left(password_hash, 7) AS prefix,
+                  crypt($2, password_hash) = password_hash AS ok,
+                  crypt($3, password_hash) = password_hash AS wrong
+             FROM iam.user_account WHERE id = $1`,
+          [userId, INPUT.password, `${INPUT.password}x`],
+        );
+        expect(row.rows[0]).toEqual({ version: 2, prefix: '$2a$10$', ok: true, wrong: false });
+      } finally {
+        await check.end();
+      }
+    } finally {
+      const admin = new Client({ connectionString: BASE_URL });
+      await admin.connect();
+      await admin.query(`DROP DATABASE IF EXISTS "${other}" WITH (FORCE)`);
+      await admin.end();
+    }
+  });
+
   it('runs once: a second admin comes through an invitation', async () => {
     await expect(bootstrapAdmin(url(), { ...INPUT, email: 'second@jobwork.test' })).rejects.toThrow(/already has a platform admin/);
     const users = await pg.query(`SELECT 1 FROM iam.user_account`);

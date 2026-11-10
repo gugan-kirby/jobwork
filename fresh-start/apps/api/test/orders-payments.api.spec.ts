@@ -1,11 +1,11 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestApp } from './helpers/boot';
 import { createTestDatabase, type TestDatabase } from '@jobwork/test-kit';
 import * as OTPAuth from 'otpauth';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SCAN_WORKER_PRINCIPAL, SERVICE_TOKEN_HEADER, mintServiceToken } from '@jobwork/service-auth';
-import { hashPassword } from '../src/modules/iam/domain/password';
+import { hashPassword } from '../src/modules/iam/infrastructure/argon2-hasher';
 import { createTestApp } from './helpers/boot';
 import { TestClient } from './helpers/http';
 import { withoutSupplierCard } from './disclosed-supplier';
@@ -23,7 +23,7 @@ const WEBHOOK_SECRET = 'test-payment-webhook-secret';
  */
 describe('Acceptance, orders, purchase orders and payments (IN-08)', () => {
   let db: TestDatabase;
-  let app: NestFastifyApplication;
+  let app: TestApp;
   let baseUrl: string;
   let pg: Client;
 

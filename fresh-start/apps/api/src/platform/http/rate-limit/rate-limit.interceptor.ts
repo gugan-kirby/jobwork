@@ -1,15 +1,17 @@
 import { createHash } from 'node:crypto';
 import { type CallHandler, type ExecutionContext, Injectable, type NestInterceptor, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { Reflector } from '../../../runtime/reflector';
 import type { FastifyRequest } from 'fastify';
 import { from, type Observable, switchMap } from 'rxjs';
 import { createLogger, Gauge, type Logger } from '@jobwork/observability';
 import type Redis from 'ioredis';
 import { ConfigService } from '../../config/config.service';
+import { DatabaseService } from '../../database/database.service';
 import { MetricsService } from '../../metrics/metrics.service';
 import { RateLimited } from '../domain-error';
 import { type Dimension, type OperationClass, type RatePolicies, resolvePolicies } from './policies';
 import { RATE_LIMIT_KEY } from './rate-limit.decorator';
+import { PostgresRateLimitStore } from './postgres-store';
 import { estimate, retryAfterMs as waitUntilAllowed } from './window';
 import { createRedis, MemoryRateLimitStore, RedisRateLimitStore, ResilientRateLimitStore, type RateLimitStore } from './store';
 
@@ -46,12 +48,17 @@ export class RateLimitInterceptor implements NestInterceptor, OnModuleInit, OnMo
     private readonly reflector: Reflector,
     config: ConfigService,
     private readonly metrics: MetricsService,
+    db: DatabaseService,
   ) {
     this.mode = config.env.RATE_LIMIT_MODE;
     this.prefix = config.env.RATE_LIMIT_PREFIX;
     this.policies = resolvePolicies(config.env.RATE_LIMIT_POLICIES);
     const memory = new MemoryRateLimitStore();
-    if (this.mode === 'off' || !config.env.REDIS_URL) {
+    if (this.mode !== 'off' && config.env.RATE_LIMIT_STORE === 'postgres') {
+      // No fallback: when Postgres is down the request fails anyway.
+      this.redis = null;
+      this.store = new PostgresRateLimitStore(db);
+    } else if (this.mode === 'off' || !config.env.REDIS_URL) {
       this.redis = null;
       this.store = memory;
     } else {

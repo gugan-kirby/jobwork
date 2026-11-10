@@ -143,6 +143,12 @@ export default function OpsHealthPage(): React.JSX.Element {
           </Card>
         ) : null}
 
+        {canResolve ? (
+          <Card title="Mail" description="Where an environment that sends no email keeps what it would have sent: sign-up checks, invitations and notifications.">
+            <UiLink href="/mail">Read the mail</UiLink>
+          </Card>
+        ) : null}
+
         {deadLetters && deadLetters.length > 0 ? (
           <Card
             title="Events given up on"

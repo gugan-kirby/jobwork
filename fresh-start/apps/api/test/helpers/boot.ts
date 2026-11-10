@@ -1,32 +1,39 @@
 import 'reflect-metadata';
-import cookie from '@fastify/cookie';
-import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
-import { createLogger, withCorrelation } from '@jobwork/observability';
-import { v7 as uuidv7 } from 'uuid';
-import { AppModule } from '../../src/app.module';
-import { ProblemFilter } from '../../src/platform/http/problem.filter';
+import type { AddressInfo } from 'node:net';
+import { once } from 'node:events';
+import { serve } from '@hono/node-server';
+import { createLogger } from '@jobwork/observability';
+import { createApplication } from '../../src/app';
+import type { Token } from '../../src/runtime/container';
+
+/** What a test holds: the running application's providers, and a way to stop it. */
+export interface TestApp {
+  get<T>(token: abstract new (...args: never[]) => T): T;
+  get<T = unknown>(token: Token): T;
+  close(): Promise<void>;
+}
 
 /** Boots the real application wiring (mirrors main.ts) against whatever env is set. */
-export async function createTestApp(): Promise<{ app: NestFastifyApplication; baseUrl: string }> {
-  // Mirrors main.ts's TRUST_PROXY default, so a test can play a client address through
-  // X-Forwarded-For the way the web apps' rewrite proxy does.
-  const adapter = new FastifyAdapter({ trustProxy: 'loopback' });
-  adapter.getInstance().addHook('onRequest', (request, _reply, done) => {
-    const correlationId = uuidv7();
-    request.headers['x-correlation-id'] = correlationId;
-    withCorrelation({ correlationId }, done);
+export async function createTestApp(): Promise<{ app: TestApp; baseUrl: string }> {
+  const application = await createApplication({ logger: createLogger({ service: 'api-test', level: 'silent' }) });
+  const server = serve({
+    fetch: (request, env) => application.handle(request, { remoteAddress: env.incoming.socket.remoteAddress }),
+    port: 0,
+    hostname: '127.0.0.1',
   });
-
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
-    logger: false,
-    abortOnError: false,
-    rawBody: true,
-  });
-  await app.register(cookie, { secret: process.env['SESSION_SECRET'] ?? 'test-secret-value' });
-  app.setGlobalPrefix('api/v1');
-  app.useGlobalFilters(new ProblemFilter(createLogger({ service: 'api-test', level: 'silent' })));
-  await app.listen({ port: 0, host: '127.0.0.1' });
-  const baseUrl = (await app.getUrl()).replace('[::1]', '127.0.0.1');
-  return { app, baseUrl };
+  if (!server.listening) await once(server, 'listening');
+  const { port } = server.address() as AddressInfo;
+  return {
+    app: {
+      get: application.get.bind(application),
+      close: async () => {
+        await new Promise<void>((resolve) => {
+          server.close(() => resolve());
+          if ('closeAllConnections' in server) server.closeAllConnections();
+        });
+        await application.close();
+      },
+    },
+    baseUrl: `http://127.0.0.1:${port}`,
+  };
 }

@@ -26,7 +26,7 @@ url.pathname = `/${name}`;
 const databaseUrl = url.toString();
 
 const require = createRequire(import.meta.url);
-const { hashPassword } = require(join(root, 'apps/api/dist/modules/iam/domain/password.js'));
+const { hashPassword } = require(join(root, 'apps/api/dist/modules/iam/infrastructure/argon2-hasher.js'));
 
 export const PASSWORD = 'e2e-journey-password-1';
 const PEOPLE = [

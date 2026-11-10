@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { createLogger, type Logger } from '@jobwork/observability';
 import { type Actor, requireRole, requireTransactionalStrength } from './actor';
 import {
@@ -9,14 +9,11 @@ import {
 } from '../domain/errors';
 import { conflictsOf } from '../domain/separation-of-duties';
 import { ValidationFailed } from '../../../platform/http/domain-error';
-import {
-  PASSWORD_PARAMS_VERSION,
-  hashPassword,
-  passwordPolicyIssue,
-} from '../domain/password';
+import { passwordPolicyIssue } from '../domain/password';
 import { INVITATION_TTL_DAYS } from '../domain/session-policy';
 import { generateToken, hashToken } from '../domain/tokens';
 import { IamRepository } from '../infrastructure/iam.repository';
+import { PASSWORD_HASHER, type PasswordHasher } from '../infrastructure/password-hasher';
 import { AuditWriter } from '../../../platform/commands/audit.writer';
 import { contextFromActor } from '../../../platform/commands/command';
 import { CommandExecutor } from '../../../platform/commands/execute';
@@ -52,6 +49,7 @@ export class InvitationService {
     private readonly config: ConfigService,
     private readonly executor: CommandExecutor,
     private readonly audit: AuditWriter,
+    @Inject(PASSWORD_HASHER) private readonly passwords: PasswordHasher,
   ) {}
 
   /**
@@ -260,8 +258,8 @@ export class InvitationService {
         const user = await this.repo.createUser(
           {
             email: invitation.email,
-            passwordHash: await hashPassword(input.password),
-            passwordParamsVersion: PASSWORD_PARAMS_VERSION,
+            passwordHash: await this.passwords.hash(input.password),
+            passwordParamsVersion: this.passwords.paramsVersion,
             displayName: input.displayName?.trim() || invitation.email.split('@')[0] || 'member',
           },
           client,

@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '../runtime/container';
 import { AuditWriter } from './commands/audit.writer';
 import { CommandExecutor } from './commands/execute';
 import { OutboxWriter } from './commands/outbox.writer';
