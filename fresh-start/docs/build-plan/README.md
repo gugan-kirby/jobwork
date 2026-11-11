@@ -24,7 +24,7 @@ This directory decomposes the [Implementation plan](../24-implementation-plan.md
 | [IN-05 Enquiry intake](in-05-enquiry-intake.md) | F-05.1–F-05.5 | **done** (2026-09-06) |
 | [F-DS Design system build-out](f-ds-design-system.md) | F-DS.1–F-DS.8 | **done** (2026-09-06) |
 | [F-SO Supplier onboarding & portal](f-so-supplier-onboarding.md) | F-SO.1–F-SO.8 | **done** (2026-09-06) |
-| [F-OPS Operations console](f-ops-operations-console.md) | F-OPS.1–F-OPS.5 | **done** (2026-09-06) |
+| [F-OPS Operations console](f-ops-operations-console.md) | F-OPS.1–F-OPS.6 | **done** (2026-09-06); F-OPS.6 sidebar navigation 2026-11-11 |
 | [F-CX Customer flow](f-cx-customer-experience.md) | F-CX.1–F-CX.5 | **done** (2026-09-06) |
 | [F-SN Supplier network life](f-sn-supplier-network-life.md) | F-SN.1–F-SN.3 | **done** (2026-09-06) |
 | [F-MX Mobile experience & job types](f-mx-mobile-experience.md) | F-MX.1–F-MX.9 | **done** (2026-10-01) |

@@ -151,6 +151,7 @@ Concrete bars, testable in CI and manual review (extends doc 13 §12):
 
 - The design system lives in `packages/ui` with versioned releases consumed by both apps; breaking visual changes ride a changelog and migration note.
 - Tokens are the single source: a proposed new color/spacing/size must become a token or be rejected — no page-local magic values (`DS-01`).
+- The operations app may use shadcn/ui components (owner decision 2026-11-11, F-OPS.6). The shadcn CLI copies their source into `apps/operations-web/components/ui`; their CSS variables are set from semantic tokens in `app/globals.css`, so they wear the brand, and Tailwind's preflight is not loaded because `base.css` is the reset every screen was built on. The portal stays on `@jobwork/ui` alone.
 - Each new component requires: story with all states (including empty/loading/error/disabled), keyboard/ARIA documentation (`DS-12`), density behavior, and a projection-safety note when it can render cross-party data (`DS-11`).
 - Visual regression snapshots run on the story set per doc 13 §14 CI gates.
 - The five difficult journeys in doc 14 §16 are prototyped with these tokens/components before broad screen production, closing the loop with the Phase 0 exit gate (doc 15 §2).

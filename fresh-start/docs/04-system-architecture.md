@@ -61,7 +61,7 @@ A separate web application supports dense tables, queues, side-by-side bid compa
 |---|---|---|
 | Language/monorepo | TypeScript monorepo | Shared build/test conventions; domain packages remain server-only |
 | Portal web/PWA | Next.js | Responsive customer/supplier experience; do not put authorization/business truth in server components alone |
-| Operations web | Next.js | Separate application for dense internal workflows and safer release cadence |
+| Operations web | Next.js; shadcn/ui components (Radix, Tailwind v4 utilities) on `@jobwork/ui` tokens, navigation first (F-OPS.6) | Separate application for dense internal workflows and safer release cadence |
 | API | `@nestjs/common` modules and controllers, served by the in-repo metadata runtime (`apps/api/src/runtime/`, ADR-0009) on Node or a Worker | Modular application services, validation and HTTP performance; framework types stay outside domain logic |
 | Worker | NestJS/TypeScript worker or lightweight equivalent | Same domain/application contracts; independently scaled queues |
 | Transaction DB | PostgreSQL | Constraints, transactions, JSONB only where justified, FTS/trigram/PostGIS initially |

@@ -67,6 +67,21 @@ Every count is **role-filtered**: an operator is shown a queue only if their rol
 | `apps/operations-web/app/suppliers/[supplierProfileId]/page.tsx` | changed | Invitation resend/revoke, membership suspend/reinstate, and a link into the audit trail for this supplier |
 | `apps/operations-web/app/audit/page.tsx` | changed | Reads `subjectType`/`subjectId` from the URL so every record can link to its own history |
 
+## F-OPS.6 Sidebar navigation (shadcn/ui)
+
+Owner request 2026-11-11: *"make the top nav into side nav bar"*, operations only, then *"use the shadcn component, the sidebar"*. The header showed six entries and hid fifteen screens in three dropdowns, so a badge was a group total and the screen behind it took a second click. The sidebar lists every screen under its section, each with its own badge. The portal keeps its header and the phone tab bar of the reference images.
+
+| File | Action | Contents |
+|---|---|---|
+| `apps/operations-web/components.json`, `components/ui/{sidebar,button,input,separator,sheet,skeleton,tooltip}.tsx`, `hooks/use-mobile.ts`, `lib/utils.ts` | new | `shadcn init -d --base radix` and `shadcn add sidebar`, unedited |
+| `apps/operations-web/app/globals.css` | new | Tailwind v4 theme and utilities without preflight; shadcn's variables set from semantic tokens (`DS-01`); a base-layer reset for shadcn's own buttons and lists; menu links keep their colour against `base.css`'s link rule |
+| `apps/operations-web/postcss.config.mjs` | new | `@tailwindcss/postcss` |
+| `apps/operations-web/app/layout.tsx` | changed | Imports `globals.css`. The Geist font `shadcn init` added is removed: the console keeps the design system's type |
+| `apps/operations-web/app/shell.tsx` | changed | `SidebarProvider`, `Sidebar` (brand, then Home, Queues, Approvals; Sales; Delivery; Back office), `SidebarMenuBadge` per screen, `SidebarTrigger`, the bell and the account icon in a sticky bar, `SidebarInset` as the one `main#main` behind the skip link. Below `md` the sidebar is a sheet that closes when a screen is chosen. The links sit in `nav` "Primary", and a count is part of its link's name (`DS-07`) |
+| `apps/operations-web/{package.json,tsconfig.json}` | changed | `tailwindcss`, `@tailwindcss/postcss`, `postcss` (dev); `radix-ui`, `class-variance-authority`, `cn`, `lucide-react`, `tw-animate-css`, `shadcn` from the CLI; the `@/*` path alias |
+
+"More" became **Back office** in the sidebar: a heading over a list names what is in it, where a dropdown only needed a button.
+
 ## Tests
 
 `apps/api/test/operations-admin.api.spec.ts` (new):
