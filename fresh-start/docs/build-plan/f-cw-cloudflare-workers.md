@@ -188,7 +188,7 @@ Prepared without the owner's accounts; the run itself is the owner's.
 
 | File | Action | Contents |
 |---|---|---|
-| `infra/cloudflare/README.md` | new | Owner steps: buckets, S3 keys, pooler URI into `.env.deploy`; `wrangler login`; `go-live.sh`; first admin with `PASSWORD_HASHER=pgcrypto-bcrypt`; try it. The empty `jobwork` Worker that Workers Builds created on 2026-11-05 (every build failed: no Worker at the repository root) was deleted on 2026-11-11 with the owner's agreement, ending the red check |
+| `infra/cloudflare/README.md` | new | Owner steps: buckets, S3 keys, pooler URI into `.env.deploy`; `wrangler login`; `go-live.sh`; first admin with `PASSWORD_HASHER=pgcrypto-bcrypt`; try it. The `jobwork` Worker that Workers Builds created on 2026-11-05 failed every build (`npx wrangler deploy` in the repository root, no build step, nothing to deploy); deleting it on 2026-11-11 did not end the builds, which re-created it. The root `wrangler.jsonc` and `site/index.html` now give that build something to deploy: the demo's front door, linking to the portal and operations |
 | `infra/cloudflare/go-live.sh` | new | One run from a private `.env.deploy` (never typed or printed): install and build; migrations on Supabase; the Hyperdrive configuration, its id written into both `wrangler.jsonc`; the four deploys with the account's addresses; generated secrets through `wrangler secret bulk` on standard input. `deploy` and `secrets` as single steps. Replaced `deploy.sh` and `secrets.sh` on 2026-11-11, once the owner's run showed the deployment had to be driven without a terminal prompt |
 | `infra/README.md` | edit | Points to it |
 

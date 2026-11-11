@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  // The `jobwork` Worker that Cloudflare Workers Builds deploys from this repository's
+  // root on every push (`npx wrangler deploy`, no build step). It serves `site/`: the
+  // demo's front door, linking to the two applications. The applications themselves are
+  // deployed from fresh-start/ (fresh-start/infra/cloudflare/go-live.sh).
+  "name": "jobwork",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "assets": { "directory": "./site" }
+}

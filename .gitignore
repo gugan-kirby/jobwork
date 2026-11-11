@@ -9,3 +9,4 @@ local.properties
 *.db
 app/google-services.json
 .DS_Store
+.wrangler/
