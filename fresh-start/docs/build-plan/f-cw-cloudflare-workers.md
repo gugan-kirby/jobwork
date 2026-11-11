@@ -188,9 +188,8 @@ Prepared without the owner's accounts; the run itself is the owner's.
 
 | File | Action | Contents |
 |---|---|---|
-| `infra/cloudflare/README.md` | new | Owner steps: buckets, S3 keys, pooler URI; migrations; `wrangler login`; Hyperdrive; deploy; secrets; first admin with `PASSWORD_HASHER=pgcrypto-bcrypt`; try it; disconnect the old `jobwork` Workers Builds project |
-| `infra/cloudflare/deploy.sh` | new | Refuses a placeholder Hyperdrive id; builds; deploys `jobwork-api`, `jobwork-worker`, `jobwork-portal`, `jobwork-operations` in that order with the per-account vars (`PORTAL_URL`, `OPERATIONS_URL`, `ALLOWED_ORIGINS`, `OBJECT_STORE_ENDPOINT`, `OBJECT_STORE_REGION`, `BUILD_SHA`) |
-| `infra/cloudflare/secrets.sh` | new | Asks for the Supabase S3 keys, generates the rest with `openssl rand`, pipes them to `wrangler secret bulk` for the API and the worker (shared `SERVICE_TOKEN_SECRET`); nothing written to disk |
+| `infra/cloudflare/README.md` | new | Owner steps: buckets, S3 keys, pooler URI into `.env.deploy`; `wrangler login`; `go-live.sh`; first admin with `PASSWORD_HASHER=pgcrypto-bcrypt`; try it. The empty `jobwork` Worker that Workers Builds created on 2026-11-05 (every build failed: no Worker at the repository root) was deleted on 2026-11-11 with the owner's agreement, ending the red check |
+| `infra/cloudflare/go-live.sh` | new | One run from a private `.env.deploy` (never typed or printed): install and build; migrations on Supabase; the Hyperdrive configuration, its id written into both `wrangler.jsonc`; the four deploys with the account's addresses; generated secrets through `wrangler secret bulk` on standard input. `deploy` and `secrets` as single steps. Replaced `deploy.sh` and `secrets.sh` on 2026-11-11, once the owner's run showed the deployment had to be driven without a terminal prompt |
 | `infra/README.md` | edit | Points to it |
 
 Exit (with the owner): the four Workers deployed; registration, the verification mail on the Mail page, sign-in, an enquiry with an uploaded drawing scanned clean; CPU per request read from Workers Logs and recorded under F-CW.0 Results; the CSP nonce and HSTS present on both web apps. Then the spike Worker and, with the owner's agreement, `infra/deploy/` (ADR-0008) are removed.

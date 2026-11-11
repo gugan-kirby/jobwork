@@ -19,11 +19,16 @@ In your Supabase project:
 2. **Project Settings → Storage → S3 Connection**: turn on **Enable connection via S3 protocol**. Note the **Endpoint** and **Region**. Under **S3 Access Keys** choose **New access key** and keep the key ID and secret in your password manager.
 3. **Connect** (top of the project) → **Session pooler**: copy the URI and put your database password in it. Below it is called `<pooler URI>`.
 
-## 2. Database tables
+## 2. The private file
 
-```sh
-pnpm install && pnpm -r build
-DATABASE_URL='<pooler URI>' pnpm migrate
+Create `infra/cloudflare/.env.deploy` (git ignores `.env.*`; `chmod 600`) with the five values from step 1:
+
+```
+DATABASE_URL=<session pooler URI, with the password>
+OBJECT_STORE_ENDPOINT=<S3 endpoint>
+OBJECT_STORE_REGION=<S3 region>
+OBJECT_STORE_ACCESS_KEY=<access key ID>
+OBJECT_STORE_SECRET_KEY=<secret access key>
 ```
 
 Never run `pnpm seed` against Supabase: its accounts use passwords published in this repository.
@@ -34,39 +39,19 @@ Never run `pnpm seed` against Supabase: its accounts use passwords published in 
 cd apps/api && pnpm exec wrangler login && cd ../..
 ```
 
-Your subdomain is in the Cloudflare dashboard: **Workers & Pages → Overview**, right side, **Subdomain** (the part before `.workers.dev`).
+The account needs a `workers.dev` subdomain (**Workers & Pages → Overview**, right side).
 
-## 4. Hyperdrive
-
-```sh
-cd apps/api
-pnpm exec wrangler hyperdrive create jobwork-demo --caching-disabled \
-  --connection-string='<pooler URI>'
-cd ../..
-```
-
-Copy the printed `id` into `apps/api/wrangler.jsonc` and `apps/worker/wrangler.jsonc` in place of the zeros. The id is not a secret; commit it. Caching stays off: a page must see the change you just made.
-
-## 5. Deploy
+## 4. Go live
 
 ```sh
-WORKERS_SUBDOMAIN=<subdomain> \
-OBJECT_STORE_ENDPOINT='<S3 endpoint from step 1.2>' \
-OBJECT_STORE_REGION=<region from step 1.2> \
-bash infra/cloudflare/deploy.sh
+bash infra/cloudflare/go-live.sh
 ```
 
-It builds everything, then deploys the API, the cron worker and the two web apps, and prints the two addresses.
+One run does everything, reading only `.env.deploy`: installs and builds; applies the migrations to Supabase; creates the Hyperdrive configuration `jobwork-demo` (caching off, so a page sees the change you just made) and writes its id into `apps/api/wrangler.jsonc` and `apps/worker/wrangler.jsonc` (commit them); deploys `jobwork-api`, `jobwork-worker`, `jobwork-portal` and `jobwork-operations` with this account's addresses; generates the secrets and gives them to the API and the worker. It prints the two addresses at the end.
 
-## 6. Secrets
+Later: `bash infra/cloudflare/go-live.sh deploy` after a `git pull` (run the migrations first if the pull brought any: `DATABASE_URL='<pooler URI>' node database/dist/cli.js up`), and `bash infra/cloudflare/go-live.sh secrets` to replace every secret, which signs everyone out.
 
-```sh
-bash infra/cloudflare/secrets.sh
-```
-
-It asks for the Supabase S3 key ID and secret, generates the rest, and gives them straight to Cloudflare. Nothing is written to disk. Run it once; running it again replaces every secret and signs everyone out.
-
-## 7. First admin
+## 5. First admin
 
 ```sh
 DATABASE_URL='<pooler URI>' PASSWORD_HASHER=pgcrypto-bcrypt \
@@ -78,19 +63,15 @@ node database/dist/cli.js bootstrap-admin
 
 `PASSWORD_HASHER=pgcrypto-bcrypt` matters: the API on Workers can only check bcrypt.
 
-## 8. Try it
+## 6. Try it
 
 1. Open the operations address, sign in as the first admin, and enrol MFA in your profile.
 2. Open the portal address and register a customer.
 3. Back in operations: **Operations health → Mail → Read the mail**. The verification mail arrives within a minute; open its link.
 
-## 9. The red check on pull requests
-
-The repository is connected to a Cloudflare project named `jobwork` (**Workers Builds**), which tries to deploy the repository root on every pull request and fails. These Workers are deployed with `deploy.sh` instead. Remove it: **Workers & Pages → jobwork → Settings → Builds → Disconnect**, then delete the `jobwork` Worker.
-
 ## Updating
 
-`git pull`, then step 5 again. Run `pnpm migrate` against Supabase first (step 2) when a pull brings new migrations.
+`git pull`, then `bash infra/cloudflare/go-live.sh deploy` (migrations first when the pull brought any; step 4).
 
 ## Known limits
 

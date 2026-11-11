@@ -25,8 +25,8 @@ Note: this machine has an unrelated process listening on port 3000. If the porta
 
 ## Deployed staging
 
-`infra/cloudflare/` deploys the free demo on Cloudflare Workers and Supabase: `deploy.sh`,
-`secrets.sh` and the step-by-step guide ([ADR-0009](../docs/adr/0009-cloudflare-workers-supabase-demo.md)).
+`infra/cloudflare/` deploys the free demo on Cloudflare Workers and Supabase: `go-live.sh`
+and the step-by-step guide ([ADR-0009](../docs/adr/0009-cloudflare-workers-supabase-demo.md)).
 `infra/deploy/` holds the earlier free single-VM stack ([ADR-0008](../docs/adr/0008-free-single-vm-staging.md)),
 kept until the Workers deployment has run end to end.
 
