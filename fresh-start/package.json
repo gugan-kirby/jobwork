@@ -34,6 +34,7 @@
     "fast-uri - via fastify's ajv compiler (host case normalization, mailto header injection; moderate).",
     "brace-expansion - via eslint > minimatch 3 (DoS; dev tooling only).",
     "tinypool ^2.1.2, source-map-js ^1.2.2, sharp ^0.35.5 (added 2026-10-10 by TP.6, the nightly audit had failed since 2026-10-06): tinypool via vitest 3 (two criticals, test runner only; vitest 3 runs on tinypool 2, the full suite is green); source-map-js via vite > postcss (high, build tooling); sharp via next (high, librsvg; the image optimizer at runtime). Drop each once its parent requires the patched version.",
+    "glob ^10.5.0 (added 2026-11-11, the nightly audit failed on 2026-11-10): via @opennextjs/cloudflare > @opennextjs/aws > @node-minify/core, which pins glob 10.3.3 (GHSA-5j98-mcp5-4vw2, high: command injection in glob's CLI -c/--cmd; build tooling only, the CLI is never run). Drop once @node-minify/core allows 10.5.",
     "Not overridden: vitest < 4.1.11 (moderate, test runner only) - needs the vitest 4 major; tracked in IN-11 F-11.5."
   ],
   "pnpm": {
@@ -52,7 +53,8 @@
       "source-map-js@<1.2.2": "^1.2.2",
       "sharp@<0.35.5": "^0.35.5",
       "undici@>=8.0.0 <8.12.2": "^8.12.2",
-      "vite@>=7.0.0 <7.3.7": "^7.3.7"
+      "vite@>=7.0.0 <7.3.7": "^7.3.7",
+      "glob@>=10.2.0 <10.5.0": "^10.5.0"
     }
   }
 }
