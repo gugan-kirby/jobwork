@@ -69,6 +69,10 @@ node database/dist/cli.js bootstrap-admin
 2. Open the portal address and register a customer.
 3. Back in operations: **Operations health → Mail → Read the mail**. The verification mail arrives within a minute; open its link.
 
+## The `jobwork` Worker and the check on pull requests
+
+Cloudflare Workers Builds is connected to this repository (dashboard, 2026-11-05) as a Worker named `jobwork`: on every push it runs `npx wrangler deploy` in the repository root, with no build step. The root `wrangler.jsonc` makes that deploy the demo's front door, `https://jobwork.<subdomain>.workers.dev`, a static page in `site/` linking to the two applications. The applications are never built there; they come from `go-live.sh`.
+
 ## Updating
 
 `git pull`, then `bash infra/cloudflare/go-live.sh deploy` (migrations first when the pull brought any; step 4).

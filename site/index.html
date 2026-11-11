@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JobWork demo</title>
+  <meta name="description" content="JobWork: managed custom manufacturing for Chennai. The demo's customer and supplier portal and its operations console.">
+  <meta name="robots" content="noindex">
+  <style>
+    :root {
+      --ink: #0a0d3c;
+      --text: #1f2437;
+      --muted: #5b6075;
+      --action: #2563eb;
+      --action-hover: #1d4ed8;
+      --surface: #ffffff;
+      --bg: #f5f7fb;
+      --border: #d9dee8;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); color: var(--text); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+    main { width: 100%; max-width: 560px; }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .mark { width: 40px; height: 40px; border-radius: 8px; background: var(--action); color: #fff; display: grid; place-items: center; }
+    h1 { margin: 0; font-size: 28px; line-height: 1.2; color: var(--ink); }
+    p { margin: 0 0 24px; color: var(--muted); }
+    .cards { display: grid; gap: 12px; }
+    a.card { display: block; padding: 18px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); text-decoration: none; }
+    a.card:hover, a.card:focus-visible { border-color: var(--action); outline: 2px solid var(--action); outline-offset: 2px; }
+    a.card strong { display: block; color: var(--action); font-size: 18px; margin-bottom: 4px; }
+    a.card span { color: var(--muted); font-size: 14px; }
+    footer { margin-top: 24px; font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      </span>
+      <h1>JobWork</h1>
+    </div>
+    <p>Managed custom manufacturing for Chennai. This is the demo environment with made-up data; choose where to go.</p>
+    <nav class="cards" aria-label="Applications">
+      <a class="card" href="https://jobwork-portal.gugantennyson.workers.dev/">
+        <strong>Customer and supplier portal</strong>
+        <span>Raise enquiries, compare quotations, follow orders; suppliers answer RFQs and ship.</span>
+      </a>
+      <a class="card" href="https://jobwork-operations.gugantennyson.workers.dev/">
+        <strong>Operations console</strong>
+        <span>JobWork staff: intake, sourcing, approvals, production, delivery and billing.</span>
+      </a>
+    </nav>
+    <footer>Demo only. No real orders, payments or deliveries.</footer>
+  </main>
+</body>
+</html>
