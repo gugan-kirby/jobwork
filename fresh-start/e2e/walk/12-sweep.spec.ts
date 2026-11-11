@@ -148,6 +148,10 @@ test('ops · logistics and support screens', async ({ page }) => {
 /** Every link in the shell's primary navigation opens a screen (groups open first). */
 async function everyNavLink(page: Page, base: string): Promise<void> {
   const nav = page.getByRole('navigation', { name: 'Primary' }).first();
+  // The portal shows no audience's links until /auth/me has answered (shell.tsx), so on a
+  // slow runner the shell is still empty right after goto: wait for the signed-in
+  // navigation instead of reading whatever is there first.
+  await expect.poll(() => page.locator('nav a[href^="/"]').count(), { message: 'the shell has links' }).toBeGreaterThan(3);
   const groups = nav.locator('button[aria-expanded]');
   for (let i = 0; i < (await groups.count()); i++) {
     const group = groups.nth(i);
