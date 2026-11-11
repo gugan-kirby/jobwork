@@ -146,12 +146,19 @@ describe('design tokens (DS-01, DS-06, doc 21 §9)', () => {
 describe('applications use tokens, not magic values (DS-01, doc 21 §11)', () => {
   const APPS = join(__dirname, '..', '..', '..', 'apps');
 
+  /**
+   * The apps' own screens. `components/ui` is excluded: it is shadcn/ui source the CLI
+   * copies in (doc 21 §11, F-OPS.6), kept as generated so `shadcn add` can update it; its
+   * colours come from tokens through `app/globals.css`.
+   */
   function appSources(): string[] {
     return walk(APPS).filter(
       (file) =>
         (file.endsWith('.tsx') || file.endsWith('.ts')) &&
         !file.includes('node_modules') &&
-        !file.includes('.next'),
+        !file.includes('.next') &&
+        !file.includes('.open-next') &&
+        !file.includes(join('components', 'ui')),
     );
   }
 

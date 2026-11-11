@@ -5,12 +5,30 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { OperationsSummary } from '@jobwork/contracts';
-import { AppShell, isNavGroup, LinkProvider, type NavEntry, type NavItem, useCommandTick } from '@jobwork/ui';
+import { activeHref, Icon, isActivePath, LinkProvider, UiLink, useCommandTick } from '@jobwork/ui';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
 import { api, ApiError } from '../lib/api';
 
 /**
- * Operations navigation. The app runs in `compact` density (doc 21 §2, `DS-02`) because
- * these screens are for scanning many rows, not for reading one decision.
+ * Operations navigation, in shadcn/ui's Sidebar. The app runs in `compact` density
+ * (doc 21 §2, `DS-02`) because these screens are for scanning many rows, not for reading
+ * one decision.
  *
  * The badges are the point of F-OPS.5: an operator should not have to open Suppliers to
  * discover that three files are waiting on a decision. Counts come from the same
@@ -18,17 +36,32 @@ import { api, ApiError } from '../lib/api';
  * operator is not allowed to do — and an item with nothing waiting carries no badge at
  * all, because a badge that is always present stops being read.
  *
- * Nineteen flat items wrapped onto two rows at desktop widths, so related screens sit in
- * groups (one row; a group's heading carries its items' badge total). VF-20: the header
- * holds six entries. The two inboxes every operator returns to all day stay top-level and
- * come first, so on a phone no plain link reads as part of the group above it; Account is
- * the profile icon by the bell.
+ * F-OPS.6: the sidebar lists every screen at once under its section, each with its own
+ * badge, where the header held six entries and hid the rest in dropdowns (VF-20). The two
+ * inboxes every operator returns to all day stay first. Below `md` the same sidebar opens
+ * as a sheet from the menu button; Account is the profile icon by the bell.
  */
 
-const BASE_NAVIGATION: NavEntry[] = [
-  { href: '/', label: 'Home' },
-  { href: '/queues', label: 'Queues' },
-  { href: '/approvals', label: 'Approvals' },
+interface NavItem {
+  href: string;
+  label: string;
+  badge?: number;
+}
+
+interface NavSection {
+  /** None for the first section: its entries are the console's own front door. */
+  label?: string;
+  items: NavItem[];
+}
+
+const SECTIONS: NavSection[] = [
+  {
+    items: [
+      { href: '/', label: 'Home' },
+      { href: '/queues', label: 'Queues' },
+      { href: '/approvals', label: 'Approvals' },
+    ],
+  },
   {
     label: 'Sales',
     items: [
@@ -48,7 +81,7 @@ const BASE_NAVIGATION: NavEntry[] = [
     ],
   },
   {
-    label: 'More',
+    label: 'Back office',
     items: [
       { href: '/finance', label: 'Finance' },
       { href: '/support', label: 'Support' },
@@ -148,21 +181,111 @@ function OperationsFrame({ environmentLabel, children }: ShellProps): React.JSX.
     );
     return badge > 0 ? { ...item, badge } : item;
   };
-  const navigation: NavEntry[] = BASE_NAVIGATION.map((entry) =>
-    isNavGroup(entry) ? { ...entry, items: entry.items.map(withBadge) } : withBadge(entry),
-  );
+  const sections = SECTIONS.map((section) => ({ ...section, items: section.items.map(withBadge) }));
 
   return (
-    <AppShell
-      productName="JobWork"
-      variant="operations"
-      navigation={navigation}
-      currentPath={pathname ?? undefined}
-      environmentLabel={environmentLabel}
-      notifications={{ href: '/notifications', count: unread }}
-      account={{ href: '/account/security', label: 'Account' }}
-    >
-      {children}
-    </AppShell>
+    <>
+      <a className="jw-skip-link" href="#main">
+        Skip to content
+      </a>
+      <SidebarProvider>
+        <Sidebar>
+          <SidebarHeader>
+            <UiLink href="/" className="jw-shell-brand">
+              <span className="jw-brand-mark" aria-hidden="true">
+                <Icon name="wrench" size={1} />
+              </span>
+              JobWork
+              <span className="rounded-sm border border-sidebar-border px-2 text-xs text-muted-foreground">operations</span>
+            </UiLink>
+          </SidebarHeader>
+          <SidebarContent>
+            <PrimaryNavigation sections={sections} currentPath={pathname ?? undefined} />
+          </SidebarContent>
+          <SidebarRail />
+        </Sidebar>
+        <SidebarInset id="main" tabIndex={-1}>
+          {environmentLabel ? (
+            <div className="border-b border-[var(--status-attention-border)] bg-[var(--status-attention-bg)] px-4 py-1 text-center text-xs text-[var(--status-attention-fg)]">
+              {environmentLabel}
+            </div>
+          ) : null}
+          <div className="sticky top-0 z-10 flex min-h-14 items-center gap-2 border-b border-border bg-card px-4">
+            <SidebarTrigger aria-label="Menu" />
+            <div className="jw-header-tools">
+              <UiLink
+                href="/notifications"
+                className="jw-icon-button"
+                aria-label={unread > 0 ? `Notifications, ${unread} waiting` : 'Notifications'}
+              >
+                <Icon name="bell" size={1.4} />
+                {unread > 0 ? (
+                  <span className="jw-icon-button-badge" aria-hidden="true">
+                    {unread > 99 ? '99+' : unread}
+                  </span>
+                ) : null}
+              </UiLink>
+              <UiLink
+                href="/account/security"
+                className="jw-icon-button"
+                aria-label="Account"
+                {...(isActivePath(pathname ?? undefined, '/account/security') ? { 'aria-current': 'page' as const } : {})}
+              >
+                <Icon name="profile" size={1.4} />
+              </UiLink>
+            </div>
+          </div>
+          {children}
+        </SidebarInset>
+      </SidebarProvider>
+    </>
+  );
+}
+
+/**
+ * Every screen, under its section. A `nav` named "Primary" holds them, as the header's did,
+ * and each count is part of its link's name, so the number is never colour alone (`DS-07`).
+ * On a phone the sheet closes once a screen is chosen.
+ */
+function PrimaryNavigation({ sections, currentPath }: { sections: NavSection[]; currentPath: string | undefined }): React.JSX.Element {
+  const { isMobile, setOpenMobile } = useSidebar();
+  const active = activeHref(currentPath, sections.flatMap((section) => section.items.map((item) => item.href)));
+
+  return (
+    <nav aria-label="Primary">
+      {sections.map((section) => (
+        <SidebarGroup key={section.label ?? 'start'}>
+          {section.label ? <SidebarGroupLabel>{section.label}</SidebarGroupLabel> : null}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {section.items.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={item.href === active}>
+                    <Link
+                      href={item.href}
+                      {...(item.href === active ? { 'aria-current': 'page' as const } : {})}
+                      {...(item.badge ? { 'aria-label': `${item.label}, ${item.badge} waiting` } : {})}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                    >
+                      {item.label}
+                    </Link>
+                  </SidebarMenuButton>
+                  {item.badge ? (
+                    <SidebarMenuBadge
+                      aria-hidden="true"
+                      className="rounded-sm border border-[var(--status-attention-border)] bg-[var(--status-attention-bg)] text-[var(--status-attention-fg)]"
+                    >
+                      {item.badge}
+                    </SidebarMenuBadge>
+                  ) : null}
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      ))}
+    </nav>
   );
 }

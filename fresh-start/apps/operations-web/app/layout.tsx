@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { connection } from 'next/server';
 import '@jobwork/ui/tokens.css';
 import '@jobwork/ui/base.css';
+import './globals.css';
 import { OperationsShell } from './shell';
 
 export const metadata: Metadata = {
