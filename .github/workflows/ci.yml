@@ -153,10 +153,17 @@ jobs:
         run: |
           aws --endpoint-url http://localhost:9000 s3 mb s3://jobwork-quarantine
           aws --endpoint-url http://localhost:9000 s3 mb s3://jobwork-clean
-      - name: Install the walk's browser and ffmpeg
+      - name: Install the walk's browser
+        # Chromium comes from Playwright's own download server. Its system libraries are
+        # already on the runner image; apt only adds fonts, and ffmpeg for the video stitch.
+        # Ubuntu's mirrors stopped resolving from the runners on 2026-11-11 (apt exit 100,
+        # six walks, before any test ran), so apt may warn but not fail the walk.
         run: |
-          pnpm --filter @jobwork/e2e exec playwright install --with-deps chromium
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          pnpm --filter @jobwork/e2e exec playwright install chromium
+          pnpm --filter @jobwork/e2e exec playwright install-deps chromium \
+            || echo "::warning::apt could not add Chromium's extra packages (fonts); the image's libraries are used"
+          sudo apt-get install -y --no-install-recommends ffmpeg \
+            || echo "::warning::apt could not install ffmpeg; the walk's videos will not be stitched"
       - name: Full portal walk
         run: pnpm --filter @jobwork/e2e walk
       - name: Stitch the videos

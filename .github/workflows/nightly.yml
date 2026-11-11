@@ -77,7 +77,11 @@ jobs:
       - run: pnpm migrate
       - run: pnpm seed
       - name: Install the journeys' browser
-        run: pnpm --filter @jobwork/e2e exec playwright install --with-deps chromium
+        # As in the CI walk: the browser from Playwright's server; apt (fonts) may warn, not fail.
+        run: |
+          pnpm --filter @jobwork/e2e exec playwright install chromium
+          pnpm --filter @jobwork/e2e exec playwright install-deps chromium \
+            || echo "::warning::apt could not add Chromium's extra packages (fonts); the image's libraries are used"
       - run: bash infra/nightly.sh
       - if: always()
         uses: actions/upload-artifact@v4
