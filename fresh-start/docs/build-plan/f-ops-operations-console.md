@@ -80,6 +80,8 @@ Owner request 2026-11-11: *"make the top nav into side nav bar"*, operations onl
 | `apps/operations-web/app/shell.tsx` | changed | `SidebarProvider`, `Sidebar` (brand, then Home, Queues, Approvals; Sales; Delivery; Back office), `SidebarMenuBadge` per screen, `SidebarTrigger`, the bell and the account icon in a sticky bar, `SidebarInset` as the one `main#main` behind the skip link. Below `md` the sidebar is a sheet that closes when a screen is chosen. The links sit in `nav` "Primary", and a count is part of its link's name (`DS-07`) |
 | `apps/operations-web/{package.json,tsconfig.json}` | changed | `tailwindcss`, `@tailwindcss/postcss`, `postcss` (dev); `radix-ui`, `class-variance-authority`, `cn`, `lucide-react`, `tw-animate-css`, `shadcn` from the CLI; the `@/*` path alias |
 
+`packages/ui/test/tokens.spec.ts` no longer scans `apps/*/components/ui`: the DS-01 "no raw pixel" check found seven `px` values inside shadcn's generated files (button, sidebar, tooltip). They stay as generated so `shadcn add` can update them; their colours already come from tokens through `globals.css`.
+
 "More" became **Back office** in the sidebar: a heading over a list names what is in it, where a dropdown only needed a button.
 
 ## Tests
