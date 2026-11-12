@@ -63,7 +63,24 @@ node database/dist/cli.js bootstrap-admin
 
 `PASSWORD_HASHER=pgcrypto-bcrypt` matters: the API on Workers can only check bcrypt.
 
-## 6. Try it
+## 6. Staff roles
+
+The first admin holds the administrator roles only; the operational screens (intake, sourcing, sales, quality, logistics, support, finance) refuse it with `NOT_AUTHORIZED` until it holds their roles. `add-staff` grants internal roles, audited, and creates the account when it does not exist. Separation of duties applies: finance may not sit with sales or quality, so a demo run by one person keeps finance on a second login.
+
+```sh
+# the owner: every operational role but finance
+DATABASE_URL='<pooler URI>' STAFF_EMAIL='you@example.com' STAFF_NAME='Your Name' \
+STAFF_ROLES='jobwork_sourcing,jobwork_engineering,jobwork_sales,jobwork_quality,jobwork_logistics,jobwork_incoming,jobwork_receiving,jobwork_stock,jobwork_quarantine,jobwork_vehicle,jobwork_to_customer,jobwork_to_supplier,jobwork_support' \
+node database/dist/cli.js add-staff
+
+# a finance login
+DATABASE_URL='<pooler URI>' PASSWORD_HASHER=pgcrypto-bcrypt STAFF_EMAIL='finance@example.com' STAFF_NAME='Finance' \
+STAFF_ROLES='jobwork_finance' STAFF_PASSWORD='<12+ characters>' node database/dist/cli.js add-staff
+```
+
+Sign out and in again after a grant: a session carries the roles it was issued with.
+
+## 7. Try it
 
 1. Open the operations address, sign in as the first admin, and enrol MFA in your profile.
 2. Open the portal address and register a customer.

@@ -16,6 +16,7 @@ export const HANDLED_EVENT_TYPES = ['iam.invitation.issued.v1', 'iam.email_verif
 
 export const ACKNOWLEDGED_EVENT_TYPES = [
   'iam.platform_admin.bootstrapped.v1',
+  'iam.staff.roles_granted.v1',
   'commercial.approval_decided.v1',
   'commercial.award_proposed.v1',
   'commercial.quote_expired.v1',

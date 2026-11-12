@@ -5,8 +5,8 @@ import { NOTIFIED_EVENT_TYPES } from '@jobwork/contracts';
 import { ACKNOWLEDGED_EVENT_TYPES, HANDLED_EVENT_TYPES } from '../src/outbox/subscriptions';
 
 const API_SRC = join(__dirname, '..', '..', 'api', 'src');
-/** The one command that runs outside the API: it creates the admin the API needs. */
-const BOOTSTRAP_COMMAND = join(__dirname, '..', '..', '..', 'database', 'src', 'bootstrap-admin.ts');
+/** The database package's commands that commit events of their own (first admin, staff roles). */
+const DATABASE_COMMANDS = ['bootstrap-admin.ts', 'staff.ts'].map((f) => join(__dirname, '..', '..', '..', 'database', 'src', f));
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -26,7 +26,7 @@ function emittedEventTypes(): Map<string, string> {
   const found = new Map<string, string>();
   // Outbox specs are built by commands (`application/`); adapters elsewhere speak their
   // providers' vocabularies (a payment gateway's `payment.captured` is not ours).
-  for (const file of [...sources(API_SRC).filter((f) => f.includes('/application/')), BOOTSTRAP_COMMAND]) {
+  for (const file of [...sources(API_SRC).filter((f) => f.includes('/application/')), ...DATABASE_COMMANDS]) {
     const text = readFileSync(file, 'utf8');
     // `eventType:` up to the end of its expression, so a conditional over two types counts both.
     for (const m of text.matchAll(/eventType:([\s\S]*?),\n/g)) {
