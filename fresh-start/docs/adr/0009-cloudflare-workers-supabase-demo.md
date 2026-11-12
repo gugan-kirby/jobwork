@@ -2,7 +2,7 @@
 
 - Status: Proposed
 - Date: 2026-11-09
-- Supersedes: [ADR-0008](0008-free-single-vm-staging.md) as the free environment. ADR-0008's stack stays in `infra/deploy/` until this one runs end to end.
+- Supersedes: [ADR-0008](0008-free-single-vm-staging.md) as the free environment. Live since 2026-11-12; ADR-0008's stack was removed then.
 
 ## Context
 

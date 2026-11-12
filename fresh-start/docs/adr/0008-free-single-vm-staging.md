@@ -1,6 +1,6 @@
 # ADR-0008: Free single-VM staging until the hosting decision
 
-- Status: Proposed
+- Status: Superseded by [ADR-0009](0009-cloudflare-workers-supabase-demo.md) on 2026-11-12; the stack (`infra/deploy/`) was removed the same day
 - Date: 2026-11-07
 
 ## Context
