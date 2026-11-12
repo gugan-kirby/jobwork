@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { adminBootstrapFromEnv, bootstrapAdmin } from './bootstrap-admin';
 import { ensureDatabase, migrationStatus, runMigrations } from './migrate';
+import { addStaff, staffGrantFromEnv } from './staff';
 
 const MIGRATIONS_DIR = join(__dirname, '..', 'migrations');
 
@@ -30,7 +31,12 @@ async function main(): Promise<void> {
     console.log(`created first admin ${userId}`);
     return;
   }
-  console.error(`unknown command: ${command} (use up|status|bootstrap-admin)`);
+  if (command === 'add-staff') {
+    const result = await addStaff(databaseUrl, staffGrantFromEnv(process.env));
+    console.log(`${result.created ? 'created' : 'updated'} ${result.userId}: added ${result.added.length ? result.added.join(', ') : 'nothing, every role was held'}`);
+    return;
+  }
+  console.error(`unknown command: ${command} (use up|status|bootstrap-admin|add-staff)`);
   process.exitCode = 2;
 }
 
