@@ -20,15 +20,26 @@ interface WorkerContext {
  * caller names the browser in `X-Forwarded-For`, so the peer is a trusted loopback hop.
  */
 const SERVICE_BINDING_PEER = '127.0.0.1';
+/**
+ * Stands in for the database address while the graph is built: the real one is Hyperdrive's
+ * connection string, which the runtime mints with random values and therefore forbids
+ * outside a request ("Disallowed operation called within global scope"). It is read per
+ * request, when a pool is made. Any non-default value passes the production config check.
+ */
+const DATABASE_URL_PLACEHOLDER = 'postgres://hyperdrive.internal/jobwork';
 
 let ready: Promise<{ app: Application; pools: RequestPoolSource }> | undefined;
+/** The bindings of the request being served; the same object for every request of an isolate. */
+const current: { env?: WorkerEnv } = {};
 
-async function build(env: WorkerEnv): Promise<{ app: Application; pools: RequestPoolSource }> {
-  // Hyperdrive's address for this isolate; the pool behind it is Hyperdrive's, not ours.
-  process.env['DATABASE_URL'] = env.HYPERDRIVE.connectionString;
-  // Pools are made per request, after the graph (and its config) exists.
+async function build(): Promise<{ app: Application; pools: RequestPoolSource }> {
+  process.env['DATABASE_URL'] = DATABASE_URL_PLACEHOLDER;
+  // Pools are made per request, after the graph (and its config) exists, on Hyperdrive's
+  // address for this isolate; the pool behind it is Hyperdrive's, not ours.
   const settings: { config?: ConfigService } = {};
-  const pools = new RequestPoolSource(() => createPool(settings.config!));
+  const pools = new RequestPoolSource(() =>
+    createPool({ env: { ...settings.config!.env, DATABASE_URL: current.env!.HYPERDRIVE.connectionString } }),
+  );
   const app = await createApplication({ poolSource: pools });
   settings.config = app.get(ConfigService);
   return { app, pools };
@@ -36,12 +47,13 @@ async function build(env: WorkerEnv): Promise<{ app: Application; pools: Request
 
 export default {
   /** Called at startup (`worker/entry.mjs`), so building the graph is not charged to a request. */
-  start(env: WorkerEnv): void {
-    ready ??= build(env);
+  start(): void {
+    ready ??= build();
   },
 
   async fetch(request: Request, env: WorkerEnv, ctx: WorkerContext): Promise<Response> {
-    const { app, pools } = await (ready ??= build(env));
+    current.env = env;
+    const { app, pools } = await (ready ??= build());
     return pools.run(
       () => app.handle(request, { remoteAddress: SERVICE_BINDING_PEER }),
       (ended) => ctx.waitUntil(ended),

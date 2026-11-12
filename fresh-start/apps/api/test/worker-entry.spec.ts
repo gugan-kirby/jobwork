@@ -19,7 +19,7 @@ describe('API Worker entry (F-CW.3)', () => {
     process.env['RATE_LIMIT_STORE'] = 'postgres';
     process.env['RATE_LIMIT_MODE'] = 'enforce';
     process.env['RATE_LIMIT_POLICIES'] = JSON.stringify({ read: [{ dimension: 'ip', limit: 2, windowSeconds: 60 }] });
-    worker.start({ HYPERDRIVE: { connectionString: db.url } });
+    worker.start();
   }, 60_000);
 
   afterAll(async () => {

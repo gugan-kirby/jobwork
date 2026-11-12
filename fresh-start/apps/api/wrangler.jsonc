@@ -17,7 +17,7 @@
     "class-transformer": "./worker/stubs/native.mjs"
   },
   // Replace with the id `wrangler hyperdrive create` prints (F-CW.7).
-  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }],
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "0863942d50254416a8daaaff69535de3" }],
   "vars": {
     "NODE_ENV": "production",
     "LOG_LEVEL": "info",
