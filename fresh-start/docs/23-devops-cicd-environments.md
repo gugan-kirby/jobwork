@@ -14,7 +14,7 @@ Rules carry `DO-nn` identifiers.
 | `production` | Live | Real | Live | Locked down (§7) |
 | `pilot` (optional) | Production tenant/feature-gated cohort (doc 15 §10) | Real, scoped | Live | As production |
 
-Exception until `T-01`: a free single-VM staging stack with synthetic data only ([ADR-0008](adr/0008-free-single-vm-staging.md)).
+Exception until `T-01`: the free demo on Cloudflare Workers and Supabase, synthetic data only ([ADR-0009](adr/0009-cloudflare-workers-supabase-demo.md), `infra/cloudflare/`).
 
 - `DO-01`: Environments live in isolated cloud accounts/projects with separate networks, keys, and IAM — no shared databases, buckets, queues, or secrets between environments (doc 04 §11).
 - `DO-02`: Production data never flows down. Staging/dev use synthetic or approved-masked data only (doc 11 §13); a request to "copy prod to debug" is an incident-process exception, not a favor.
