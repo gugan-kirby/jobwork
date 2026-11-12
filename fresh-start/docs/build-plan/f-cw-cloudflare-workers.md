@@ -21,7 +21,7 @@ Branch: `feat/cloudflare-workers-deploy`, cut from `feat/free-staging-deploy` (n
 | F-CW.4 | Worker on a Cron Trigger: bounded outbox batch and scans per run | **built** 2026-11-09 |
 | F-CW.5 | Mail outbox page instead of SMTP | **built** 2026-11-09 |
 | F-CW.6 | Web apps on OpenNext with service bindings | **built** 2026-11-09 |
-| F-CW.7 | Deploy: Supabase project, Hyperdrive, secrets, migrations, first admin, walk | scripts ready 2026-11-09; **waiting on the owner's run** |
+| F-CW.7 | Deploy: Supabase project, Hyperdrive, secrets, migrations, first admin, walk | **live** 2026-11-12; owner's walk pending |
 
 F-CW.1–F-CW.7 get their file manifests from the F-CW.0 measurements and the code inventory; each is detailed here before it starts.
 
@@ -67,7 +67,14 @@ Results are recorded below and ADR-0009 is revised if a pass line fails.
 | `operations-web` Worker | 7,780 KiB raw, **1,442 KiB gzip** — pass | 2026-11-09 |
 | API upper bound (NestJS + Fastify bundled, argon2 and ioredis excluded) | 3,268 KiB raw, **773 KiB gzip** — pass | 2026-11-09 |
 | Spike Worker (Hono, pg, object-store) | 272 KiB raw, 59 KiB gzip | 2026-11-09 |
-| `/db`, `/hash`, `/storage` on the deployed spike | waiting on owner steps | |
+| `/db`, `/hash`, `/storage` on the deployed spike | not run: the deployment itself (F-CW.7) answered the questions below | |
+| Live API, warm: `GET /health` | 76 ms wall; `POST /admin/organizations` 6 ms CPU, 186 ms wall | 2026-11-12 |
+| Live API, cold isolate (first request builds the graph) | 60–100 ms CPU; the free plan did not terminate these requests (the 10 ms figure is not enforced per request as a hard cut) | 2026-11-12 |
+| Live sign-in (bcrypt in Supabase's pgcrypto, unqualified names) | HTTP 201, 2.7 s wall cold; `/auth/me` 200 | 2026-11-12 |
+| Live SLA sweep (`POST /internal/sla/sweep`, 100+ round trips through Hyperdrive) | HTTP 201, 3.7 s wall | 2026-11-12 |
+| Live cron tick (outbox, sweeps due, heartbeat) | outcome ok, 20–62 ms CPU, up to 24 s wall | 2026-11-12 |
+| Supabase Storage through the SigV4 client | both buckets listed with the S3 keys (HTTP 200) | 2026-11-12 |
+| CSP nonce and HSTS from `proxy.ts` under OpenNext | present on the live portal and operations responses | 2026-11-12 |
 
 Finding: OpenNext 1.20.16 builds Next 16's `proxy.ts` as Node.js middleware and warns that this is experimental on Cloudflare. F-CW.6 checks the CSP nonce and HSTS headers on the deployed Workers; if they are missing, `proxy.ts` moves to edge `middleware.ts`.
 
@@ -192,4 +199,13 @@ Prepared without the owner's accounts; the run itself is the owner's.
 | `infra/cloudflare/go-live.sh` | new | One run from a private `.env.deploy` (never typed or printed): install and build; migrations on Supabase; the Hyperdrive configuration, its id written into both `wrangler.jsonc`; the four deploys with the account's addresses; generated secrets through `wrangler secret bulk` on standard input. `deploy` and `secrets` as single steps. Replaced `deploy.sh` and `secrets.sh` on 2026-11-11, once the owner's run showed the deployment had to be driven without a terminal prompt |
 | `infra/README.md` | edit | Points to it |
 
-Exit (with the owner): the four Workers deployed; registration, the verification mail on the Mail page, sign-in, an enquiry with an uploaded drawing scanned clean; CPU per request read from Workers Logs and recorded under F-CW.0 Results; the CSP nonce and HSTS present on both web apps. Then the spike Worker and, with the owner's agreement, `infra/deploy/` (ADR-0008) are removed.
+Deployed 2026-11-12 (`go-live.sh`, account subdomain `gugantennyson`): `https://jobwork-portal.gugantennyson.workers.dev`, `https://jobwork-operations.gugantennyson.workers.dev`, front door `https://jobwork.gugantennyson.workers.dev`; 36 migrations applied on Supabase (ap-south-1, session pooler through Hyperdrive `jobwork-demo`); first admin created with `PASSWORD_HASHER=pgcrypto-bcrypt`; live sign-in verified.
+
+Two defects found only on the platform, both fixed the same day:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Every API request: Cloudflare error 1101 | `worker/entry.mjs` read `env.HYPERDRIVE.connectionString` while building the graph at startup; the runtime mints it with random values and forbids that at global scope | The graph is built on a placeholder address; each request's pool reads Hyperdrive's string inside `fetch` |
+| Every cron tick: `platform.sla_sweep_failed`, "api unreachable: aborted due to timeout" at ~14 s; the API logged the request as canceled | `scheduled()` handed the run to `ctx.waitUntil` and returned; the runtime keeps such work only for a grace period, then tears the invocation down, cancelling the in-flight service-binding call | `scheduled()` awaits the run. Also: a cron's API call may take 60 s (`apiTimeoutMs`), and both Workers use Smart Placement to run near the database |
+
+Still to do: registration and the verification mail on the Mail page, an enquiry with an uploaded drawing scanned clean (owner's walk); remove the spike Worker and, with the owner's agreement, `infra/deploy/` (ADR-0008).

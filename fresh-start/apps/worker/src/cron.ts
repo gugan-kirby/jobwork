@@ -51,6 +51,9 @@ export async function runScheduled(scheduledTime: number, env: CronEnv): Promise
       pool,
       logger,
       apiFetch: (input, init) => env.API.fetch(new Request(input, init)),
+      // The SLA sweep alone makes over a hundred round trips to the database; a cron
+      // run may take minutes, so an API call gets a minute rather than the default 15 s.
+      apiTimeoutMs: 60_000,
     });
     // Events claimed and processed, whether delivered, retried or dead-lettered.
     let handled = 0;
@@ -70,7 +73,13 @@ export async function runScheduled(scheduledTime: number, env: CronEnv): Promise
 }
 
 export default {
-  scheduled(controller: ScheduledController, env: CronEnv, ctx: CronContext): void {
-    ctx.waitUntil(runScheduled(controller.scheduledTime, env));
+  /**
+   * Awaited, not handed to `waitUntil`: the runtime keeps background work alive only for
+   * a short grace period after the handler returns, and tore the run down about 14 s in,
+   * cancelling the sweep's call to the API every minute (2026-11-12). A cron invocation
+   * may run for minutes while its handler is still awaiting.
+   */
+  async scheduled(controller: ScheduledController, env: CronEnv, _ctx: CronContext): Promise<void> {
+    await runScheduled(controller.scheduledTime, env);
   },
 };

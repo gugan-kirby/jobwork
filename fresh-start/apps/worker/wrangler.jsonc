@@ -8,13 +8,15 @@
   "workers_dev": false,
   "triggers": { "crons": ["* * * * *"] },
   "observability": { "enabled": true },
+  // Run near the database (Supabase, Mumbai): every request is many round trips to it.
+  "placement": { "mode": "smart" },
   "alias": {
     // Imported by the SMTP mailer; this Worker keeps mail through the API instead.
     "nodemailer": "./worker-stub.mjs"
   },
   "services": [{ "binding": "API", "service": "jobwork-api" }],
   // Replace with the id `wrangler hyperdrive create` prints (F-CW.7).
-  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }],
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "0863942d50254416a8daaaff69535de3" }],
   "vars": {
     "NODE_ENV": "production",
     "LOG_LEVEL": "info",

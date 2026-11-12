@@ -46,6 +46,8 @@ export interface WorkerDeps {
   logger: Logger;
   /** The API through a Worker's service binding instead of `API_URL` (F-CW.4). */
   apiFetch?: InternalApiOptions['fetch'];
+  /** How long one API call may take. The sweeps make many database round trips; from a Worker far from the database they need more than the default. */
+  apiTimeoutMs?: number;
 }
 
 /**
@@ -71,6 +73,7 @@ export function createWorker(env: WorkerConfig, deps: WorkerDeps): WorkerParts {
     tokenSecret: env.SERVICE_TOKEN_SECRET,
     principalName: SCAN_WORKER_PRINCIPAL.name,
     ...(deps.apiFetch ? { fetch: deps.apiFetch } : {}),
+    ...(deps.apiTimeoutMs ? { timeoutMs: deps.apiTimeoutMs } : {}),
   });
 
   const mailer: Mailer =

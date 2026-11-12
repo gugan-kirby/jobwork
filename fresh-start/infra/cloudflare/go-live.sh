@@ -23,13 +23,14 @@ done
 step="${1:-all}"
 
 wr() { (cd "$1" && shift && pnpm exec wrangler "$@"); }
-ACCOUNT_ID="$(wr apps/api whoami 2>/dev/null | grep -oE '[0-9a-f]{32}' | head -1)"
-[ -n "$ACCOUNT_ID" ] || { echo "wrangler is not logged in; run: cd apps/api && pnpm exec wrangler login" >&2; exit 1; }
+# `|| true`: under set -e a failed lookup would end the run without a word.
+ACCOUNT_ID="$(wr apps/api whoami 2>/dev/null | grep -oE '[0-9a-f]{32}' | head -1 || true)"
+[ -n "$ACCOUNT_ID" ] || { echo "wrangler is not logged in, or its login has expired; run: cd apps/api && pnpm exec wrangler login" >&2; exit 1; }
 # Lookups wrangler has no command for go through the API with wrangler's own login.
 WRANGLER_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/.wrangler/config/default.toml"
 [ -f "$WRANGLER_CONFIG" ] || WRANGLER_CONFIG="$HOME/Library/Preferences/.wrangler/config/default.toml"
 cf() { curl -sf -H "Authorization: Bearer $(sed -nE 's/^oauth_token *= *"([^"]+)"/\1/p' "$WRANGLER_CONFIG")" "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID$1"; }
-SUBDOMAIN="$(cf /workers/subdomain | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["subdomain"])')"
+SUBDOMAIN="$(cf /workers/subdomain | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["subdomain"])' 2>/dev/null || true)"
 [ -n "$SUBDOMAIN" ] || { echo "the account has no workers.dev subdomain yet; set one at Workers & Pages → Overview" >&2; exit 1; }
 PORTAL_URL="https://jobwork-portal.${SUBDOMAIN}.workers.dev"
 OPERATIONS_URL="https://jobwork-operations.${SUBDOMAIN}.workers.dev"
