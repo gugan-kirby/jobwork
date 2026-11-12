@@ -8,6 +8,8 @@
   // No public address: reached through service bindings only (F-CW.3).
   "workers_dev": false,
   "observability": { "enabled": true },
+  // Run near the database (Supabase, Mumbai): every request is many round trips to it.
+  "placement": { "mode": "smart" },
   "alias": {
     "argon2": "./worker/stubs/native.mjs",
     "ioredis": "./worker/stubs/native.mjs",

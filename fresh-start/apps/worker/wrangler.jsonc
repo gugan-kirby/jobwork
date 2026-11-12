@@ -8,6 +8,8 @@
   "workers_dev": false,
   "triggers": { "crons": ["* * * * *"] },
   "observability": { "enabled": true },
+  // Run near the database (Supabase, Mumbai): every request is many round trips to it.
+  "placement": { "mode": "smart" },
   "alias": {
     // Imported by the SMTP mailer; this Worker keeps mail through the API instead.
     "nodemailer": "./worker-stub.mjs"
