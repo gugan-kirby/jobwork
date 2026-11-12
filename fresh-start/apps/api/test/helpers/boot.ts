@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { serve } from '@hono/node-server';
 import { createLogger } from '@jobwork/observability';
 import { createApplication } from '../../src/app';
+import { keepConnectionsAlive } from '../../src/main-server';
 import type { Token } from '../../src/runtime/container';
 
 /** What a test holds: the running application's providers, and a way to stop it. */
@@ -21,6 +22,7 @@ export async function createTestApp(): Promise<{ app: TestApp; baseUrl: string }
     port: 0,
     hostname: '127.0.0.1',
   });
+  keepConnectionsAlive(server);
   if (!server.listening) await once(server, 'listening');
   const { port } = server.address() as AddressInfo;
   return {

@@ -6,6 +6,7 @@ loadEnv();
 import { serve } from '@hono/node-server';
 import { createLogger } from '@jobwork/observability';
 import { createApplication } from './app';
+import { keepConnectionsAlive } from './main-server';
 import { ConfigService } from './platform/config/config.service';
 
 /** The API on Node: the same `fetch` handler a Worker serves (F-CW.2), behind Node's HTTP server. */
@@ -22,6 +23,7 @@ async function bootstrap(): Promise<void> {
     },
     () => logger.info({ port: config.env.API_PORT, version: config.buildVersion }, 'api listening'),
   );
+  keepConnectionsAlive(server);
 
   // Finish in-flight requests, then release the pool and the metrics server (doc 12 §3).
   const shutdown = (signal: string): void => {
