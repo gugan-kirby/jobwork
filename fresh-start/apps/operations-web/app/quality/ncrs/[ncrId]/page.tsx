@@ -46,6 +46,7 @@ export default function NcrPage(): React.JSX.Element {
   const [reject, setReject] = useState({ disposition: 'scrap', costResponsibility: 'supplier', reason: '' });
   const [dev, setDev] = useState({ characteristicIds: [] as string[], quantity: '', lots: '', expires: '', rationale: '', risk: '', ffs: '', price: '', warranty: '', traceability: '', labeling: '' });
   const [note, setNote] = useState('');
+  const [returnNote, setReturnNote] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -327,14 +328,17 @@ export default function NcrPage(): React.JSX.Element {
                     <p style={{ color: 'var(--color-text-muted)' }}>Waiting for the supplier’s response.</p>
                   )}
                   {ca.status === 'responded' ? (
-                    <Inline gap={2}>
-                      <CommandButton size="sm" receiptLabel="Accepted" onCommand={() => post('/corrective-action/review', { expectedVersion: ca.aggregateVersion, decision: 'accept', note: '' })}>
-                        Accept
-                      </CommandButton>
-                      <CommandButton size="sm" variant="secondary" receiptLabel="Returned" disabled={note.trim().length < 3} disabledReason="Write what is missing in the note below" onCommand={() => post('/corrective-action/review', { expectedVersion: ca.aggregateVersion, decision: 'return', note: note.trim() })}>
-                        Return
-                      </CommandButton>
-                    </Inline>
+                    <>
+                      <ReasonField label="What is missing (to return it)" audience="internal" value={returnNote} onChange={setReturnNote} />
+                      <Inline gap={2}>
+                        <CommandButton size="sm" receiptLabel="Accepted" onCommand={() => post('/corrective-action/review', { expectedVersion: ca.aggregateVersion, decision: 'accept', note: '' })}>
+                          Accept
+                        </CommandButton>
+                        <CommandButton size="sm" variant="secondary" receiptLabel="Returned" disabled={returnNote.trim().length < 3} disabledReason="Write what is missing" onCommand={async () => { await post('/corrective-action/review', { expectedVersion: ca.aggregateVersion, decision: 'return', note: returnNote.trim() }); setReturnNote(''); }}>
+                          Return
+                        </CommandButton>
+                      </Inline>
+                    </>
                   ) : null}
                   {ca.status === 'accepted' ? (
                     <>
