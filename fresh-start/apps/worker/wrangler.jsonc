@@ -24,6 +24,9 @@
     "API_URL": "https://jobwork-api.internal",
     "MAIL_TRANSPORT": "api",
     "DATABASE_POOL_MAX": "2",
+    // A quarter hour, not a minute: one SLA sweep is ~145 statements, and every minute
+    // that is ~211,000 a day against Hyperdrive's free 100,000 (2026-11-13).
+    "SLA_SWEEP_MS": "900000",
     // A Worker has 128 MB and 10 ms of CPU; a file above this is refused by the scan (ADR-0009).
     "SCAN_MAX_INSPECT_BYTES": "8388608",
     "SCAN_TIMEOUT_MS": "20000",

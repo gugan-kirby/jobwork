@@ -154,12 +154,12 @@ Not yet verified: the bundle running inside `workerd` (pino, prom-client and pg 
 | `apps/worker/src/main.ts` | edit | The long-lived Node process on the shared wiring; behaviour unchanged |
 | `apps/worker/src/cron.ts` | new | `scheduled`: one pool per run over Hyperdrive; up to `MAX_BATCHES_PER_RUN = 3` outbox batches (30 events); the sweeps `due` this minute; the heartbeat |
 | `apps/worker/src/internal-api.ts` | edit | Optional `fetch`, so the Worker calls the API through its service binding |
-| `apps/worker/wrangler.jsonc`, `apps/worker/worker-stub.mjs` | new | `jobwork-worker`, `* * * * *`, `workers_dev: false`, `API` service binding, Hyperdrive, `SCAN_MAX_INSPECT_BYTES=8 MiB`; `nodemailer` stubbed |
+| `apps/worker/wrangler.jsonc`, `apps/worker/worker-stub.mjs` | new | `jobwork-worker`, `* * * * *`, `workers_dev: false`, `API` service binding, Hyperdrive, `SCAN_MAX_INSPECT_BYTES=8 MiB`, `SLA_SWEEP_MS=15 min` (F-CW.7, 2026-11-13); `nodemailer` stubbed |
 | `packages/observability/src/metrics.ts` | edit | `onWorkers()`; Node process metrics are not collected inside a Worker |
 
 New sweep on both runtimes: `rate_limit_counters` deletes expired `platform.rate_limit_counter` rows every 15 minutes (housekeeping, not business state, doc 20 §9).
 
-Tests: `apps/worker/test/cron.db.spec.ts` (new): `due` per interval; a quarter-hour run hands the invitation to the API, strips the token, calls all five API sweeps and clears spent counters; an off-quarter run calls only the SLA sweep and stops at 30 events. Bundle: 2,538 KiB raw, **383 KiB gzip**.
+Tests: `apps/worker/test/cron.db.spec.ts` (new): `due` per interval; a quarter-hour run hands the invitation to the API, strips the token, calls all five API sweeps and clears spent counters; an off-quarter run calls only the SLA sweep and stops at 30 events. `apps/worker/test/wrangler-config.spec.ts` (new, 2026-11-13): the deployed vars ask for the SLA sweep at most 96 times a day. Bundle: 2,538 KiB raw, **383 KiB gzip**.
 
 Decision taken on the owner's behalf: files above 8 MiB are refused by the scan on Workers (fail-closed, as any file above the limit is today). Hashing and scanning more inside 10 ms of CPU is not possible; revisit with the spike's numbers and Supabase's checksum behaviour (`/storage` probe).
 
@@ -201,10 +201,11 @@ Prepared without the owner's accounts; the run itself is the owner's.
 
 Deployed 2026-11-12 (`go-live.sh`, account subdomain `gugantennyson`): `https://jobwork-portal.gugantennyson.workers.dev`, `https://jobwork-operations.gugantennyson.workers.dev`, front door `https://jobwork.gugantennyson.workers.dev`; 36 migrations applied on Supabase (ap-south-1, session pooler through Hyperdrive `jobwork-demo`); first admin created with `PASSWORD_HASHER=pgcrypto-bcrypt`; live sign-in verified.
 
-Two defects found only on the platform, both fixed the same day:
+Defects found only on the platform:
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| From 2026-11-12, daily at about 11:20 UTC: Hyperdrive refuses every query until 00:00 UTC ("daily free tier limit of 100,000 queries"); the demo stops | The SLA sweep ran every minute and costs ~145 statements with nothing to do: 27 queue syncs, each its own five-statement transaction. Measured 8,750–9,000 statements an hour, flat day and night (121,328 on 2026-11-12, 121,167 on 2026-11-13): ~211,000 a day | 2026-11-13: `jobwork-worker` sets `SLA_SWEEP_MS=900000`; an idle day is estimated at ~22,000 statements, and an escalation may fire up to 15 minutes late on the demo. Node keeps the one-minute default. `test/wrangler-config.spec.ts` guards it |
 | Every API request: Cloudflare error 1101 | `worker/entry.mjs` read `env.HYPERDRIVE.connectionString` while building the graph at startup; the runtime mints it with random values and forbids that at global scope | The graph is built on a placeholder address; each request's pool reads Hyperdrive's string inside `fetch` |
 | Every cron tick: `platform.sla_sweep_failed`, "api unreachable: aborted due to timeout" at ~14 s; the API logged the request as canceled | `scheduled()` handed the run to `ctx.waitUntil` and returned; the runtime keeps such work only for a grace period, then tears the invocation down, cancelling the in-flight service-binding call | `scheduled()` awaits the run. Also: a cron's API call may take 60 s (`apiTimeoutMs`), and both Workers use Smart Placement to run near the database |
 
