@@ -125,6 +125,19 @@ The access checks:
 - A JobWork user without the role sees the "not your authority" state rather than a 500.
 - No customer-facing screen in the walk contains a supplier name, and no supplier screen contains the customer's name (`BR` identity shielding, checked on every page the storyline opened).
 
+## FW.12 The other branches (2026-11-13)
+
+Scope source: the owner's request of 2026-11-13 to test every page and every action. A read of both apps against the walk counted 101 routes and 248 state-changing actions. One route (`/mail`) was never opened, 60 actions were never performed, and 5 ran only when their button happened to show; all were reject, return, withdraw, cancel, replan or administration branches. Six chapters run after the sweep, so their destructive steps (offboarding, leaving the network, signing out everywhere) touch only the records and users they create.
+
+| Chapter | Covers |
+|---|---|
+| `13-commercial-alternatives` | Intake decline and frozen revision; release with an eligibility override; "Send anyway", revoke, leakage release and reject; supplier decline; My Quotes; award reject and cost-sheet return; quote withdraw; the requester's quotation (W20) and the approver's rejection; commercial release; the PO conversation |
+| `14-supplier-network-alternatives` | Invitation resend, application reject, file return and reject, evidence return, offboard, leave the network, stop offering, a supplier's upload, account restore |
+| `15-production-quality-alternatives` | Replan, returned evidence, plan revision, certificate attached to results, accept and reinspect dispositions, a reviewer's correction, invalidation (W16), deviation withdrawal (W17), lot rejection, corrective-action return (W18), supplier containment |
+| `16-logistics-alternatives` | Supplier replan and cancel, receiving shortage resolved, delivery edited, override asked, address confirmed and changed, refusal (W19), exception withdrawn |
+| `17-changes-settlement-conversations` | Change and deviation rejected by the customer, rating, Pay Now from `/invoices` and `/payments`, bill reject, case reject and action cancel, the three conversations |
+| `18-accounts-and-operations` | Notifications opened and marked read on both portals, a new staff member's MFA, session revoke, sign out everywhere, a staff sign-out on the portal, dead letters replayed and dismissed, `/mail` |
+
 ## Candidate defects found while reading the screens for this plan
 
 | # | Where | Suspected defect |
@@ -163,6 +176,12 @@ Each confirmed defect becomes a failing walk step first and is fixed on its own 
 | W13 | Unread notifications | Body and time failed AA contrast. | On-tint muted token. |
 | W14 | Portal `/welcome` | The page had no heading for assistive technology: the `Hero` headline was a paragraph. | A splash Hero renders its headline as the h1. |
 | W15 | Operations, signed out | Every screen rendered "Authentication required" beside "Nothing waiting", with no way to sign in. | The shell sends a 401 to `/login`. |
+| W16 | `MeasurementGrid` | A decided grid has no controls, so its sideways scroll could not be reached by keyboard (axe `scrollable-region-focusable`). | A named region with `tabIndex=0`. |
+| W17 | Deviation withdrawal | Withdrawn before JobWork decided, its approval request stayed pending; deciding it could only be refused (`DEVIATION_NOT_PENDING`), and the queue kept it. | The withdrawal supersedes the request in the same transaction. |
+| W18 | Ops NCR, corrective action | Return needed a note the page showed only at closure, so it could not be enabled while the NCR waited for a disposition. | Return has its own "What is missing" field. |
+| W19 | Ops delivery, refused | The "Open the return" link sat in the handover card, which a refused delivery (no POD) never shows. | The card shows whenever there is a return leg. |
+| W20 | Customer quotation | Accept and Reject were offered to a requester, whom the API refuses (only `customer_approver` decides). | The projection's actions follow the reader's roles; Reject and Request a revision honour them. |
+| W21 | `/approvals` decided filters | Ordered oldest first under a limit of 100, so a long history hid every recent decision. | Waiting requests oldest first, decided ones newest first. |
 
 **Plan edits (2026-11-01):**
 
