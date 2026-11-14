@@ -3043,14 +3043,32 @@ html:has(.jw-flat) {
   gap: var(--space-3);
 }
 
+/* A tile is white washing into its tint, as in the reference, with the glyph on a
+   deeper wash of the same hue; each tint sets the three colours once. */
 .jw-tile {
+  --tile-fg: var(--color-ink);
+  --tile-bg: var(--neutral-50);
+  --tile-border: var(--neutral-200);
   display: grid;
   gap: var(--space-2);
   padding: var(--space-4);
   border-radius: var(--radius-lg);
-  border: 1.5px solid var(--neutral-200);
+  border: 1px solid var(--tile-border);
+  background: linear-gradient(155deg, var(--color-surface) 0%, var(--tile-bg) 70%);
+  box-shadow: 0 1px 2px rgb(21 26 45 / 0.04);
   text-decoration: none;
   color: var(--color-ink);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+
+.jw-tile:hover {
+  color: var(--color-ink);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--tile-fg) 35%, var(--color-surface));
+  box-shadow: 0 8px 20px rgb(21 26 45 / 0.08);
 }
 
 .jw-tile:focus-visible {
@@ -3058,10 +3076,16 @@ html:has(.jw-flat) {
   outline-offset: 2px;
 }
 
-.jw-tile-blue { background: var(--blue-50); border-color: var(--blue-100); }
-.jw-tile-violet { background: var(--status-special-bg); border-color: var(--status-special-border); }
-.jw-tile-green { background: var(--status-positive-bg); border-color: var(--status-positive-border); }
-.jw-tile-orange { background: var(--status-attention-bg); border-color: var(--status-attention-border); }
+@media (prefers-reduced-motion: reduce) {
+  .jw-tile:hover {
+    transform: none;
+  }
+}
+
+.jw-tile-blue { --tile-fg: var(--brand-strong); --tile-bg: var(--blue-50); --tile-border: var(--blue-100); }
+.jw-tile-violet { --tile-fg: var(--status-special-fg); --tile-bg: var(--status-special-bg); --tile-border: var(--status-special-border); }
+.jw-tile-green { --tile-fg: var(--status-positive-fg); --tile-bg: var(--status-positive-bg); --tile-border: var(--status-positive-border); }
+.jw-tile-orange { --tile-fg: var(--accent-orange); --tile-bg: var(--status-attention-bg); --tile-border: var(--status-attention-border); }
 
 .jw-tile-glyph {
   display: inline-flex;
@@ -3070,16 +3094,34 @@ html:has(.jw-flat) {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--tile-fg) 12%, var(--color-surface));
+  color: var(--tile-fg);
 }
 
-.jw-tile-blue .jw-tile-glyph { color: var(--brand-strong); }
-.jw-tile-violet .jw-tile-glyph { color: var(--status-special-fg); }
-.jw-tile-green .jw-tile-glyph { color: var(--status-positive-fg); }
-.jw-tile-orange .jw-tile-glyph { color: var(--accent-orange); }
+/* The tile is a link; the chevron says so and leans toward the queue on hover. */
+.jw-tile-go {
+  display: inline-flex;
+  color: var(--tile-fg);
+  opacity: 0.5;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease);
+}
+
+.jw-tile:hover .jw-tile-go,
+.jw-tile:focus-visible .jw-tile-go {
+  opacity: 1;
+  transform: translateX(2px);
+}
 
 .jw-tile-value {
   font: 700 26px/30px var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+/* Nothing waiting: the zero recedes so the tiles with work stand out. */
+.jw-tile[data-empty] .jw-tile-value {
+  color: var(--color-text-muted);
 }
 
 .jw-tile-label {
@@ -3545,17 +3587,70 @@ html:has(.jw-flat) {
   width: clamp(112px, 26vw, 320px);
 }
 
-.jw-ops-home .jw-tile {
-  gap: var(--space-2);
-  padding: var(--space-4);
+/* The four tiles size to the space they get, not the viewport, since the sidebar takes
+   a varying share: two by two with the count beside its glyph when narrow, four across
+   with the count under it when there is room for every label on one line. */
+.jw-ops-overview {
+  container: ops-tiles / inline-size;
 }
 
+.jw-ops-home .jw-tiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.jw-ops-home .jw-tile {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'glyph value go'
+    'label label label';
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.jw-ops-home .jw-tile-glyph { grid-area: glyph; }
+.jw-ops-home .jw-tile-go { grid-area: go; align-self: start; }
+
 .jw-ops-home .jw-tile-value {
-  font: 700 30px/36px var(--font-sans);
+  grid-area: value;
+  font: 700 24px/30px var(--font-sans);
 }
 
 .jw-ops-home .jw-tile-label {
-  font: 500 14px/20px var(--font-sans);
+  grid-area: label;
+  font: 500 13px/18px var(--font-sans);
+}
+
+@container ops-tiles (min-width: 800px) {
+  .jw-ops-home .jw-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .jw-ops-home .jw-tile {
+    grid-template-areas:
+      'glyph . go'
+      'value value value'
+      'label label label';
+    row-gap: var(--space-1);
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .jw-ops-home .jw-tile-glyph {
+    width: 44px;
+    height: 44px;
+    margin-bottom: var(--space-3);
+  }
+
+  .jw-ops-home .jw-tile-value {
+    font: 700 32px/38px var(--font-sans);
+  }
+
+  .jw-ops-home .jw-tile-label {
+    font: 500 14px/20px var(--font-sans);
+  }
 }
 
 .jw-ops-columns {
@@ -3577,17 +3672,5 @@ html:has(.jw-flat) {
 
   .jw-ops-home .jw-welcome-title {
     font: 700 22px/28px var(--font-sans);
-  }
-
-  .jw-ops-home .jw-tile {
-    padding: var(--space-2);
-  }
-
-  .jw-ops-home .jw-tile-value {
-    font: 700 22px/28px var(--font-sans);
-  }
-
-  .jw-ops-home .jw-tile-label {
-    font: 500 12px/16px var(--font-sans);
   }
 }

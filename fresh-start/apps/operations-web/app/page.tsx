@@ -238,7 +238,7 @@ function Dashboard({
             />
           ) : null}
 
-          <section aria-labelledby="home-overview">
+          <section aria-labelledby="home-overview" className="jw-ops-overview">
             <h2 id="home-overview" className="jw-visually-hidden">
               Overview
             </h2>
@@ -249,19 +249,24 @@ function Dashboard({
                   group.find((queue) => queue.count > 0)?.href ??
                   group[0]?.href ??
                   "/queues";
+                const count = summary ? countOf(tile.queues) : null;
                 return (
                   <Link
                     key={tile.label}
                     href={href}
                     className={`jw-tile jw-tile-${tile.tint}`}
+                    data-empty={count === 0 ? "" : undefined}
                   >
                     <span className="jw-tile-glyph" aria-hidden="true">
                       <Icon name={tile.icon} size={1.4} />
                     </span>
                     <span className="jw-tile-value numeric">
-                      {summary ? countOf(tile.queues) : "—"}
+                      {count ?? "—"}
                     </span>
                     <span className="jw-tile-label">{tile.label}</span>
+                    <span className="jw-tile-go" aria-hidden="true">
+                      <Icon name="chevron" size={1.1} />
+                    </span>
                   </Link>
                 );
               })}
