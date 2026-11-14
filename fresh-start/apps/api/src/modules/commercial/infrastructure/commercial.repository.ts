@@ -313,7 +313,11 @@ export class CommercialRepository {
     return res.rows as ApprovalRequestRow['decisions'];
   }
 
-  /** `decidableBy`: only requests one of these roles may decide (null: every request). */
+  /**
+   * `decidableBy`: only requests one of these roles may decide (null: every request).
+   * Waiting requests come first, oldest first (the queue is worked in order); decided ones
+   * follow newest first, so a long history never pushes the latest decision past the limit.
+   */
   async listApprovalRequests(
     filter: { status?: ApprovalRequestStatus | undefined; kind?: ApprovalKind | undefined; decidableBy?: string[] | null | undefined },
     limit: number,
@@ -322,7 +326,8 @@ export class CommercialRepository {
       `SELECT id FROM commercial.approval_request
         WHERE ($1::text IS NULL OR status = $1) AND ($2::text IS NULL OR kind = $2)
           AND ($4::text[] IS NULL OR required_roles && $4::text[])
-        ORDER BY (status = 'pending') DESC, requested_at ASC LIMIT $3`,
+        ORDER BY (status = 'pending') DESC, CASE WHEN status = 'pending' THEN requested_at END ASC, decided_at DESC, requested_at DESC
+        LIMIT $3`,
       [filter.status ?? null, filter.kind ?? null, limit, filter.decidableBy ?? null],
     );
     const rows: ApprovalRequestRow[] = [];

@@ -50,12 +50,16 @@ function customerStatus(quote: QuoteRecord, version: QuoteVersionRecord, now: Da
 export function projectCustomerQuote(
   quote: QuoteRecord,
   siblings: readonly QuoteRecord[],
+  roles: readonly string[],
   now: Date = new Date(),
 ): CustomerQuote | null {
   const version = visibleVersion(quote);
   if (!version || !quote.reference) return null;
   const status = customerStatus(quote, version, now);
   const open = status === 'quotation_ready';
+  // The same roles the commands require: an approver decides, a requester may only ask for a revision.
+  const decides = roles.includes('customer_approver');
+  const asks = decides || roles.includes('customer_requester');
 
   const sentVersions = quote.versions
     .filter((v) => QUOTE_VERSION_VISIBLE_TO_CUSTOMER.has(v.status) && v.id !== version.id)
@@ -122,7 +126,7 @@ export function projectCustomerQuote(
         status: customerStatus(sibling, v, now),
       })),
     previousVersions,
-    actions: { canAccept: open, canRequestRevision: open, canReject: open },
+    actions: { canAccept: open && decides, canRequestRevision: open && asks, canReject: open && decides },
     aggregateVersion: quote.aggregateVersion,
   };
 }

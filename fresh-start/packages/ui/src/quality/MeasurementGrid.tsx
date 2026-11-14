@@ -74,7 +74,8 @@ export function describeLimits(c: GridCharacteristic): string {
 export function MeasurementGrid({ caption, characteristics, sampleNos, results, cellAction }: MeasurementGridProps): React.JSX.Element {
   const standing = results.filter((r) => r.supersededByResultId === null);
   return (
-    <div style={{ overflowX: 'auto' }}>
+    // Focusable and named: a decided grid has no controls, and keyboard users must still scroll it.
+    <div role="region" aria-label={caption} tabIndex={0} style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', font: 'var(--text-body)' }}>
         <caption className="jw-visually-hidden">{caption}</caption>
         <thead>

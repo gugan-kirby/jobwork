@@ -237,7 +237,8 @@ export function DeliveryFactsPanel({ s, onChange }: { s: Shipment; onChange: (s:
   const d = s.delivery!;
   return (
     <Stack gap={4}>
-      {d.pod || d.acceptance || d.acceptanceDueAt ? (
+      {/* A refused delivery has no handover, but its return leg must still be reachable. */}
+      {d.pod || d.acceptance || d.acceptanceDueAt || d.returnShipmentId ? (
         <Card title="Handover and acceptance">
           <DescriptionList
             columns={2}

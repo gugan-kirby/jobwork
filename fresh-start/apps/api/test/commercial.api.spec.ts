@@ -451,6 +451,9 @@ describe('Evaluation, award, cost sheet, customer quote (IN-07)', () => {
     expect(selfAgain.status).toBe(409);
     const ok = await finance.post(`/api/v1/approvals/${req2}/decide`, { decision: 'approved' });
     expect(ok.status).toBe(201);
+    // A decided filter reads newest first (the award was approved earlier), so a long history never hides the latest decision.
+    const latest = (await finance.get('/api/v1/approvals?status=approved&limit=1')).body['approvals'] as Array<Record<string, unknown>>;
+    expect(latest.map((r) => r['approvalRequestId'])).toEqual([req2]);
     const sheet = await sales.get(`/api/v1/cost-sheets/${costSheetId}`);
     expect(sheet.body['status']).toBe('approved');
   });
@@ -525,7 +528,9 @@ describe('Evaluation, award, cost sheet, customer quote (IN-07)', () => {
     expect(detail.status).toBe(200);
     expect(detail.body['issuedBy']).toBe('JobWork');
     expect(detail.body['totalMinor']).toBe(sent.body['versions'] && (sent.body['versions'] as Array<Record<string, unknown>>)[0]!['totalMinor']);
-    expect((detail.body['actions'] as Record<string, boolean>)['canAccept']).toBe(true);
+    // The actions follow the reader's roles: a requester may ask for a revision, only an approver decides.
+    expect(detail.body['actions']).toEqual({ canAccept: false, canRequestRevision: true, canReject: false });
+    expect((await approver.get(`/api/v1/quotations/${quoteId}`)).body['actions']).toEqual({ canAccept: true, canRequestRevision: true, canReject: true });
     const shielded = withoutSupplierCard(detail.body);
     const keys = [...keysOf(shielded)].map((k) => k.toLowerCase());
     for (const forbidden of ['supplier', 'bid', 'cost', 'margin', 'landed', 'award', 'evaluation', 'buy']) {

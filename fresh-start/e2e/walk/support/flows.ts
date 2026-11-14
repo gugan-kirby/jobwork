@@ -11,9 +11,16 @@ import { apiAs, daysFromNow, FIXTURES, type Who } from './walk';
  */
 
 const sessions = new Map<Who, Promise<ApiSession>>();
-export const as = (who: Who): Promise<ApiSession> => {
-  if (!sessions.has(who)) sessions.set(who, apiAs(who));
-  return sessions.get(who)!;
+/**
+ * One API session per actor for the run, signed in again once the walk has ended it:
+ * suspending a member (chapter 10) revokes every session that member holds.
+ */
+export const as = async (who: Who): Promise<ApiSession> => {
+  const cached = sessions.get(who);
+  if (cached && (await (await cached).get('/auth/me')).status === 200) return cached;
+  const fresh = apiAs(who);
+  sessions.set(who, fresh);
+  return fresh;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

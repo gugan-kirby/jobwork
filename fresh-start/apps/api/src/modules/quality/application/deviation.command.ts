@@ -192,6 +192,8 @@ export class DeviationCommand implements OnModuleInit {
           if (d.aggregateVersion !== cmd.expectedVersion) throw new DomainError('VERSION_CONFLICT', 409, 'The deviation moved on', 'Reload it and try again.');
           if (d.status !== 'pending_internal' && d.status !== 'pending_customer') throw new QualityRefused('DEVIATION_NOT_PENDING', 'Only a pending deviation can be withdrawn');
           const version = await this.repo.updateDeviation(d.id, { status: 'withdrawn', decidedAt: new Date(), decisionReason: cmd.reason }, tx);
+          // A request still waiting for JobWork's decision goes with it; deciding it later could only be refused.
+          if (d.approvalRequestId) await this.commercial.supersedeApprovalRequest(d.approvalRequestId, tx);
           const ncr = await this.settleNcr(d, false, null, tx);
           return {
             result: undefined,

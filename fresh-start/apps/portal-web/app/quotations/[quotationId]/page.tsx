@@ -375,8 +375,8 @@ export default function QuotationDetailPage() {
           <Stack gap={3}>
             {mode === 'none' ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-                <Button variant="ghost" onClick={() => setMode('revision')}>Request a revision</Button>
-                <Button variant="ghost" onClick={() => setMode('reject')}>Reject</Button>
+                <Button variant="ghost" disabled={!quote.actions.canRequestRevision} disabledReason="Only your company’s requesters and approvers can ask for a revision" onClick={() => setMode('revision')}>Request a revision</Button>
+                <Button variant="ghost" disabled={!quote.actions.canReject} disabledReason="Only someone allowed to approve purchases can reject" onClick={() => setMode('reject')}>Reject</Button>
               </div>
             ) : (
               <Card title={mode === 'revision' ? 'Request a revision' : 'Reject this quotation'}>

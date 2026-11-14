@@ -63,7 +63,7 @@ export class CustomerQuotesController {
   async get(@CurrentActor() actor: Actor, @Param('quotationId') quotationId: string): Promise<CustomerQuote> {
     const quote = await this.owned(actor, quotationId);
     const siblings = await this.repo.listSiblings(quote.offerSetId);
-    const projected = projectCustomerQuote(quote, siblings);
+    const projected = projectCustomerQuote(quote, siblings, actor.roles);
     if (!projected) throw new QuoteNotFound();
     return projected;
   }

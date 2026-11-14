@@ -108,6 +108,9 @@ describe('Deviation (F-15.3)', () => {
     expect(first['status']).toBe('withdrawn');
     boreNcr = await ncr(boreNcr);
     expect(boreNcr).toMatchObject({ status: 'disposition_pending', attemptNo: 1 });
+    // Its approval request goes with it: nothing waits on a decision that can no longer be made.
+    const waiting = ok(await p.as.engineering.get('/api/v1/approvals?status=pending'), 200, 'waiting approvals')['approvals'] as Body[];
+    expect(waiting.map((a) => a['approvalRequestId'])).not.toContain(first['approvalRequestId']);
 
     const dv = ok(await request(boreNcr), 201, 'request again');
     const approvalId = dv['approvalRequestId'] as string;
